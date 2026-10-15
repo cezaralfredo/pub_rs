@@ -1,0 +1,18 @@
+{
+  "id": "default",
+  "name": "Cliente Padrão",
+  "brandName": "Marca",
+  "brandHandle": "@marca",
+  "tone": "Profissional, autoritário, direto ao ponto e focado em valor prático",
+  "targetAudience": "Profissionais e tomadores de decisão",
+  "defaultHashtags": [
+    "#Negocios",
+    "#Inovacao",
+    "#Estrategia",
+    "#Tendencias"
+  ],
+  "callToAction": "Confira a análise completa e compartilhe sua visão:",
+  "includeFirstComment": true,
+  "commentTemplate": "👉 Leia o artigo completo com todas as referências aqui: {URL}",
+  "webhookUrl": ""
+}

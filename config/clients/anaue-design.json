@@ -1,0 +1,20 @@
+{
+  "id": "anaue-design",
+  "name": "Anauê Design",
+  "brandName": "Anauê Design",
+  "brandHandle": "@anauedesign",
+  "tone": "Especialista, tecnológico, estratégico, focado em ROI, Core Web Vitals e inovação digital",
+  "targetAudience": "Empresários, diretores de marketing, gestores de tecnologia e fundadores de empresas",
+  "defaultHashtags": [
+    "#MarketingDigital",
+    "#Performance",
+    "#GrowthMarketing",
+    "#FirstPartyData",
+    "#AnaueDesign",
+    "#ROI"
+  ],
+  "callToAction": "Sua empresa já está preparada para o novo cenário de mídia paga? Compartilhe nos comentários sua experiência:",
+  "includeFirstComment": true,
+  "commentTemplate": "👉 Acesse a matéria técnica completa com dados e benchmarks no blog da Anauê: {URL}",
+  "webhookUrl": ""
+}

@@ -1,0 +1,20 @@
+1/3 🚨 Mídia Paga Além da Vaidade: Como Construir Funis com First-Party Data e ROI Real
+
+Você ainda comemora ROAS de 10x no gerenciador de anúncios? Atenção: com a perda de cookies e bloqueadores, até 40% dos dados de conversão estão sendo ignorados ou contados duas vezes.
+
+---
+
+2/3 💡 Para onde as operações de alta performance estão indo:
+
+• Janelas de Atribuição Descalibradas: Modelos que computam conversões por visualização (View-Through) de 1 dia ou cliques de 7 dias tendem a inflar os números com clientes que já tomariam a decisão de compra de qualquer forma.
+• Desconsideração de Devoluções e Inadimplência: O painel do anúncio registra a intenção no checkout, mas ignora boletos não pagos, chargebacks, cancelamentos e a margem operacional de cada produto.
+• O usuário interage com o seu site ou PWA de alta performance (progressive web app).
+
+Mudar para First-Party Data e Server-Side Tracking não é luxo, é sobrevivência.
+
+---
+
+3/3 🔗 Confira a análise completa com estudo de caso de redução de 28% no CAC no blog:
+https://anauedesign.com.br/blog/midia-paga-roi-real-atribuicao-first-party-data.html?utm_source=twitter&utm_medium=social&utm_campaign=midia-paga-roi-real-atribuicao-first-party-data
+
+#MarketingDigital #Performance #GrowthMarketing
