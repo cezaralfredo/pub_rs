@@ -14,5 +14,30 @@
   "callToAction": "Confira a análise completa e compartilhe sua visão:",
   "includeFirstComment": true,
   "commentTemplate": "👉 Leia o artigo completo com todas as referências aqui: {URL}",
-  "webhookUrl": ""
+  "llm": {
+    "provider": "auto",
+    "model": "",
+    "apiKey": ""
+  },
+  "channels": {
+    "webhook": {
+      "enabled": true,
+      "url": ""
+    },
+    "linkedin": {
+      "enabled": false,
+      "accessToken": "",
+      "authorUrn": ""
+    },
+    "twitter": {
+      "enabled": false,
+      "bearerToken": "",
+      "accessToken": ""
+    },
+    "buffer": {
+      "enabled": false,
+      "accessToken": "",
+      "profileIds": []
+    }
+  }
 }

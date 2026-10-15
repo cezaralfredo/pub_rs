@@ -66,14 +66,14 @@ function detectAvailableProviders() {
 /**
  * Executa uma chamada para o provedor especificado.
  */
-async function callProvider(providerName, systemInstructions, userContent, modelOverride) {
+async function callProvider(providerName, systemInstructions, userContent, modelOverride, apiKeyOverride) {
   const p = providerName.toLowerCase();
 
   switch (p) {
     case 'gemini':
     case 'google': {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('GEMINI_API_KEY não encontrada no .env');
+      const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('Chave da Gemini API não encontrada (nem no cliente nem no .env).');
       return await callGemini({
         systemInstructions,
         userContent,
@@ -83,8 +83,8 @@ async function callProvider(providerName, systemInstructions, userContent, model
     }
 
     case 'openai': {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error('OPENAI_API_KEY não encontrada no .env');
+      const apiKey = apiKeyOverride || process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error('Chave da OpenAI API não encontrada (nem no cliente nem no .env).');
       return await callOpenAICompatible({
         systemInstructions,
         userContent,
@@ -97,8 +97,8 @@ async function callProvider(providerName, systemInstructions, userContent, model
 
     case 'anthropic':
     case 'claude': {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) throw new Error('ANTHROPIC_API_KEY não encontrada no .env');
+      const apiKey = apiKeyOverride || process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) throw new Error('Chave da Anthropic Claude API não encontrada (nem no cliente nem no .env).');
       return await callAnthropic({
         systemInstructions,
         userContent,
@@ -108,8 +108,8 @@ async function callProvider(providerName, systemInstructions, userContent, model
     }
 
     case 'groq': {
-      const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) throw new Error('GROQ_API_KEY não encontrada no .env');
+      const apiKey = apiKeyOverride || process.env.GROQ_API_KEY;
+      if (!apiKey) throw new Error('Chave da Groq API não encontrada (nem no cliente nem no .env).');
       return await callOpenAICompatible({
         systemInstructions,
         userContent,
@@ -121,8 +121,8 @@ async function callProvider(providerName, systemInstructions, userContent, model
     }
 
     case 'deepseek': {
-      const apiKey = process.env.DEEPSEEK_API_KEY;
-      if (!apiKey) throw new Error('DEEPSEEK_API_KEY não encontrada no .env');
+      const apiKey = apiKeyOverride || process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) throw new Error('Chave da DeepSeek API não encontrada (nem no cliente nem no .env).');
       return await callOpenAICompatible({
         systemInstructions,
         userContent,
@@ -134,8 +134,8 @@ async function callProvider(providerName, systemInstructions, userContent, model
     }
 
     case 'openrouter': {
-      const apiKey = process.env.OPENROUTER_API_KEY;
-      if (!apiKey) throw new Error('OPENROUTER_API_KEY não encontrada no .env');
+      const apiKey = apiKeyOverride || process.env.OPENROUTER_API_KEY;
+      if (!apiKey) throw new Error('Chave da OpenRouter API não encontrada (nem no cliente nem no .env).');
       return await callOpenAICompatible({
         systemInstructions,
         userContent,
@@ -167,10 +167,19 @@ async function callProvider(providerName, systemInstructions, userContent, model
 async function generateWithLlm(article, client, options = {}) {
   const { systemInstructions, userContent } = buildCopywriterPrompt(article, client);
 
-  const preferredProvider = options.provider || client.llmProvider || process.env.LLM_PROVIDER;
-  const preferredModel = options.model || client.llmModel || process.env.LLM_MODEL;
+  const clientLlmProvider = client.llm?.provider || client.llmProvider;
+  const clientLlmModel = client.llm?.model || client.llmModel;
+  const clientApiKey = client.llm?.apiKey;
+
+  const preferredProvider = options.provider || clientLlmProvider || process.env.LLM_PROVIDER;
+  const preferredModel = options.model || clientLlmModel || process.env.LLM_MODEL;
 
   const availableProviders = detectAvailableProviders();
+
+  // Se o cliente possuir chave própria configurada para um provedor, adiciona à lista
+  if (clientLlmProvider && clientApiKey && !availableProviders.includes(clientLlmProvider)) {
+    availableProviders.unshift(clientLlmProvider);
+  }
 
   // Lista de tentativas: primeiro a preferência, depois os demais disponíveis
   const providersToTry = [];
@@ -193,7 +202,7 @@ async function generateWithLlm(article, client, options = {}) {
   for (const provider of providersToTry) {
     try {
       console.log(`   🤖 [IA] Gerando copies via provedor: ${provider.toUpperCase()}...`);
-      result = await callProvider(provider, systemInstructions, userContent, preferredModel);
+      result = await callProvider(provider, systemInstructions, userContent, preferredModel, clientApiKey);
       if (result && result.text) {
         break; // Sucesso!
       }

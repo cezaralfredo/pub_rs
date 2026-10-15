@@ -1315,3 +1315,220 @@ body {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* ==============================================================================
+   BOTÃO DE DISPARO / PUBLICAÇÃO DIRETA & ESTILOS DE CANAIS
+   ============================================================================== */
+.btn-publish-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #10b981 0%, #0284c7 100%);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  transition: var(--transition-fast);
+}
+
+.btn-publish-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
+}
+
+.modal-lg {
+  max-width: 820px;
+}
+
+.modal-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Abas internas do Modal de Clientes */
+.client-modal-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+}
+
+.cl-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.cl-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cl-tab.active {
+  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.cl-tab-panel {
+  display: none;
+}
+
+.cl-tab-panel.active {
+  display: block;
+}
+
+.info-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+}
+
+.field-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Card de Canal Social */
+.channel-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.channel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.channel-name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.toggle-switch-sm {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.toggle-switch-sm input {
+  display: none;
+}
+
+.toggle-switch-sm .toggle-slider {
+  width: 36px;
+  height: 20px;
+}
+
+.toggle-switch-sm .toggle-slider::after {
+  width: 14px;
+  height: 14px;
+}
+
+.toggle-switch-sm input:checked + .toggle-slider::after {
+  transform: translateX(16px);
+}
+
+.modal-footer-right {
+  display: flex;
+  gap: 12px;
+}
+
+/* Lista de Resultados do Disparo */
+.dispatch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.dispatch-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+}
+
+.dispatch-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.dispatch-channel-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.dispatch-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+}
+
+.dispatch-badge.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.dispatch-badge.skipped {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.dispatch-badge.error {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--accent-rose);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.dispatch-detail-msg {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.dispatch-url {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--accent-cyan);
+  text-decoration: none;
+}
+
+.dispatch-url:hover {
+  text-decoration: underline;
+}

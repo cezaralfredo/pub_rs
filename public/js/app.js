@@ -1,5 +1,5 @@
 /**
- * pub_rs Studio — Lógica de Interface e Conexão em Tempo Real (SSE)
+ * pub_rs Studio — Lógica de Interface, Conexão SSE, Configuração de Canais e Publicação Direta
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resEngineTag: document.getElementById('res-engine-tag'),
     resDateTag: document.getElementById('res-date-tag'),
     resArticleLink: document.getElementById('res-article-link'),
+    btnPublishChannels: document.getElementById('btn-publish-channels'),
     btnDownloadJson: document.getElementById('btn-download-json'),
     btnCopyAll: document.getElementById('btn-copy-all'),
 
@@ -80,11 +81,18 @@ document.addEventListener('DOMContentLoaded', () => {
     payloadContainer: document.getElementById('payload-json-container'),
     btnCopyJson: document.getElementById('btn-copy-json'),
 
-    // Modal Clients
+    // Modal Clients & Canais
     modalClients: document.getElementById('modal-clients'),
     btnCloseModalClients: document.getElementById('btn-close-modal-clients'),
     btnCancelClient: document.getElementById('btn-cancel-client'),
+    btnTestClientConn: document.getElementById('btn-test-client-conn'),
     formEditClient: document.getElementById('form-edit-client'),
+
+    // Modal Dispatch Result
+    modalDispatchResult: document.getElementById('modal-dispatch-result'),
+    btnCloseDispatchModal: document.getElementById('btn-close-dispatch-modal'),
+    btnOkDispatch: document.getElementById('btn-ok-dispatch'),
+    dispatchResultsList: document.getElementById('dispatch-results-list'),
 
     // Drawer History
     drawerHistory: document.getElementById('drawer-history'),
@@ -126,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const clients = await res.json();
       state.clients = clients;
 
-      // Atualiza os dropdowns
       const optionsHtml = clients.map(c => 
         `<option value="${c.id}">${c.name || c.brandName} (${c.id})</option>`
       ).join('');
@@ -134,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.topClientSelect.innerHTML = optionsHtml;
       elements.formClientSelect.innerHTML = optionsHtml;
 
-      // Sincroniza seletor da topbar com o formulário
       elements.topClientSelect.addEventListener('change', (e) => {
         elements.formClientSelect.value = e.target.value;
       });
@@ -196,6 +202,19 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    // Abas do Modal de Clientes
+    document.querySelectorAll('.cl-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.cl-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.cl-tab-panel').forEach(p => p.classList.remove('active'));
+
+        tab.classList.add('active');
+        const targetId = tab.getAttribute('data-cl-tab');
+        const targetPanel = document.getElementById(targetId);
+        if (targetPanel) targetPanel.classList.add('active');
+      });
+    });
+
     // Botões de Cópia
     elements.btnCopyPost.addEventListener('click', () => {
       copyToClipboard(elements.currentPostText.textContent, 'Texto do post copiado!');
@@ -225,10 +244,26 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Modal Clientes
-    elements.btnManageClients.addEventListener('click', () => {
+    // Botão de Publicação Direta nos Canais
+    elements.btnPublishChannels.addEventListener('click', () => {
+      publishCurrentPackageToChannels();
+    });
+
+    // Fechar Modal de Disparo
+    elements.btnCloseDispatchModal.addEventListener('click', () => {
+      elements.modalDispatchResult.classList.add('hidden');
+    });
+    elements.btnOkDispatch.addEventListener('click', () => {
+      elements.modalDispatchResult.classList.add('hidden');
+    });
+
+    // Abrir Modal de Clientes & Preencher com Cliente Selecionado
+    elements.btnManageClients.addEventListener('click', async () => {
+      const selectedId = elements.topClientSelect.value || 'anaue-design';
+      await populateClientModal(selectedId);
       elements.modalClients.classList.remove('hidden');
     });
+
     elements.btnCloseModalClients.addEventListener('click', () => {
       elements.modalClients.classList.add('hidden');
     });
@@ -236,34 +271,83 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.modalClients.classList.add('hidden');
     });
 
-    // Salvar Novo Cliente
+    // Testar Conexão do Cliente
+    elements.btnTestClientConn.addEventListener('click', async () => {
+      const clientId = document.getElementById('cl-id').value.trim();
+      if (!clientId) {
+        showToast('Salve o cliente primeiro para testar conexões.', 'warning');
+        return;
+      }
+      try {
+        showToast('Testando conexões...', 'info');
+        const res = await fetch(`/api/clients/${clientId}/test-connection`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          const webhookMsg = data.testResults?.webhook ? `Webhook: ${data.testResults.webhook.status.toUpperCase()}` : 'Webhook não configurado';
+          showToast(`Conexão testada! ${webhookMsg}.`, 'success');
+        } else {
+          showToast('Falha ao testar conexão.', 'error');
+        }
+      } catch (err) {
+        showToast(`Erro no teste: ${err.message}`, 'error');
+      }
+    });
+
+    // Salvar Cliente com Dados de Redes e LLM
     elements.formEditClient.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const newClient = {
+
+      const clientPayload = {
         id: document.getElementById('cl-id').value.trim(),
         brandName: document.getElementById('cl-brandName').value.trim(),
         brandHandle: document.getElementById('cl-handle').value.trim(),
         tone: document.getElementById('cl-tone').value.trim(),
         targetAudience: document.getElementById('cl-audience').value.trim(),
-        llmProvider: document.getElementById('cl-provider').value,
         defaultHashtags: document.getElementById('cl-hashtags').value.split(',').map(s => s.trim()).filter(Boolean),
         callToAction: document.getElementById('cl-cta').value.trim(),
-        webhookUrl: document.getElementById('cl-webhook').value.trim()
+        commentTemplate: document.getElementById('cl-comment-tpl').value.trim(),
+        generateAiImage: document.getElementById('cl-gen-ai-image').checked,
+        llm: {
+          provider: document.getElementById('cl-llm-provider').value,
+          model: document.getElementById('cl-llm-model').value.trim(),
+          apiKey: document.getElementById('cl-llm-key').value.trim()
+        },
+        channels: {
+          webhook: {
+            enabled: document.getElementById('ch-webhook-enabled').checked,
+            url: document.getElementById('ch-webhook-url').value.trim()
+          },
+          buffer: {
+            enabled: document.getElementById('ch-buffer-enabled').checked,
+            accessToken: document.getElementById('ch-buffer-token').value.trim(),
+            profileIds: document.getElementById('ch-buffer-profiles').value.split(',').map(s => s.trim()).filter(Boolean)
+          },
+          linkedin: {
+            enabled: document.getElementById('ch-linkedin-enabled').checked,
+            accessToken: document.getElementById('ch-linkedin-token').value.trim(),
+            authorUrn: document.getElementById('ch-linkedin-urn').value.trim()
+          },
+          twitter: {
+            enabled: document.getElementById('ch-twitter-enabled').checked,
+            bearerToken: document.getElementById('ch-twitter-token').value.trim()
+          }
+        }
       };
 
       try {
         const res = await fetch('/api/clients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newClient)
+          body: JSON.stringify(clientPayload)
         });
+
         if (res.ok) {
-          showToast(`Cliente "${newClient.brandName}" salvo com sucesso!`, 'success');
+          const result = await res.json();
+          showToast(`Cliente "${result.client.brandName}" salvo com sucesso!`, 'success');
           elements.modalClients.classList.add('hidden');
-          elements.formEditClient.reset();
           await loadClients();
-          elements.formClientSelect.value = newClient.id;
-          elements.topClientSelect.value = newClient.id;
+          elements.formClientSelect.value = result.client.id;
+          elements.topClientSelect.value = result.client.id;
         } else {
           const errData = await res.json();
           showToast(`Erro: ${errData.error}`, 'error');
@@ -284,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Botão Info
     elements.btnInfo.addEventListener('click', () => {
-      showToast('pub_rs Studio v2.0 · Automação Omnichannel com Multi-LLM e Sharp.', 'info');
+      showToast('pub_rs Studio v2.5 · Automação Omnichannel, Publicação Direta e Multi-LLM.', 'info');
     });
   }
 
@@ -303,14 +387,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const model = elements.formModelInput.value.trim();
     const aiImage = elements.toggleAiImage.checked;
 
-    // Atualiza estado visual de início
     setLoadingState(true);
     resetStepCards();
     elements.pipelineMonitor.classList.remove('hidden');
     elements.resultsStudio.classList.add('hidden');
     elements.pipelineMonitor.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // Monta URL do endpoint SSE
     const streamUrl = `/api/generate/stream?url=${encodeURIComponent(url)}&clientId=${encodeURIComponent(clientId)}&provider=${encodeURIComponent(provider)}&model=${encodeURIComponent(model)}&aiImage=${aiImage}`;
 
     const eventSource = new EventSource(streamUrl);
@@ -352,13 +434,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleStepProgress(data) {
-    const { step, status, message } = data;
+    const { step, message } = data;
 
     if (elements.pipelineMainStatus) {
       elements.pipelineMainStatus.textContent = message || 'Processando...';
     }
 
-    // Gerencia o status visual de cada etapa (1 a 4)
     for (let i = 1; i <= 4; i++) {
       const card = elements.steps[i].card;
       if (i < step) {
@@ -401,12 +482,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ===========================================================================
-  // 4. EXIBIÇÃO DOS RESULTADOS NO STUDIO
+  // 4. EXIBIÇÃO DOS RESULTADOS NO STUDIO & DISPARO
   // ===========================================================================
   function displayResults(data) {
     state.currentPackage = data;
 
-    // Metadados do Artigo
     elements.resClientTag.textContent = data.client?.brandName || data.client?.name || 'Cliente';
     elements.resArticleTitle.textContent = data.article?.title || 'Artigo Processado';
     elements.resEngineTag.textContent = `⚡ Motor: ${data.copies?.meta?.generator || 'IA'}`;
@@ -439,9 +519,91 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     elements.payloadContainer.textContent = JSON.stringify(fullPayload, null, 2);
 
-    // Exibe o painel de resultados com animação suave
     elements.resultsStudio.classList.remove('hidden');
     elements.resultsStudio.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function publishCurrentPackageToChannels() {
+    if (!state.currentPackage?.packageId) {
+      showToast('Nenhum pacote carregado para publicação.', 'warning');
+      return;
+    }
+
+    elements.modalDispatchResult.classList.remove('hidden');
+    elements.dispatchResultsList.innerHTML = `
+      <div class="dispatch-item">
+        <p>🚀 Disparando pacote <strong>${state.currentPackage.packageId}</strong> para os canais do cliente...</p>
+      </div>
+    `;
+
+    try {
+      const res = await fetch(`/api/packages/${state.currentPackage.packageId}/publish`, {
+        method: 'POST'
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Falha no disparo');
+
+      renderDispatchResults(data.dispatchResult);
+      showToast('Disparo concluído!', 'success');
+    } catch (err) {
+      elements.dispatchResultsList.innerHTML = `
+        <div class="dispatch-item">
+          <div class="dispatch-badge error">Erro</div>
+          <p class="dispatch-detail-msg">${err.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderDispatchResults(dispatchResult) {
+    const channels = dispatchResult?.channels || {};
+    const channelKeys = Object.keys(channels);
+
+    if (channelKeys.length === 0) {
+      elements.dispatchResultsList.innerHTML = `
+        <div class="dispatch-item">
+          <p>Nenhum canal ativo foi encontrado no perfil do cliente.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const channelLabels = {
+      webhook: 'Webhook (n8n / Make / Metricool)',
+      buffer: 'Buffer API',
+      linkedin: 'LinkedIn Direct Share',
+      twitter: 'X (Twitter API v2)'
+    };
+
+    elements.dispatchResultsList.innerHTML = channelKeys.map(key => {
+      const ch = channels[key];
+      const isSuccess = ch.status === 'success' || ch.status === 'completed';
+      const isSkipped = ch.status === 'skipped';
+      const badgeClass = isSuccess ? 'success' : isSkipped ? 'skipped' : 'error';
+      const badgeLabel = isSuccess ? 'Enviado ✓' : isSkipped ? 'Não configurado' : 'Falha';
+
+      let detailHtml = '';
+      if (ch.postUrl) {
+        detailHtml = `<a href="${ch.postUrl}" target="_blank" class="dispatch-url">Ver publicação no LinkedIn ↗</a>`;
+      } else if (ch.firstTweetUrl) {
+        detailHtml = `<a href="${ch.firstTweetUrl}" target="_blank" class="dispatch-url">Ver fio no X/Twitter ↗</a>`;
+      } else if (ch.message) {
+        detailHtml = `<span class="dispatch-detail-msg">${ch.message}</span>`;
+      } else if (ch.error) {
+        detailHtml = `<span class="dispatch-detail-msg">${ch.error}</span>`;
+      }
+
+      return `
+        <div class="dispatch-item">
+          <div class="dispatch-item-header">
+            <span class="dispatch-channel-title">${channelLabels[key] || key}</span>
+            <span class="dispatch-badge ${badgeClass}">${badgeLabel}</span>
+          </div>
+          ${detailHtml}
+        </div>
+      `;
+    }).join('');
   }
 
   function renderCurrentNetworkCopy() {
@@ -492,7 +654,6 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.currentPostText.textContent = postText;
     elements.currentCharCount.textContent = `${postText.length} caracteres`;
 
-    // 1º Comentário
     if (firstComment) {
       elements.firstCommentWrap.classList.remove('hidden');
       elements.currentCommentText.textContent = firstComment;
@@ -504,7 +665,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderMediaGallery(packageId) {
     if (!packageId) return;
 
-    // Atualiza URLs das imagens
     const setImg = (elImg, elWebp, elJpg, baseName) => {
       const webpUrl = `/api/media/${packageId}/${baseName}.webp`;
       const jpgUrl = `/api/media/${packageId}/${baseName}.jpg`;
@@ -520,6 +680,48 @@ document.addEventListener('DOMContentLoaded', () => {
     setImg(elements.img4x5, elements.linkWebp4x5, elements.linkJpg4x5, 'instagram_feed_portrait_4x5');
     setImg(elements.img1x1, elements.linkWebp1x1, elements.linkJpg1x1, 'instagram_threads_square_1x1');
     setImg(elements.img9x16, elements.linkWebp9x16, elements.linkJpg9x16, 'instagram_stories_reels_9x16');
+  }
+
+  // Preencher formulário de cliente
+  async function populateClientModal(clientId) {
+    try {
+      const res = await fetch(`/api/clients/${clientId}`);
+      if (!res.ok) return;
+      const client = await res.json();
+
+      document.getElementById('cl-id').value = client.id || '';
+      document.getElementById('cl-brandName').value = client.brandName || '';
+      document.getElementById('cl-handle').value = client.brandHandle || '';
+      document.getElementById('cl-tone').value = client.tone || '';
+      document.getElementById('cl-audience').value = client.targetAudience || '';
+      document.getElementById('cl-hashtags').value = (client.defaultHashtags || []).join(', ');
+      document.getElementById('cl-cta').value = client.callToAction || '';
+      document.getElementById('cl-comment-tpl').value = client.commentTemplate || '';
+      document.getElementById('cl-gen-ai-image').checked = Boolean(client.generateAiImage !== false);
+
+      // LLM
+      document.getElementById('cl-llm-provider').value = client.llm?.provider || 'auto';
+      document.getElementById('cl-llm-model').value = client.llm?.model || '';
+      document.getElementById('cl-llm-key').value = client.llm?.apiKey || '';
+
+      // Canais
+      const ch = client.channels || {};
+      document.getElementById('ch-webhook-enabled').checked = Boolean(ch.webhook?.enabled !== false);
+      document.getElementById('ch-webhook-url').value = ch.webhook?.url || client.webhookUrl || '';
+
+      document.getElementById('ch-buffer-enabled').checked = Boolean(ch.buffer?.enabled);
+      document.getElementById('ch-buffer-token').value = ch.buffer?.accessToken || '';
+      document.getElementById('ch-buffer-profiles').value = (ch.buffer?.profileIds || []).join(', ');
+
+      document.getElementById('ch-linkedin-enabled').checked = Boolean(ch.linkedin?.enabled);
+      document.getElementById('ch-linkedin-token').value = ch.linkedin?.accessToken || '';
+      document.getElementById('ch-linkedin-urn').value = ch.linkedin?.authorUrn || '';
+
+      document.getElementById('ch-twitter-enabled').checked = Boolean(ch.twitter?.enabled);
+      document.getElementById('ch-twitter-token').value = ch.twitter?.bearerToken || ch.twitter?.accessToken || '';
+    } catch (err) {
+      console.warn('Erro ao carregar dados do cliente:', err);
+    }
   }
 
   // ===========================================================================
@@ -545,7 +747,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `).join('');
 
-      // Adiciona clique para abrir pacote anterior
       document.querySelectorAll('.history-item').forEach(item => {
         item.addEventListener('click', async () => {
           const pkgId = item.getAttribute('data-id');

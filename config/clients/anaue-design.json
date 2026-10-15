@@ -16,5 +16,30 @@
   "callToAction": "Sua empresa já está preparada para o novo cenário de mídia paga? Compartilhe nos comentários sua experiência:",
   "includeFirstComment": true,
   "commentTemplate": "👉 Acesse a matéria técnica completa com dados e benchmarks no blog da Anauê: {URL}",
-  "webhookUrl": ""
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-2.5-flash",
+    "apiKey": ""
+  },
+  "channels": {
+    "webhook": {
+      "enabled": true,
+      "url": ""
+    },
+    "linkedin": {
+      "enabled": false,
+      "accessToken": "",
+      "authorUrn": ""
+    },
+    "twitter": {
+      "enabled": false,
+      "bearerToken": "",
+      "accessToken": ""
+    },
+    "buffer": {
+      "enabled": false,
+      "accessToken": "",
+      "profileIds": []
+    }
+  }
 }
