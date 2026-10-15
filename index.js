@@ -5,6 +5,7 @@ const { scrapeArticle } = require('./src/scraper');
 const { processSocialImages } = require('./src/imageProcessor');
 const { generateSocialCopies } = require('./src/copywriter');
 const { exportAndDispatch } = require('./src/dispatcher');
+const { detectAvailableProviders } = require('./src/llm');
 
 // CLI Arguments parser
 function parseArgs() {
@@ -12,6 +13,8 @@ function parseArgs() {
   const options = {
     url: '',
     client: 'anaue-design',
+    provider: '',
+    model: '',
     help: false
   };
 
@@ -23,6 +26,12 @@ function parseArgs() {
       i++;
     } else if (args[i] === '--client' && args[i + 1]) {
       options.client = args[i + 1];
+      i++;
+    } else if ((args[i] === '--provider' || args[i] === '-p') && args[i + 1]) {
+      options.provider = args[i + 1];
+      i++;
+    } else if ((args[i] === '--model' || args[i] === '-m') && args[i + 1]) {
+      options.model = args[i + 1];
       i++;
     } else if (args[i].startsWith('http')) {
       options.url = args[i];
@@ -47,12 +56,17 @@ function loadClientConfig(clientId) {
 }
 
 async function main() {
-  const { url, client: clientId, help } = parseArgs();
+  const { url, client: clientId, provider, model, help } = parseArgs();
 
   const clientsDir = path.join(__dirname, 'config', 'clients');
   const availableClients = fs.existsSync(clientsDir)
     ? fs.readdirSync(clientsDir).filter(f => f.endsWith('.json')).map(f => `  - ${f.replace('.json', '')}`).join('\n')
     : '  - default';
+
+  const detectedProviders = detectAvailableProviders();
+  const detectedStr = detectedProviders.length > 0 
+    ? detectedProviders.map(p => `"${p}"`).join(', ') 
+    : 'Nenhum detectado no .env (usando motor algorítmico nativo)';
 
   if (!url || help) {
     console.log(`
@@ -60,11 +74,21 @@ async function main() {
   🤖 pub_rs — Automação Omnichannel de Redes Sociais
 ======================================================
 Uso:
-  node index.js --url <URL_DO_ARTIGO> [--client <ID_DO_CLIENTE>]
+  node index.js --url <URL_DO_ARTIGO> [opções]
+
+Opções:
+  --client <ID>       ID do cliente (padrão: anaue-design)
+  --provider, -p      Provedor de LLM (gemini, openai, anthropic, groq, deepseek, openrouter, ollama)
+  --model, -m         Modelo específico (ex: gpt-4o-mini, gemini-2.5-flash, claude-3-5-sonnet-20241022)
+  --help, -h          Exibe esta mensagem de ajuda
+
+Provedores de IA ativos no ambiente:
+  ${detectedStr}
 
 Exemplos:
-  node index.js --url https://anauedesign.com.br/blog/midia-paga-roi-real-atribuicao-first-party-data.html
-  node index.js --url https://seusite.com/novo-artigo --client cliente-advocacia
+  node index.js --url https://site.com/artigo --client anaue-design
+  node index.js --url https://site.com/artigo --provider groq --model llama-3.3-70b-versatile
+  node index.js --url https://site.com/artigo --provider anthropic
 
 Clientes disponíveis em config/clients/:
 ${availableClients}
@@ -102,7 +126,7 @@ ${availableClients}
 
   // 3. Geração de Copywriting Multicanal
   console.log(`\n✍️  [3/4] Redigindo copies nativas por rede social e 1º comentário...`);
-  const copies = await generateSocialCopies(article, clientConfig);
+  const copies = await generateSocialCopies(article, clientConfig, { provider, model });
   console.log(`   ✓ Motor utilizado: ${copies.meta?.generator || 'Algorítmico Dinâmico'}`);
   console.log(`   ✓ LinkedIn: copy executiva + 1º comentário com link.`);
   console.log(`   ✓ Instagram: feed portrait (4:5) + stories teaser (9:16) + 1º comentário.`);
