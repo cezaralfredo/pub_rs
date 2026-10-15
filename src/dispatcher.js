@@ -1,4 +1,4 @@
-﻿const fs = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 async function exportAndDispatch({ article, client, copies, images, outputDir }) {
@@ -7,7 +7,7 @@ async function exportAndDispatch({ article, client, copies, images, outputDir })
     fs.mkdirSync(copysDir, { recursive: true });
   }
 
-  // 1. Salvar arquivos individuais de texto para uso imediato
+  // 1. Salvar arquivos individuais de texto para cópia direta
   fs.writeFileSync(path.join(copysDir, 'linkedin.txt'), copies.linkedin.post, 'utf8');
   fs.writeFileSync(path.join(copysDir, 'instagram_feed.txt'), copies.instagram.post, 'utf8');
   fs.writeFileSync(path.join(copysDir, 'instagram_stories.txt'), copies.stories.post, 'utf8');
@@ -28,11 +28,13 @@ ${copies.instagram.firstComment}
   fs.writeFileSync(path.join(copysDir, 'primeiros_comentarios.txt'), firstCommentsTxt, 'utf8');
 
   // 2. Montar Relatório Markdown Executivo
+  const generatorName = copies.meta?.generator || 'pub_rs Engine';
   const reportMd = 
 `# 📦 Pacote de Distribuição Multicanal · pub_rs
 
 **Artigo Base:** [${article.title}](${article.canonicalUrl || article.url})  
-**Cliente:** ${client.name || client.brandName}  
+**Cliente:** ${client.name || client.brandName} (${client.id || 'default'})  
+**Motor de Redação:** ${generatorName}  
 **Data de Geração:** ${new Date().toLocaleString('pt-BR')}  
 
 ---
@@ -101,35 +103,40 @@ ${copies.facebook.post}
 
   fs.writeFileSync(path.join(outputDir, 'PACOTE_REDES_SOCIAIS.md'), reportMd, 'utf8');
 
-  // 3. Payload JSON consolidado (API / Webhook)
+  // 3. Payload JSON consolidado (API / Webhook / Integrações)
   const payload = {
     client: client.id || 'default',
-    brand: client.brandName,
+    brand: client.brandName || client.name,
     article: {
       title: article.title,
+      description: article.description,
       url: article.canonicalUrl || article.url,
-      slug: article.slug
+      slug: article.slug,
+      siteName: article.siteName
     },
     images,
-    copies
+    copies,
+    generatedAt: new Date().toISOString()
   };
 
   fs.writeFileSync(path.join(outputDir, 'payload.json'), JSON.stringify(payload, null, 2), 'utf8');
 
-  // 4. Se houver Webhook cadastrado, enviar automaticamente
+  // 4. Se houver Webhook cadastrado (no cliente ou no .env), enviar automaticamente
   let webhookResult = null;
-  if (client.webhookUrl && client.webhookUrl.startsWith('http')) {
+  const webhookUrl = client.webhookUrl || process.env.DEFAULT_WEBHOOK_URL;
+
+  if (webhookUrl && webhookUrl.startsWith('http')) {
     try {
-      console.log(`[DISPATCH] Enviando payload para webhook: ${client.webhookUrl}`);
-      const res = await fetch(client.webhookUrl, {
+      console.log(`\n🌐 [DISPATCH] Enviando payload para webhook: ${webhookUrl}`);
+      const res = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       webhookResult = { status: res.status, ok: res.ok };
-      console.log(`[DISPATCH OK] Webhook disparado com status ${res.status}`);
+      console.log(`   ✓ Webhook disparado com status ${res.status}`);
     } catch (err) {
-      console.error(`[DISPATCH ERRO] Falha no webhook:`, err.message);
+      console.error(`   ⚠️ Falha no webhook (${webhookUrl}):`, err.message);
       webhookResult = { error: err.message };
     }
   }

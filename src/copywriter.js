@@ -1,78 +1,97 @@
-﻿function generateSocialCopies(article, client) {
-  const brand = client.brandName || 'Anauê Design';
-  const hashtags = client.defaultHashtags || ['#MarketingDigital', '#Performance', '#Growth'];
-  const hashtagsStr = hashtags.join(' ');
-  const targetUrl = article.canonicalUrl || article.url;
+/**
+ * Módulo de Geração de Copywriting Multicanal
+ * Suporta Inteligência Artificial via Google Gemini API (quando GEMINI_API_KEY estiver configurada)
+ * com fallback dinâmico algorítmico automático baseado 100% no conteúdo real do artigo extraído.
+ */
 
-  // Extrair pontos principais
-  const points = article.bulletPoints.length >= 3 
-    ? article.bulletPoints.slice(0, 4) 
-    : article.headings.slice(0, 4);
-
-  const formattedPoints = points.map((p, idx) => {
-    const clean = p.replace(/^[-*•\d.]+\s*/, '').replace(/:$/, '');
-    const icons = ['🔹', '⚡', '💡', '📊'];
-    return `${icons[idx % icons.length]} ${clean}`;
-  }).join('\n');
-
-  // UTM tracking URLs
-  const getUtmUrl = (source) => {
+// Helper para gerar URLs com parâmetros de rastreamento UTM
+function getUtmUrl(targetUrl, source, slug) {
+  try {
     const url = new URL(targetUrl);
     url.searchParams.set('utm_source', source);
     url.searchParams.set('utm_medium', 'social');
-    url.searchParams.set('utm_campaign', article.slug);
+    url.searchParams.set('utm_campaign', slug || 'distribuicao');
     return url.toString();
-  };
+  } catch {
+    return targetUrl;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 1. GERADOR ALGORÍTMICO DINÂMICO (Sem necessidade de chaves de API)
+// ---------------------------------------------------------------------------
+function generateAlgorithmicCopies(article, client) {
+  const brand = client.brandName || client.name || 'Marca';
+  const handle = client.brandHandle || '';
+  const hashtags = Array.isArray(client.defaultHashtags) && client.defaultHashtags.length > 0
+    ? client.defaultHashtags
+    : ['#Inovacao', '#Estrategia', '#Tendencias', '#Mercado'];
+  const hashtagsStr = hashtags.join(' ');
+  const targetUrl = article.canonicalUrl || article.url;
+  const slug = article.slug || 'artigo';
+
+  // Seleção e higienização dos pontos principais extraídos
+  const rawPoints = (article.bulletPoints && article.bulletPoints.length >= 2)
+    ? article.bulletPoints
+    : (article.headings && article.headings.length >= 2)
+      ? article.headings
+      : article.paragraphs.slice(1, 4);
+
+  const points = rawPoints.slice(0, 4).map(p => 
+    p.replace(/^[-*•\d.]+\s*/, '').replace(/:$/, '').trim()
+  ).filter(p => p.length > 10);
+
+  const icons = ['🔹', '⚡', '💡', '📊'];
+  const formattedPoints = points.length > 0
+    ? points.map((p, idx) => `${icons[idx % icons.length]} ${p}`).join('\n')
+    : `🔹 Principais descobertas e análises aprofundadas\n⚡ Estratégias práticas aplicadas ao mercado atual\n💡 Lições para tomadores de decisão`;
+
+  // Resumo/Lead dinâmico baseado na introdução real do artigo
+  const leadSummary = article.description || 
+    (article.paragraphs && article.paragraphs[0]) || 
+    'Confira uma análise aprofundada com os principais insights, desafios e caminhos práticos para navegar este cenário.';
+
+  const cta = client.callToAction || 'Qual a sua visão sobre esse tema? Compartilhe nos comentários:';
+  const commentTemplate = client.commentTemplate || '👉 Leia o artigo completo com todas as referências aqui: {URL}';
 
   // 1. LINKEDIN
   const linkedinCopy = 
 `${article.title}
 
-Se a sua empresa ainda mede o sucesso de campanhas digitais apenas por métricas como CPC ou o ROAS isolado de painéis, é provável que esteja enfrentando um dilema comum: relatórios bonitos na agência, mas pouca margem no caixa.
+${leadSummary}
 
-Com as restrições brutais de privacidade (Apple ATT, Safari ITP e bloqueadores nativos), depender apenas de pixels no navegador faz com que até 35% a 40% das conversões reais se tornem invisíveis.
-
-Para onde o mercado de alta performance está migrando:
+Destaques e pontos-chave abordados na análise:
 
 ${formattedPoints}
 
-A verdade é direta: quem depende exclusivamente de audiência alugada fica à mercê das mudanças de leilão das Big Techs. Quem constrói funis orientados a First-Party Data e atribuição real domina o CAC no longo prazo.
+${cta}
 
-${client.callToAction || 'Como a sua organização está lidando com a mensuração de resultados neste cenário?'}
-
-👇 O link completo com todos os dados técnicos e o estudo de caso prático está no primeiro comentário deste post.
+👇 O link com o artigo completo e todos os detalhes está no primeiro comentário deste post.
 
 ---
 ${hashtagsStr}`;
 
-  const linkedinComment = (client.commentTemplate || '👉 Acesse o artigo completo e todos os dados aqui: {URL}')
-    .replace('{URL}', getUtmUrl('linkedin'));
-
+  const linkedinComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'linkedin', slug));
 
   // 2. INSTAGRAM (FEED)
   const instagramCopy = 
 `✦ ${article.title.toUpperCase()} ✦
 
-Por que tantas empresas comemoram dashboards cheios de cliques, mas sentem o Custo de Aquisição (CAC) subir mês após mês? 🤔
+${leadSummary}
 
-O fim dos cookies de terceiros e a cegueira algorítmica exigiram uma mudança radical na forma de comprar mídia e estruturar funis digitais.
-
-Principais lições práticas que você precisa aplicar:
+📌 Principais tópicos para salvar e aplicar:
 
 ${formattedPoints}
 
-📌 Salve este post para consultar com seu time de marketing e tecnologia!
-
-💬 Quer se aprofundar na análise completa? Comente "QUERO" aqui embaixo que enviamos o link direto no seu direct, ou acesse o link na nossa bio.
+💬 Quer conferir o conteúdo completo? Comente "LINK" aqui embaixo ou acesse o link disponível na bio ${handle ? `(${handle})` : ''}!
+💾 Salve este post para consultar depois.
 
 .
 .
 .
 ${hashtagsStr}`;
 
-  const instagramComment = (client.commentTemplate || '👉 Leia a matéria na íntegra: {URL}')
-    .replace('{URL}', getUtmUrl('instagram'));
-
+  const instagramComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'instagram', slug));
 
   // 3. INSTAGRAM (STORIES)
   const storiesCopy = 
@@ -80,60 +99,57 @@ ${hashtagsStr}`;
 
 ${article.title}
 
-Como construir funis de alta performance e fugir das métricas de vaidade.
+${leadSummary.slice(0, 140)}...
 
 👉 Toque na figurinha de link para ler na íntegra:
-${getUtmUrl('stories')}`;
-
+${getUtmUrl(targetUrl, 'stories', slug)}`;
 
   // 4. X (TWITTER) - THREAD
   const twitterThread = [
     `1/3 🚨 ${article.title}
 
-Você ainda comemora ROAS de 10x no gerenciador de anúncios? Atenção: com a perda de cookies e bloqueadores, até 40% dos dados de conversão estão sendo ignorados ou contados duas vezes.`,
+${leadSummary.length > 160 ? leadSummary.slice(0, 155) + '...' : leadSummary}`,
 
-    `2/3 💡 Para onde as operações de alta performance estão indo:
+    `2/3 💡 Pontos centrais da análise:
 
-${points.slice(0, 3).map(p => `• ${p.replace(/^[-*•\d.]+\s*/, '')}`).join('\n')}
+${points.slice(0, 3).map(p => `• ${p}`).join('\n')}`,
 
-Mudar para First-Party Data e Server-Side Tracking não é luxo, é sobrevivência.`,
-
-    `3/3 🔗 Confira a análise completa com estudo de caso de redução de 28% no CAC no blog:
-${getUtmUrl('twitter')}
+    `3/3 🔗 Leia a matéria na íntegra com todos os dados:
+${getUtmUrl(targetUrl, 'twitter', slug)}
 
 ${hashtags.slice(0, 3).join(' ')}`
   ];
 
-
   // 5. THREADS
   const threadsCopy = 
-`Mídia paga além da vaidade: a maioria dos painéis de anúncios mostra números inflados porque Google e Meta disputam o crédito pela mesma venda.
+`${article.title}
 
-O verdadeiro indicador de saúde financeira não é o ROAS de tela, é o MER (Marketing Efficiency Ratio) somado ao First-Party Data.
+${leadSummary}
 
-Acabamos de publicar uma matéria aprofundada explicando como reverter esse cenário com arquitetura de dados e rastreamento server-side:
+Principais conclusões:
+${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}
 
-🔗 ${getUtmUrl('threads')}
+🔗 Acesse a íntegra: ${getUtmUrl(targetUrl, 'threads', slug)}
 
-Qual métrica seu time mais acompanha hoje?`;
-
+Como você ou seu time lidam com essa questão hoje?`;
 
   // 6. FACEBOOK
   const facebookCopy = 
 `${article.title}
 
-Entenda como estruturar campanhas de tráfego pago orientadas a lucro líquido, superando as limitações do fim dos cookies com First-Party Data, rastreamento via servidor e modelos modernos de atribuição.
+${leadSummary}
 
-Destaques da matéria:
+Pontos em destaque:
 ${formattedPoints}
 
-Leia o artigo completo no link:
-${getUtmUrl('facebook')}
+Acesse o artigo completo com todas as fontes e insights no link:
+${getUtmUrl(targetUrl, 'facebook', slug)}
 
 ${hashtagsStr}`;
 
   return {
     meta: {
+      generator: 'Algorithmic Dynamic v2',
       client: client.name || client.id,
       articleTitle: article.title,
       targetUrl,
@@ -166,6 +182,145 @@ ${hashtagsStr}`;
       recommendedFormat: '16:9 (Horizontal)'
     }
   };
+}
+
+// ---------------------------------------------------------------------------
+// 2. GERADOR COM IA VIA GOOGLE GEMINI API
+// ---------------------------------------------------------------------------
+async function generateGeminiCopies(article, client, apiKey) {
+  const prompt = `
+Você é um estrategista sênior de Marketing de Conteúdo, Copywriting e Social Media.
+Sua missão é criar o pacote definitivo de distribuição em redes sociais para o seguinte artigo já publicado.
+
+=== DADOS DO ARTIGO ===
+Título: "${article.title}"
+Descrição/Resumo: "${article.description}"
+Subtítulos/Tópicos: ${JSON.stringify(article.headings)}
+Pontos/Bullets: ${JSON.stringify(article.bulletPoints)}
+Trechos do Conteúdo:
+"""
+${article.fullTextSnippet || article.paragraphs.slice(0, 4).join('\n\n')}
+"""
+URL Original: "${article.canonicalUrl || article.url}"
+Slug: "${article.slug}"
+
+=== PERFIL DO CLIENTE ===
+Nome da Marca: "${client.name || client.brandName}"
+Handle/Arroba: "${client.brandHandle || ''}"
+Tom de Voz: "${client.tone || 'Profissional, autoritário, estratégico e dinâmico'}"
+Público-Alvo: "${client.targetAudience || 'Profissionais, gestores e tomadores de decisão'}"
+Hashtags Padrão: ${JSON.stringify(client.defaultHashtags || [])}
+Chamada para Ação (CTA): "${client.callToAction || ''}"
+Template de 1º Comentário: "${client.commentTemplate || '👉 Leia o artigo completo aqui: {URL}'}"
+
+=== DIRETRIZES DE REDAÇÃO POR REDE ===
+1. LinkedIn: Post de alto impacto para executivos/profissionais. Gancho forte no início, desenvolvimento com bullets/insights, reflexão estratégica e aviso de que o link está no primeiro comentário. NÃO coloque links no corpo do post do LinkedIn.
+2. Instagram (Feed): Formato carrossel/feed portrait. Gancho visual magnético, 3 a 4 lições em bullets escaneáveis, chamada para comentar para receber o link no direct ou visitar a bio, hashtags ao final.
+3. Instagram (Stories): Texto curto e direto para figurinha de link com sticker/teaser.
+4. X (Twitter): Thread de exatamente 3 tweets concisos, com gancho, síntese de lições e link com hashtags no último tweet.
+5. Threads: Texto nativo, conversacional, sem jargões corporativos vazios, com gancho instigante e pergunta aberta para incentivar respostas.
+6. Facebook: Post editorial completo, explicativo e persuasivo com link no corpo.
+7. UTM URLs: Utilize {LINKEDIN_URL}, {INSTAGRAM_URL}, {STORIES_URL}, {TWITTER_URL}, {THREADS_URL}, {FACEBOOK_URL} nos devidos locais.
+
+Retorne ESTRITAMENTE um objeto JSON válido, sem crases markdown adicionais ao redor se possível, com a seguinte estrutura:
+{
+  "linkedin": { "post": "...", "firstComment": "..." },
+  "instagram": { "post": "...", "firstComment": "..." },
+  "stories": { "post": "..." },
+  "twitter": { "thread": ["tweet 1", "tweet 2", "tweet 3"] },
+  "threads": { "post": "..." },
+  "facebook": { "post": "..." }
+}
+`;
+
+  const model = 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.7
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) {
+    throw new Error('Resposta vazia da API do Gemini');
+  }
+
+  const cleanedJson = rawText.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+  const parsed = JSON.parse(cleanedJson);
+
+  // Substituir tokens de URLs UTM
+  const targetUrl = article.canonicalUrl || article.url;
+  const slug = article.slug;
+  const replaceUrls = (txt, src) => txt.replace(/\{[A-Z_]+_URL\}/g, getUtmUrl(targetUrl, src, slug));
+
+  return {
+    meta: {
+      generator: `Google Gemini (${model})`,
+      client: client.name || client.id,
+      articleTitle: article.title,
+      targetUrl,
+      generatedAt: new Date().toISOString()
+    },
+    linkedin: {
+      post: replaceUrls(parsed.linkedin.post, 'linkedin'),
+      firstComment: replaceUrls(parsed.linkedin.firstComment, 'linkedin'),
+      recommendedFormat: '16:9 ou 1:1'
+    },
+    instagram: {
+      post: replaceUrls(parsed.instagram.post, 'instagram'),
+      firstComment: replaceUrls(parsed.instagram.firstComment, 'instagram'),
+      recommendedFormat: '4:5 (Feed) e 9:16 (Stories)'
+    },
+    stories: {
+      post: replaceUrls(parsed.stories.post, 'stories'),
+      recommendedFormat: '9:16 (Vertical)'
+    },
+    twitter: {
+      thread: parsed.twitter.thread.map(t => replaceUrls(t, 'twitter')),
+      recommendedFormat: '16:9 (Horizontal)'
+    },
+    threads: {
+      post: replaceUrls(parsed.threads.post, 'threads'),
+      recommendedFormat: '1:1 ou 16:9'
+    },
+    facebook: {
+      post: replaceUrls(parsed.facebook.post, 'facebook'),
+      recommendedFormat: '16:9 (Horizontal)'
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 3. ENTRADA PRINCIPAL
+// ---------------------------------------------------------------------------
+async function generateSocialCopies(article, client) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+
+  if (geminiApiKey) {
+    try {
+      console.log(`   🤖 [IA] Gerando copies refinadas via Google Gemini API...`);
+      return await generateGeminiCopies(article, client, geminiApiKey);
+    } catch (err) {
+      console.warn(`   ⚠️ [IA Aviso] Falha na Gemini API (${err.message}). Utilizando gerador dinâmico.`);
+    }
+  }
+
+  // Fallback padrão algorítmico (dinâmico e contextual)
+  return generateAlgorithmicCopies(article, client);
 }
 
 module.exports = { generateSocialCopies };

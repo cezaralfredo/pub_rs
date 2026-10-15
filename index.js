@@ -1,4 +1,5 @@
-﻿const fs = require('fs');
+require('dotenv').config();
+const fs = require('fs');
 const path = require('path');
 const { scrapeArticle } = require('./src/scraper');
 const { processSocialImages } = require('./src/imageProcessor');
@@ -10,11 +11,14 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     url: '',
-    client: 'anaue-design'
+    client: 'anaue-design',
+    help: false
   };
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--url' && args[i + 1]) {
+    if (args[i] === '--help' || args[i] === '-h') {
+      options.help = true;
+    } else if (args[i] === '--url' && args[i + 1]) {
       options.url = args[i + 1];
       i++;
     } else if (args[i] === '--client' && args[i + 1]) {
@@ -43,9 +47,14 @@ function loadClientConfig(clientId) {
 }
 
 async function main() {
-  const { url, client: clientId } = parseArgs();
+  const { url, client: clientId, help } = parseArgs();
 
-  if (!url) {
+  const clientsDir = path.join(__dirname, 'config', 'clients');
+  const availableClients = fs.existsSync(clientsDir)
+    ? fs.readdirSync(clientsDir).filter(f => f.endsWith('.json')).map(f => `  - ${f.replace('.json', '')}`).join('\n')
+    : '  - default';
+
+  if (!url || help) {
     console.log(`
 ======================================================
   🤖 pub_rs — Automação Omnichannel de Redes Sociais
@@ -58,10 +67,10 @@ Exemplos:
   node index.js --url https://seusite.com/novo-artigo --client cliente-advocacia
 
 Clientes disponíveis em config/clients/:
-${fs.readdirSync(path.join(__dirname, 'config', 'clients')).map(f => `  - ${f.replace('.json', '')}`).join('\n')}
+${availableClients}
 ======================================================
 `);
-    process.exit(1);
+    process.exit(help ? 0 : 1);
   }
 
   console.log(`\n🚀 [pub_rs] Iniciando pipeline para: ${url}`);
@@ -72,7 +81,7 @@ ${fs.readdirSync(path.join(__dirname, 'config', 'clients')).map(f => `  - ${f.re
   console.log(`\n⏳ [1/4] Extraindo metadados e conteúdo da URL...`);
   const article = await scrapeArticle(url);
   console.log(`   ✓ Título identificado: "${article.title}"`);
-  console.log(`   ✓ Imagem de capa: ${article.imageUrl || '(nenhuma)'}`);
+  console.log(`   ✓ Imagem de capa: ${article.imageUrl || '(gerando card dinâmico com branding)'}`);
   console.log(`   ✓ Tópicos extraídos: ${article.headings.length} seções`);
 
   // Diretório de saída do artigo
@@ -84,12 +93,17 @@ ${fs.readdirSync(path.join(__dirname, 'config', 'clients')).map(f => `  - ${f.re
 
   // 2. Processamento Gráfico
   console.log(`\n🎨 [2/4] Gerando cortes inteligentes e formatos de mídia oficiais...`);
-  const images = await processSocialImages(article.imageUrl, outputDir);
+  const images = await processSocialImages(article.imageUrl, outputDir, {
+    client: clientConfig,
+    title: article.title,
+    article
+  });
   console.log(`   ✓ Formatos gerados em 16:9, 4:5, 1:1 e 9:16 (WebP e JPG).`);
 
   // 3. Geração de Copywriting Multicanal
   console.log(`\n✍️  [3/4] Redigindo copies nativas por rede social e 1º comentário...`);
-  const copies = generateSocialCopies(article, clientConfig);
+  const copies = await generateSocialCopies(article, clientConfig);
+  console.log(`   ✓ Motor utilizado: ${copies.meta?.generator || 'Algorítmico Dinâmico'}`);
   console.log(`   ✓ LinkedIn: copy executiva + 1º comentário com link.`);
   console.log(`   ✓ Instagram: feed portrait (4:5) + stories teaser (9:16) + 1º comentário.`);
   console.log(`   ✓ X (Twitter): thread em 3 partes.`);

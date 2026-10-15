@@ -1,0 +1,45 @@
+{
+  "name": "pub_rs - Omnichannel Social Media Distribution",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pub_rs",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook pub_rs",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "pub_rs-distribution"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai os dados do pacote gerado pelo pub_rs\nconst payload = $input.first().json;\n\nreturn {\n  json: {\n    client: payload.client,\n    brand: payload.brand,\n    articleTitle: payload.article.title,\n    articleUrl: payload.article.url,\n    linkedinPost: payload.copies.linkedin.post,\n    linkedinComment: payload.copies.linkedin.firstComment,\n    instagramPost: payload.copies.instagram.post,\n    instagramComment: payload.copies.instagram.firstComment,\n    twitterThread: payload.copies.twitter.thread,\n    threadsPost: payload.copies.threads.post,\n    facebookPost: payload.copies.facebook.post,\n    image16x9: payload.images.find(img => img.format === 'linkedin_twitter_facebook_16x9')?.files?.jpg,\n    image4x5: payload.images.find(img => img.format === 'instagram_feed_portrait_4x5')?.files?.jpg,\n    image9x16: payload.images.find(img => img.format === 'instagram_stories_reels_9x16')?.files?.jpg\n  }\n};"
+      },
+      "id": "parser-node",
+      "name": "Formatar Pacote pub_rs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    }
+  ],
+  "connections": {
+    "Webhook pub_rs": {
+      "main": [
+        [
+          {
+            "node": "Formatar Pacote pub_rs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
