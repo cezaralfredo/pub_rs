@@ -57,6 +57,10 @@ function maskClientSecrets(client) {
       safeClient.channels.meta.hasToken = true;
       safeClient.channels.meta.pageAccessToken = maskSecret(safeClient.channels.meta.pageAccessToken);
     }
+    if (safeClient.channels.telegram?.botToken) {
+      safeClient.channels.telegram.hasToken = true;
+      safeClient.channels.telegram.botToken = maskSecret(safeClient.channels.telegram.botToken);
+    }
     if (safeClient.channels.buffer?.accessToken) {
       safeClient.channels.buffer.hasToken = true;
       safeClient.channels.buffer.accessToken = maskSecret(safeClient.channels.buffer.accessToken);
@@ -95,6 +99,12 @@ function mergeClientSecrets(newData, existingData = {}) {
       if (isMaskedValue(merged.channels.twitter.accessSecret)) {
         merged.channels.twitter.accessSecret = existingData.channels.twitter?.accessSecret || '';
       }
+      if (isMaskedValue(merged.channels.twitter.bearerToken)) {
+        merged.channels.twitter.bearerToken = existingData.channels.twitter?.bearerToken || '';
+      }
+    }
+    if (merged.channels.telegram && isMaskedValue(merged.channels.telegram.botToken)) {
+      merged.channels.telegram.botToken = existingData.channels.telegram?.botToken || '';
     }
     if (merged.channels.meta && isMaskedValue(merged.channels.meta.pageAccessToken)) {
       merged.channels.meta.pageAccessToken = existingData.channels.meta?.pageAccessToken || '';

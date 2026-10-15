@@ -102,19 +102,49 @@ Basta criar um novo arquivo JSON em `config/clients/<id-do-cliente>.json`:
   "brandHandle": "@silvaadv",
   "tone": "Formal, jurídico preventivo, consultivo e focado em empresários",
   "targetAudience": "Empresários, diretores jurídicos e CFOs",
-  "llmProvider": "anthropic",
-  "llmModel": "claude-3-5-sonnet-20241022",
+  "llm": {
+    "provider": "anthropic",
+    "model": "claude-3-5-sonnet-20241022",
+    "apiKey": "",
+    "baseUrl": ""
+  },
   "defaultHashtags": ["#DireitoEmpresarial", "#Tributario", "#Gestao"],
   "callToAction": "Qual a sua dúvida sobre esse tema? Deixe nos comentários:",
   "includeFirstComment": true,
   "commentTemplate": "👉 Leia o artigo jurídico completo aqui: {URL}",
-  "webhookUrl": ""
+  "channels": {
+    "webhook": { "enabled": true, "url": "" },
+    "telegram": { "enabled": false, "botToken": "", "chatId": "" },
+    "linkedin": { "enabled": false, "accessToken": "", "authorUrn": "" },
+    "twitter": { "enabled": false, "bearerToken": "", "accessToken": "" },
+    "meta": { "enabled": false, "pageAccessToken": "", "pageId": "", "instagramAccountId": "" },
+    "buffer": { "enabled": false, "accessToken": "", "profileIds": [] }
+  }
 }
 ```
 
 ---
 
-## 🌐 Integração com n8n, Make e Webhooks
+## 🌐 pub_rs Studio — Interface Web & Background Manager
 
-1. Preencha `DEFAULT_WEBHOOK_URL` no `.env` ou `"webhookUrl"` no JSON do cliente.
-2. Importe o arquivo [workflows/n8n_pub_rs_workflow.json](file:///e:/Projetos/pub_rs/workflows/n8n_pub_rs_workflow.json) no seu n8n para receber o pacote completo com todas as copies formatadas e caminhos das imagens prontos para publicação automática ou agendamento via Buffer/Metricool.
+Inicie o servidor integrado com o comando:
+```bash
+npm start
+```
+Acesse no navegador: **`http://localhost:3001`**
+
+### Recursos do Estúdio Web:
+1. **Painel de Gestão de Clientes & Background:**
+   - Adicione e gerencie múltiplos clientes/marcas com alternância rápida.
+   - Configure a **IA de sua escolha** por cliente (Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter, Ollama) com chave dedicada, modelo customizado e endpoint/Base URL personalizado.
+   - **Teste de Conexão com a IA em Tempo Real:** valide imediatamente se a chave privada e o modelo escolhidos estão operacionais com medição de latência em milissegundos.
+   - Configure credenciais de redes sociais (**Webhook, Telegram Bot, LinkedIn, Twitter/X, Meta Facebook/Instagram e Buffer**) com testes de conexão individuais ou em lote.
+   - **Segurança de Nível Corporativo:** mascaramento seguro de tokens na interface (`sk-...4a9f`), proteção contra SSRF e path traversal.
+2. **Sistema de Background & Agendador Automático:**
+   - Opção de **Publicar Imediatamente** ou **Agendar Publicação em Background** para data e hora futuras.
+   - Worker em background com checagem contínua e retentativa automática (backoff exponencial) em caso de oscilação de rede social.
+   - Acompanhamento da fila com badges de status (`scheduled`, `processing`, `published`, `failed`), logs de execução e botões de **Repetir (Retry)** e **Cancelar**.
+3. **Studio Interativo de Copies & Mídias:**
+   - Pré-visualização de copies adaptadas por canal, contador de caracteres, suporte a primeiro comentário para engajamento e threads completas.
+   - Galeria com download em 1 clique das artes cortadas em WebP e JPG para todos os formatos (16:9, 4:5, 1:1, 9:16).
+

@@ -66,7 +66,7 @@ function detectAvailableProviders() {
 /**
  * Executa uma chamada para o provedor especificado.
  */
-async function callProvider(providerName, systemInstructions, userContent, modelOverride, apiKeyOverride) {
+async function callProvider(providerName, systemInstructions, userContent, modelOverride, apiKeyOverride, baseUrlOverride) {
   const p = providerName.toLowerCase();
 
   switch (p) {
@@ -89,7 +89,7 @@ async function callProvider(providerName, systemInstructions, userContent, model
         systemInstructions,
         userContent,
         apiKey,
-        baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        baseUrl: baseUrlOverride || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
         model: modelOverride || process.env.OPENAI_MODEL || process.env.LLM_MODEL || 'gpt-4o-mini',
         providerName: 'OpenAI'
       });
@@ -114,7 +114,7 @@ async function callProvider(providerName, systemInstructions, userContent, model
         systemInstructions,
         userContent,
         apiKey,
-        baseUrl: 'https://api.groq.com/openai/v1',
+        baseUrl: baseUrlOverride || 'https://api.groq.com/openai/v1',
         model: modelOverride || process.env.GROQ_MODEL || process.env.LLM_MODEL || 'llama-3.3-70b-versatile',
         providerName: 'Groq'
       });
@@ -127,7 +127,7 @@ async function callProvider(providerName, systemInstructions, userContent, model
         systemInstructions,
         userContent,
         apiKey,
-        baseUrl: 'https://api.deepseek.com',
+        baseUrl: baseUrlOverride || 'https://api.deepseek.com',
         model: modelOverride || process.env.DEEPSEEK_MODEL || process.env.LLM_MODEL || 'deepseek-chat',
         providerName: 'DeepSeek'
       });
@@ -140,7 +140,7 @@ async function callProvider(providerName, systemInstructions, userContent, model
         systemInstructions,
         userContent,
         apiKey,
-        baseUrl: 'https://openrouter.ai/api/v1',
+        baseUrl: baseUrlOverride || 'https://openrouter.ai/api/v1',
         model: modelOverride || process.env.OPENROUTER_MODEL || process.env.LLM_MODEL || 'openai/gpt-4o-mini',
         providerName: 'OpenRouter'
       });
@@ -150,13 +150,59 @@ async function callProvider(providerName, systemInstructions, userContent, model
       return await callOllama({
         systemInstructions,
         userContent,
-        baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+        baseUrl: baseUrlOverride || process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
         model: modelOverride || process.env.OLLAMA_MODEL || process.env.LLM_MODEL || 'llama3'
       });
     }
 
     default:
       throw new Error(`Provedor desconhecido: "${providerName}". Disponíveis: gemini, openai, anthropic, groq, deepseek, openrouter, ollama.`);
+  }
+}
+
+/**
+ * Testa a conectividade com o provedor de LLM configurado (para validação de credenciais do cliente)
+ */
+async function testLlmConnection({ provider, apiKey, model, baseUrl }) {
+  const p = (provider || 'auto').toLowerCase();
+  const startTime = Date.now();
+
+  let targetProvider = p;
+  if (p === 'auto') {
+    const available = detectAvailableProviders();
+    if (available.length === 0 && !apiKey) {
+      return {
+        ok: false,
+        error: 'Nenhum provedor de IA configurado no ambiente nem chave informada no cliente.'
+      };
+    }
+    targetProvider = apiKey ? 'openai' : available[0];
+  }
+
+  try {
+    const testResult = await callProvider(
+      targetProvider,
+      'Você é um verificador de conectividade de IA do pub_rs. Responda estritamente a palavra: OK',
+      'ping',
+      model,
+      apiKey,
+      baseUrl
+    );
+
+    const latencyMs = Date.now() - startTime;
+    return {
+      ok: true,
+      provider: testResult.provider,
+      model: testResult.model,
+      latencyMs,
+      message: `Conexão bem-sucedida com ${testResult.provider.toUpperCase()} (${testResult.model}) em ${latencyMs}ms.`
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      provider: targetProvider,
+      error: err.message
+    };
   }
 }
 
@@ -170,6 +216,7 @@ async function generateWithLlm(article, client, options = {}) {
   const clientLlmProvider = client.llm?.provider || client.llmProvider;
   const clientLlmModel = client.llm?.model || client.llmModel;
   const clientApiKey = client.llm?.apiKey;
+  const clientBaseUrl = client.llm?.baseUrl;
 
   const preferredProvider = options.provider || clientLlmProvider || process.env.LLM_PROVIDER;
   const preferredModel = options.model || clientLlmModel || process.env.LLM_MODEL;
@@ -202,7 +249,7 @@ async function generateWithLlm(article, client, options = {}) {
   for (const provider of providersToTry) {
     try {
       console.log(`   🤖 [IA] Gerando copies via provedor: ${provider.toUpperCase()}...`);
-      result = await callProvider(provider, systemInstructions, userContent, preferredModel, clientApiKey);
+      result = await callProvider(provider, systemInstructions, userContent, preferredModel, clientApiKey, clientBaseUrl);
       if (result && result.text) {
         break; // Sucesso!
       }
@@ -266,5 +313,7 @@ async function generateWithLlm(article, client, options = {}) {
 
 module.exports = {
   generateWithLlm,
-  detectAvailableProviders
+  detectAvailableProviders,
+  testLlmConnection,
+  callProvider
 };

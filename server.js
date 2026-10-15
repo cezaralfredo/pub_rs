@@ -3,10 +3,19 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { runPipeline, loadClientConfig } = require('./src/pipeline');
-const { detectAvailableProviders } = require('./src/llm');
+const { detectAvailableProviders, testLlmConnection } = require('./src/llm');
 const { validatePublicUrl, sanitizeIdentifier, safePathResolve } = require('./src/security/validator');
 const { maskClientSecrets, mergeClientSecrets } = require('./src/security/masker');
-const { dispatchToClientChannels, publishToWebhook } = require('./src/publisher');
+const { dispatchToClientChannels, publishToWebhook, testChannelConnection } = require('./src/publisher');
+const {
+  enqueueJob,
+  getJobs,
+  getJob,
+  cancelJob,
+  retryJob,
+  clearCompleted,
+  startBackgroundWorker
+} = require('./src/queue');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -143,7 +152,8 @@ app.post('/api/clients', (req, res) => {
       llm: {
         provider: merged.llm?.provider || merged.llmProvider || 'auto',
         model: merged.llm?.model || merged.llmModel || '',
-        apiKey: merged.llm?.apiKey || ''
+        apiKey: merged.llm?.apiKey || '',
+        baseUrl: merged.llm?.baseUrl || ''
       },
       channels: {
         webhook: {
@@ -160,9 +170,15 @@ app.post('/api/clients', (req, res) => {
           bearerToken: merged.channels?.twitter?.bearerToken || '',
           accessToken: merged.channels?.twitter?.accessToken || ''
         },
+        telegram: {
+          enabled: Boolean(merged.channels?.telegram?.enabled),
+          botToken: merged.channels?.telegram?.botToken || '',
+          chatId: merged.channels?.telegram?.chatId || ''
+        },
         meta: {
           enabled: Boolean(merged.channels?.meta?.enabled),
           pageAccessToken: merged.channels?.meta?.pageAccessToken || '',
+          pageId: merged.channels?.meta?.pageId || '',
           instagramAccountId: merged.channels?.meta?.instagramAccountId || ''
         },
         buffer: {
@@ -210,7 +226,7 @@ app.delete('/api/clients/:id', (req, res) => {
   }
 });
 
-// Testar conexão de LLM ou Canais do Cliente
+// Testar conexão de LLM ou Canais do Cliente salvo
 app.post('/api/clients/:id/test-connection', async (req, res) => {
   try {
     const safeId = sanitizeIdentifier(req.params.id);
@@ -226,29 +242,24 @@ app.post('/api/clients/:id/test-connection', async (req, res) => {
 
     const testResults = {};
 
-    // 1. Testar Webhook se configurado
-    if (client.channels?.webhook?.url) {
-      testResults.webhook = await publishToWebhook(client.channels.webhook.url, {
-        test: true,
-        message: 'Teste de conectividade do pub_rs Studio',
-        client: client.id,
-        timestamp: new Date().toISOString()
+    // 1. Testar LLM
+    if (target === 'all' || target === 'llm') {
+      testResults.llm = await testLlmConnection({
+        provider: client.llm?.provider,
+        apiKey: client.llm?.apiKey,
+        model: client.llm?.model,
+        baseUrl: client.llm?.baseUrl
       });
     }
 
-    // 2. Testar LLM dedicada se configurada
-    if (client.llm?.apiKey) {
-      testResults.llm = {
-        configured: true,
-        provider: client.llm.provider,
-        hasCustomKey: true,
-        message: 'Chave de API dedicada registrada no cliente.'
-      };
-    } else {
-      testResults.llm = {
-        configured: false,
-        message: 'Cliente utiliza as chaves de API globais do sistema (.env).'
-      };
+    // 2. Testar Canais de Redes Sociais
+    const channels = client.channels || {};
+    const channelKeys = ['webhook', 'telegram', 'buffer', 'linkedin', 'twitter', 'meta'];
+
+    for (const ch of channelKeys) {
+      if ((target === 'all' || target === ch) && channels[ch]?.enabled) {
+        testResults[ch] = await testChannelConnection(ch, channels[ch]);
+      }
     }
 
     res.json({ success: true, client: client.id, testResults });
@@ -257,14 +268,153 @@ app.post('/api/clients/:id/test-connection', async (req, res) => {
   }
 });
 
+// Testar conexão de LLM diretamente com dados do formulário da UI
+app.post('/api/clients/test-llm-direct', async (req, res) => {
+  try {
+    const { provider, apiKey, model, baseUrl, clientId } = req.body || {};
+    let realApiKey = apiKey;
+
+    // Se a chave veio mascarada da UI, recupera a chave real do cliente salvo
+    if (clientId && apiKey && (apiKey.includes('...') || apiKey.includes('••••'))) {
+      const safeId = sanitizeIdentifier(clientId);
+      const clientsDir = path.join(__dirname, 'config', 'clients');
+      const filePath = safePathResolve(clientsDir, `${safeId}.json`);
+      if (fs.existsSync(filePath)) {
+        try {
+          const client = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          realApiKey = client.llm?.apiKey || '';
+        } catch {}
+      }
+    }
+
+    const result = await testLlmConnection({
+      provider: provider || 'auto',
+      apiKey: realApiKey,
+      model,
+      baseUrl
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Testar canal de rede social diretamente com dados do formulário da UI
+app.post('/api/clients/test-channel-direct', async (req, res) => {
+  try {
+    const { channel, config, clientId } = req.body || {};
+    let testConfig = { ...(config || {}) };
+
+    // Se tokens vieram mascarados, recupera da configuração salva
+    if (clientId) {
+      const safeId = sanitizeIdentifier(clientId);
+      const clientsDir = path.join(__dirname, 'config', 'clients');
+      const filePath = safePathResolve(clientsDir, `${safeId}.json`);
+      if (fs.existsSync(filePath)) {
+        try {
+          const client = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          const existingCh = client.channels?.[channel] || {};
+          for (const key of Object.keys(testConfig)) {
+            if (typeof testConfig[key] === 'string' && (testConfig[key].includes('...') || testConfig[key].includes('••••'))) {
+              testConfig[key] = existingCh[key] || '';
+            }
+          }
+        } catch {}
+      }
+    }
+
+    const result = await testChannelConnection(channel, testConfig);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
-// 2. DISPARO E PUBLICAÇÃO MULTICANAL DE PACOTES GERADOS
+// 2. BACKGROUND QUEUE & AGENDAMENTO MULTICANAL
+// ---------------------------------------------------------------------------
+
+// Listar todos os trabalhos na fila de background
+app.get('/api/queue', (req, res) => {
+  try {
+    const jobs = getJobs();
+    res.json(jobs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Enfileirar pacote para publicação imediata ou agendada em background
+app.post('/api/queue', rateLimiter, (req, res) => {
+  try {
+    const { packageId, clientId, scheduledFor, targetChannels } = req.body || {};
+
+    if (!packageId) {
+      return res.status(400).json({ error: 'packageId é obrigatório para agendamento na fila.' });
+    }
+
+    const safePackageId = sanitizeIdentifier(packageId);
+    const job = enqueueJob({
+      packageId: safePackageId,
+      clientId: clientId ? sanitizeIdentifier(clientId) : 'default',
+      scheduledFor,
+      targetChannels: Array.isArray(targetChannels) ? targetChannels : []
+    });
+
+    res.json({
+      success: true,
+      message: job.status === 'scheduled' && scheduledFor
+        ? `Pacote agendado para publicação em ${new Date(scheduledFor).toLocaleString('pt-BR')}`
+        : 'Disparo em background iniciado.',
+      job
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Repetir disparo de um trabalho da fila
+app.post('/api/queue/:id/retry', (req, res) => {
+  try {
+    const job = retryJob(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job não encontrado na fila.' });
+    res.json({ success: true, message: 'Tentativa de disparo reiniciada.', job });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cancelar agendamento de um trabalho da fila
+app.delete('/api/queue/:id', (req, res) => {
+  try {
+    const job = cancelJob(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job não encontrado na fila.' });
+    res.json({ success: true, message: 'Agendamento cancelado com sucesso.', job });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Limpar trabalhos concluídos ou cancelados
+app.post('/api/queue/clear-completed', (req, res) => {
+  try {
+    const result = clearCompleted();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 3. DISPARO DIRETO E HISTÓRICO DE PACOTES GERADOS
 // ---------------------------------------------------------------------------
 
 // Publicar pacote diretamente nos canais do cliente
 app.post('/api/packages/:packageId/publish', rateLimiter, async (req, res) => {
   try {
     const safePackageId = sanitizeIdentifier(req.params.packageId);
+    const { targetChannels } = req.body || {};
     const outputBase = path.join(__dirname, 'output');
     const packageDir = safePathResolve(outputBase, safePackageId);
 
@@ -289,7 +439,8 @@ app.post('/api/packages/:packageId/publish', rateLimiter, async (req, res) => {
       images: payload.images,
       article: payload.article,
       packageId: safePackageId,
-      outputDir: packageDir
+      outputDir: packageDir,
+      targetChannels: Array.isArray(targetChannels) ? targetChannels : null
     });
 
     res.json({
@@ -535,4 +686,7 @@ app.listen(PORT, () => {
   API:     http://localhost:${PORT}/api/status
 ======================================================
 `);
+
+  // Inicia o worker de publicação e agendamento em background
+  startBackgroundWorker(25000);
 });

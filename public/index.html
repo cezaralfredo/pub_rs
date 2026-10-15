@@ -454,17 +454,23 @@
     <div class="modal-dialog glass-panel modal-lg">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <h3 class="modal-title">Configurações do Cliente & Redes Sociais</h3>
-          <p class="modal-subtitle">Defina o tom de voz, chave de IA dedicada e tokens de conexão para publicação automática.</p>
+          <h3 class="modal-title">Gestão de Clientes & Background de Canais</h3>
+          <p class="modal-subtitle">Configure credenciais das redes sociais, chaves de IA dedicadas e agendamentos em background.</p>
         </div>
-        <button class="modal-close" id="btn-close-modal-clients">&times;</button>
+        <div class="modal-header-actions">
+          <select id="modal-client-select" class="client-dropdown" title="Selecione o cliente para gerenciar"></select>
+          <button type="button" id="btn-new-client" class="btn-ghost-sm" title="Cadastrar nova marca/cliente">＋ Novo</button>
+          <button type="button" id="btn-delete-client" class="btn-ghost-sm btn-danger" title="Excluir este cliente">🗑️</button>
+          <button class="modal-close" id="btn-close-modal-clients">&times;</button>
+        </div>
       </div>
 
       <!-- Abas internas do formulário do cliente -->
       <div class="client-modal-tabs">
         <button type="button" class="cl-tab active" data-cl-tab="cl-tab-identity">🏢 Identidade & Tom</button>
-        <button type="button" class="cl-tab" data-cl-tab="cl-tab-llm">🤖 IA Dedicada</button>
-        <button type="button" class="cl-tab" data-cl-tab="cl-tab-channels">🌐 Canais & Tokens</button>
+        <button type="button" class="cl-tab" data-cl-tab="cl-tab-llm">🤖 IA Dedicada & Chave</button>
+        <button type="button" class="cl-tab" data-cl-tab="cl-tab-channels">🌐 Canais & Redes Sociais</button>
+        <button type="button" class="cl-tab" data-cl-tab="cl-tab-queue">⏳ Fila & Background</button>
       </div>
 
       <div class="modal-body">
@@ -538,13 +544,22 @@
               </div>
               <div class="form-field">
                 <label for="cl-llm-model" class="field-label">Modelo Customizado (Opcional)</label>
-                <input type="text" id="cl-llm-model" class="field-input" placeholder="ex: gpt-4o ou claude-3-5-sonnet">
+                <input type="text" id="cl-llm-model" class="field-input" placeholder="ex: gpt-4o, gemini-2.5-flash, claude-3-5-sonnet">
               </div>
             </div>
 
             <div class="form-field">
+              <label for="cl-llm-baseurl" class="field-label">Endpoint / Base URL Customizado (Opcional)</label>
+              <input type="url" id="cl-llm-baseurl" class="field-input" placeholder="ex: http://localhost:11434 (padrão Ollama) ou gateway corporativo">
+              <small class="field-hint">Útil para instâncias locais de Ollama, vLLM ou proxies internos de IA.</small>
+            </div>
+
+            <div class="form-field">
               <label for="cl-llm-key" class="field-label">Chave de API Dedicada do Cliente (Opcional)</label>
-              <input type="password" id="cl-llm-key" class="field-input" placeholder="Cole a chave privada aqui (será armazenada de forma segura)">
+              <div class="input-password-wrap">
+                <input type="password" id="cl-llm-key" class="field-input" placeholder="Cole a chave privada aqui (será armazenada de forma segura)">
+                <button type="button" class="btn-toggle-eye" id="btn-toggle-key-eye" title="Mostrar/Ocultar chave">👁️</button>
+              </div>
               <small class="field-hint">Se a chave já foi salva, ela aparecerá como mascarada (ex: sk-...abcd).</small>
             </div>
 
@@ -555,13 +570,21 @@
                 <span class="toggle-label">Gerar arte visual via IA para este cliente se o post não tiver capa</span>
               </label>
             </div>
+
+            <!-- Botão de Teste de Conexão com LLM -->
+            <div class="test-action-wrap">
+              <button type="button" class="btn-ghost" id="btn-test-llm-direct">
+                <span>⚡ Testar Conexão com a IA Selecionada</span>
+              </button>
+              <div id="llm-test-feedback" class="test-feedback-box hidden"></div>
+            </div>
           </div>
 
           <!-- TAB C: CANAIS & REDES SOCIAIS -->
           <div id="cl-tab-channels" class="cl-tab-panel">
             <div class="info-alert">
               <span>🌐</span>
-              <p>Conecte os canais para envio imediato através do botão <strong>"Publicar nos Canais"</strong> no estúdio.</p>
+              <p>Conecte os canais para envio imediato ou agendamento em background através do estúdio.</p>
             </div>
 
             <!-- Webhook n8n / Make -->
@@ -573,9 +596,36 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
-              <div class="form-field">
-                <label for="ch-webhook-url" class="field-label">URL do Webhook</label>
-                <input type="url" id="ch-webhook-url" class="field-input" placeholder="https://seu-n8n.com/webhook/pub_rs">
+              <div class="form-row-channel">
+                <div class="form-field flex-grow">
+                  <label for="ch-webhook-url" class="field-label">URL do Webhook</label>
+                  <input type="url" id="ch-webhook-url" class="field-input" placeholder="https://seu-n8n.com/webhook/pub_rs">
+                </div>
+                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="webhook">Testar</button>
+              </div>
+            </div>
+
+            <!-- Telegram Bot API -->
+            <div class="channel-box">
+              <div class="channel-header">
+                <span class="channel-name">✈️ Telegram (Canal ou Grupo)</span>
+                <label class="toggle-switch-sm">
+                  <input type="checkbox" id="ch-telegram-enabled">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="ch-telegram-token" class="field-label">Bot Token (do @BotFather)</label>
+                  <input type="password" id="ch-telegram-token" class="field-input" placeholder="ex: 123456789:ABCdefGhIjkLmNoPqRsTuVwXyZ">
+                </div>
+                <div class="form-field">
+                  <label for="ch-telegram-chatid" class="field-label">Chat ID ou @username_canal</label>
+                  <input type="text" id="ch-telegram-chatid" class="field-input" placeholder="ex: @meucanal ou -1001234567890">
+                </div>
+              </div>
+              <div class="channel-test-btn-wrap">
+                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="telegram">Testar Conexão Telegram</button>
               </div>
             </div>
 
@@ -598,6 +648,9 @@
                   <input type="text" id="ch-buffer-profiles" class="field-input" placeholder="ex: 64b8a..., 64b8b...">
                 </div>
               </div>
+              <div class="channel-test-btn-wrap">
+                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="buffer">Testar Buffer</button>
+              </div>
             </div>
 
             <!-- LinkedIn Direto -->
@@ -616,8 +669,11 @@
                 </div>
                 <div class="form-field">
                   <label for="ch-linkedin-urn" class="field-label">Author URN (Pessoa ou Empresa)</label>
-                  <input type="text" id="ch-linkedin-urn" class="field-input" placeholder="urn:li:organization:123456">
+                  <input type="text" id="ch-linkedin-urn" class="field-input" placeholder="urn:li:organization:123456 ou urn:li:person:abcdef">
                 </div>
+              </div>
+              <div class="channel-test-btn-wrap">
+                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="linkedin">Testar LinkedIn</button>
               </div>
             </div>
 
@@ -630,17 +686,74 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
-              <div class="form-field">
-                <label for="ch-twitter-token" class="field-label">Bearer Token ou User Token</label>
-                <input type="password" id="ch-twitter-token" class="field-input" placeholder="Twitter v2 Token">
+              <div class="form-row-channel">
+                <div class="form-field flex-grow">
+                  <label for="ch-twitter-token" class="field-label">Bearer Token ou User Token</label>
+                  <input type="password" id="ch-twitter-token" class="field-input" placeholder="Twitter v2 Bearer Token">
+                </div>
+                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="twitter">Testar X</button>
               </div>
+            </div>
+
+            <!-- Meta (Facebook & Instagram) -->
+            <div class="channel-box">
+              <div class="channel-header">
+                <span class="channel-name">📸 Meta (Facebook Page & Instagram)</span>
+                <label class="toggle-switch-sm">
+                  <input type="checkbox" id="ch-meta-enabled">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="ch-meta-token" class="field-label">Page Access Token</label>
+                  <input type="password" id="ch-meta-token" class="field-input" placeholder="Meta Graph API Token">
+                </div>
+                <div class="form-field">
+                  <label for="ch-meta-pageid" class="field-label">Page ID</label>
+                  <input type="text" id="ch-meta-pageid" class="field-input" placeholder="ex: 1092837465">
+                </div>
+                <div class="form-field">
+                  <label for="ch-meta-igid" class="field-label">Instagram Account ID</label>
+                  <input type="text" id="ch-meta-igid" class="field-input" placeholder="ex: 178414000000000">
+                </div>
+              </div>
+              <div class="channel-test-btn-wrap">
+                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="meta">Testar Meta</button>
+              </div>
+            </div>
+
+            <!-- Botão de Testar Todos os Canais -->
+            <div class="test-action-wrap">
+              <button type="button" class="btn-ghost" id="btn-test-all-channels">
+                <span>🔌 Testar Todos os Canais Habilitados</span>
+              </button>
+              <div id="channels-test-feedback" class="test-feedback-box hidden"></div>
             </div>
 
           </div>
 
+          <!-- TAB D: FILA & BACKGROUND SCHEDULER -->
+          <div id="cl-tab-queue" class="cl-tab-panel">
+            <div class="queue-tab-header">
+              <div class="queue-header-info">
+                <h4>Fila de Publicações em Segundo Plano</h4>
+                <p>Acompanhe disparos agendados, em processamento e histórico de execuções automáticas.</p>
+              </div>
+              <div class="queue-header-actions">
+                <button type="button" class="btn-ghost-sm" id="btn-refresh-queue">🔄 Atualizar</button>
+                <button type="button" class="btn-ghost-sm" id="btn-clear-queue">Limpar Concluídos</button>
+              </div>
+            </div>
+
+            <div id="queue-jobs-container" class="queue-jobs-list">
+              <div class="queue-empty">Carregando fila de background...</div>
+            </div>
+          </div>
+
           <div class="modal-footer">
             <button type="button" class="btn-ghost" id="btn-test-client-conn">
-              <span>🔌 Testar Conexão</span>
+              <span>🔌 Testar Conexão Geral</span>
             </button>
             <div class="modal-footer-right">
               <button type="button" class="btn-ghost" id="btn-cancel-client">Cancelar</button>
@@ -648,6 +761,77 @@
             </div>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: OPÇÕES DE PUBLICAÇÃO (IMEDIATO OU AGENDADO EM BACKGROUND)          -->
+  <!-- ========================================================================= -->
+  <div id="modal-publish-dialog" class="modal-overlay hidden">
+    <div class="modal-dialog glass-panel">
+      <div class="modal-header">
+        <h3 class="modal-title">Publicação Multicanal</h3>
+        <button class="modal-close" id="btn-close-publish-dialog">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="publish-dialog-desc">Escolha os canais e o modo de envio para o pacote <strong id="publish-dialog-pkg-id">...</strong>:</p>
+
+        <!-- Seleção de Canais -->
+        <div class="publish-channels-select">
+          <label class="channel-check-label">
+            <input type="checkbox" id="pub-check-webhook" checked>
+            <span>⚡ Webhook</span>
+          </label>
+          <label class="channel-check-label">
+            <input type="checkbox" id="pub-check-telegram" checked>
+            <span>✈️ Telegram</span>
+          </label>
+          <label class="channel-check-label">
+            <input type="checkbox" id="pub-check-linkedin" checked>
+            <span>💼 LinkedIn</span>
+          </label>
+          <label class="channel-check-label">
+            <input type="checkbox" id="pub-check-twitter" checked>
+            <span>🐦 X (Twitter)</span>
+          </label>
+          <label class="channel-check-label">
+            <input type="checkbox" id="pub-check-buffer" checked>
+            <span>📅 Buffer</span>
+          </label>
+          <label class="channel-check-label">
+            <input type="checkbox" id="pub-check-meta" checked>
+            <span>📸 Meta</span>
+          </label>
+        </div>
+
+        <!-- Modo: Imediato ou Agendado -->
+        <div class="publish-mode-selector">
+          <label class="radio-card active" id="label-mode-now">
+            <input type="radio" name="publish-mode" value="now" checked>
+            <div class="radio-card-content">
+              <strong>🚀 Publicar Imediatamente</strong>
+              <span>Dispara agora para todas as redes ativadas</span>
+            </div>
+          </label>
+          <label class="radio-card" id="label-mode-schedule">
+            <input type="radio" name="publish-mode" value="schedule">
+            <div class="radio-card-content">
+              <strong>📅 Agendar em Background</strong>
+              <span>O agendador disparará automaticamente na data/hora</span>
+            </div>
+          </label>
+        </div>
+
+        <!-- Input de Agendamento (aparece quando modo schedule ativo) -->
+        <div id="schedule-datetime-wrap" class="form-field hidden" style="margin-top: 14px;">
+          <label for="publish-schedule-time" class="field-label">Data e Hora do Disparo</label>
+          <input type="datetime-local" id="publish-schedule-time" class="field-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" id="btn-cancel-publish-dialog">Cancelar</button>
+        <button type="button" class="btn-primary-action" id="btn-confirm-publish">Confirmar Envio</button>
       </div>
     </div>
   </div>

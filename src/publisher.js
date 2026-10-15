@@ -193,10 +193,224 @@ async function publishToTwitter(config, copies) {
 }
 
 /**
+ * Publicação via Telegram Bot API
+ * Endpoint: POST https://api.telegram.org/bot<token>/sendMessage
+ */
+async function publishToTelegram(config, copies, article) {
+  const { botToken, chatId } = config;
+
+  if (!botToken || !chatId) {
+    return { status: 'skipped', message: 'Credenciais do Telegram não configuradas (botToken ou chatId ausente).' };
+  }
+
+  try {
+    const title = article?.title || 'Novo artigo publicado';
+    const textPost = copies?.linkedin?.post || copies?.twitter?.post || title;
+    const url = article?.canonicalUrl || article?.url || '';
+
+    const messageHtml = `<b>📢 ${title}</b>\n\n${textPost.slice(0, 3800)}${url ? `\n\n👉 <a href="${url}">Acesse a matéria completa</a>` : ''}`;
+
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: messageHtml,
+        parse_mode: 'HTML',
+        disable_web_page_preview: false
+      })
+    });
+
+    const data = await res.json();
+    return {
+      status: res.ok ? 'success' : 'error',
+      statusCode: res.status,
+      messageId: data?.result?.message_id,
+      response: data
+    };
+  } catch (err) {
+    return { status: 'error', error: err.message };
+  }
+}
+
+/**
+ * Publicação via Meta Graph API (Facebook Page & Instagram)
+ */
+async function publishToMeta(config, copies, article) {
+  const { pageAccessToken, pageId, instagramAccountId } = config;
+
+  if (!pageAccessToken) {
+    return { status: 'skipped', message: 'Token de acesso da Meta (pageAccessToken) não configurado.' };
+  }
+
+  const results = {};
+
+  // 1. Facebook Page Post
+  if (pageId) {
+    try {
+      const message = copies?.facebook?.post || copies?.linkedin?.post || article?.title;
+      const url = article?.canonicalUrl || article?.url;
+
+      const res = await fetch(`https://graph.facebook.com/v19.0/${pageId}/feed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          link: url,
+          access_token: pageAccessToken
+        })
+      });
+
+      const data = await res.json();
+      results.facebook = {
+        status: res.ok ? 'success' : 'error',
+        postId: data?.id,
+        response: data
+      };
+    } catch (err) {
+      results.facebook = { status: 'error', error: err.message };
+    }
+  }
+
+  return { status: 'completed', results };
+}
+
+/**
+ * Validação / Teste de Conexão para Canais Individuais
+ */
+async function testChannelConnection(channelName, channelConfig) {
+  const ch = (channelName || '').toLowerCase();
+
+  switch (ch) {
+    case 'webhook': {
+      const url = channelConfig?.url;
+      if (!url || !url.startsWith('http')) {
+        return { ok: false, error: 'URL do Webhook não configurada ou inválida.' };
+      }
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'User-Agent': 'pub_rs-Test/2.0' },
+          body: JSON.stringify({
+            test: true,
+            ping: 'pub_rs-connection-check',
+            timestamp: new Date().toISOString()
+          })
+        });
+        return {
+          ok: res.ok,
+          status: res.status,
+          message: res.ok ? `Webhook respondeu com HTTP ${res.status} (OK).` : `Webhook retornou HTTP ${res.status}.`
+        };
+      } catch (err) {
+        return { ok: false, error: `Falha ao alcançar Webhook: ${err.message}` };
+      }
+    }
+
+    case 'telegram': {
+      const token = channelConfig?.botToken;
+      if (!token) return { ok: false, error: 'Bot Token do Telegram ausente.' };
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        const data = await res.json();
+        if (data.ok) {
+          return {
+            ok: true,
+            message: `Bot conectado: @${data.result.username} (${data.result.first_name}).`
+          };
+        }
+        return { ok: false, error: data.description || 'Token inválido do Telegram.' };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
+    case 'buffer': {
+      const token = channelConfig?.accessToken;
+      if (!token) return { ok: false, error: 'Access Token do Buffer ausente.' };
+      try {
+        const res = await fetch(`https://api.bufferapp.com/1/user.json?access_token=${token}`);
+        const data = await res.json();
+        if (res.ok && data) {
+          return {
+            ok: true,
+            message: `Buffer conectado com sucesso (Usuário: ${data.name || data.id || 'OK'}).`
+          };
+        }
+        return { ok: false, error: data?.message || `Buffer retornou HTTP ${res.status}` };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
+    case 'linkedin': {
+      const token = channelConfig?.accessToken;
+      const urn = channelConfig?.authorUrn;
+      if (!token || !urn) {
+        return { ok: false, error: 'Credenciais incompletas: informe Access Token e Author URN.' };
+      }
+      try {
+        const res = await fetch('https://api.linkedin.com/v2/userinfo', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return { ok: true, message: `LinkedIn conectado: ${data.name || urn}` };
+        }
+        // Se der 403 por escopo, mas token foi aceito:
+        if (res.status === 403 || res.status === 200) {
+          return { ok: true, message: `Token do LinkedIn aceito pelo servidor (Status ${res.status}).` };
+        }
+        return { ok: false, error: `LinkedIn retornou HTTP ${res.status}.` };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
+    case 'twitter': {
+      const token = channelConfig?.bearerToken || channelConfig?.accessToken;
+      if (!token) return { ok: false, error: 'Token do X/Twitter ausente.' };
+      try {
+        const res = await fetch('https://api.twitter.com/2/users/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return { ok: true, message: `X (Twitter) conectado: @${data?.data?.username || 'OK'}` };
+        }
+        return { ok: false, error: `X (Twitter) API retornou HTTP ${res.status}.` };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
+    case 'meta': {
+      const token = channelConfig?.pageAccessToken;
+      if (!token) return { ok: false, error: 'Page Access Token da Meta ausente.' };
+      try {
+        const res = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${token}`);
+        if (res.ok) {
+          const data = await res.json();
+          return { ok: true, message: `Meta conectada: ${data.name || data.id}` };
+        }
+        return { ok: false, error: `Meta API retornou HTTP ${res.status}.` };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
+    default:
+      return { ok: false, error: `Canal não reconhecido para teste: "${channelName}"` };
+  }
+}
+
+/**
  * Orquestrador central de publicação para todos os canais ativados no cliente.
  */
-async function dispatchToClientChannels({ client, copies, images, article, packageId, outputDir }) {
+async function dispatchToClientChannels({ client, copies, images, article, packageId, outputDir, targetChannels }) {
   const channels = client.channels || {};
+  const isChannelAllowed = (ch) => !targetChannels || targetChannels.length === 0 || targetChannels.includes(ch);
+
   const dispatchResults = {
     packageId,
     dispatchedAt: new Date().toISOString(),
@@ -205,7 +419,7 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
 
   // 1. Webhook Principal (n8n / Make / Metricool)
   const webhookUrl = channels.webhook?.url || client.webhookUrl || process.env.DEFAULT_WEBHOOK_URL;
-  if (channels.webhook?.enabled !== false && webhookUrl) {
+  if (isChannelAllowed('webhook') && channels.webhook?.enabled !== false && webhookUrl) {
     console.log(`\n🚀 [DISPATCH] Enviando para Webhook...`);
     dispatchResults.channels.webhook = await publishToWebhook(webhookUrl, {
       client: client.id,
@@ -218,21 +432,33 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
   }
 
   // 2. Buffer API
-  if (channels.buffer?.enabled && channels.buffer?.accessToken) {
+  if (isChannelAllowed('buffer') && channels.buffer?.enabled && channels.buffer?.accessToken) {
     console.log(`🚀 [DISPATCH] Agendando via Buffer API...`);
     dispatchResults.channels.buffer = await publishToBuffer(channels.buffer, copies, packageId);
   }
 
   // 3. LinkedIn Direto
-  if (channels.linkedin?.enabled && channels.linkedin?.accessToken) {
+  if (isChannelAllowed('linkedin') && channels.linkedin?.enabled && channels.linkedin?.accessToken) {
     console.log(`🚀 [DISPATCH] Publicando diretamente no LinkedIn...`);
     dispatchResults.channels.linkedin = await publishToLinkedIn(channels.linkedin, copies);
   }
 
   // 4. X (Twitter) Direto
-  if (channels.twitter?.enabled && (channels.twitter?.bearerToken || channels.twitter?.accessToken)) {
+  if (isChannelAllowed('twitter') && channels.twitter?.enabled && (channels.twitter?.bearerToken || channels.twitter?.accessToken)) {
     console.log(`🚀 [DISPATCH] Publicando fio na API do X (Twitter)...`);
     dispatchResults.channels.twitter = await publishToTwitter(channels.twitter, copies);
+  }
+
+  // 5. Telegram
+  if (isChannelAllowed('telegram') && channels.telegram?.enabled && channels.telegram?.botToken) {
+    console.log(`🚀 [DISPATCH] Publicando no Telegram...`);
+    dispatchResults.channels.telegram = await publishToTelegram(channels.telegram, copies, article);
+  }
+
+  // 6. Meta (Facebook / Instagram)
+  if (isChannelAllowed('meta') && channels.meta?.enabled && channels.meta?.pageAccessToken) {
+    console.log(`🚀 [DISPATCH] Publicando na Meta...`);
+    dispatchResults.channels.meta = await publishToMeta(channels.meta, copies, article);
   }
 
   // Grava o log de despacho na pasta do pacote
@@ -249,5 +475,8 @@ module.exports = {
   publishToWebhook,
   publishToBuffer,
   publishToLinkedIn,
-  publishToTwitter
+  publishToTwitter,
+  publishToTelegram,
+  publishToMeta,
+  testChannelConnection
 };

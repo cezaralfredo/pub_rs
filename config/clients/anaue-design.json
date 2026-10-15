@@ -19,7 +19,8 @@
   "llm": {
     "provider": "gemini",
     "model": "gemini-2.5-flash",
-    "apiKey": ""
+    "apiKey": "",
+    "baseUrl": ""
   },
   "channels": {
     "webhook": {
@@ -35,6 +36,17 @@
       "enabled": false,
       "bearerToken": "",
       "accessToken": ""
+    },
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "chatId": ""
+    },
+    "meta": {
+      "enabled": false,
+      "pageAccessToken": "",
+      "pageId": "",
+      "instagramAccountId": ""
     },
     "buffer": {
       "enabled": false,
