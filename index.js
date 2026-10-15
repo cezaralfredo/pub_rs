@@ -15,6 +15,7 @@ function parseArgs() {
     client: 'anaue-design',
     provider: '',
     model: '',
+    aiImage: false,
     help: false
   };
 
@@ -33,6 +34,8 @@ function parseArgs() {
     } else if ((args[i] === '--model' || args[i] === '-m') && args[i + 1]) {
       options.model = args[i + 1];
       i++;
+    } else if (args[i] === '--ai-image' || args[i] === '--generate-image') {
+      options.aiImage = true;
     } else if (args[i].startsWith('http')) {
       options.url = args[i];
     }
@@ -56,7 +59,7 @@ function loadClientConfig(clientId) {
 }
 
 async function main() {
-  const { url, client: clientId, provider, model, help } = parseArgs();
+  const { url, client: clientId, provider, model, aiImage, help } = parseArgs();
 
   const clientsDir = path.join(__dirname, 'config', 'clients');
   const availableClients = fs.existsSync(clientsDir)
@@ -80,6 +83,7 @@ Opções:
   --client <ID>       ID do cliente (padrão: anaue-design)
   --provider, -p      Provedor de LLM (gemini, openai, anthropic, groq, deepseek, openrouter, ollama)
   --model, -m         Modelo específico (ex: gpt-4o-mini, gemini-2.5-flash, claude-3-5-sonnet-20241022)
+  --ai-image          Gera arte via IA (DALL-E 3 / Imagen 3) caso o artigo não tenha imagem original
   --help, -h          Exibe esta mensagem de ajuda
 
 Provedores de IA ativos no ambiente:
@@ -87,6 +91,7 @@ Provedores de IA ativos no ambiente:
 
 Exemplos:
   node index.js --url https://site.com/artigo --client anaue-design
+  node index.js --url https://site.com/artigo --ai-image
   node index.js --url https://site.com/artigo --provider groq --model llama-3.3-70b-versatile
   node index.js --url https://site.com/artigo --provider anthropic
 
@@ -105,7 +110,7 @@ ${availableClients}
   console.log(`\n⏳ [1/4] Extraindo metadados e conteúdo da URL...`);
   const article = await scrapeArticle(url);
   console.log(`   ✓ Título identificado: "${article.title}"`);
-  console.log(`   ✓ Imagem de capa: ${article.imageUrl || '(gerando card dinâmico com branding)'}`);
+  console.log(`   ✓ Imagem de capa: ${article.imageUrl || '(gerando card dinâmico ou arte IA)'}`);
   console.log(`   ✓ Tópicos extraídos: ${article.headings.length} seções`);
 
   // Diretório de saída do artigo
@@ -120,7 +125,9 @@ ${availableClients}
   const images = await processSocialImages(article.imageUrl, outputDir, {
     client: clientConfig,
     title: article.title,
-    article
+    article,
+    aiImage,
+    provider
   });
   console.log(`   ✓ Formatos gerados em 16:9, 4:5, 1:1 e 9:16 (WebP e JPG).`);
 

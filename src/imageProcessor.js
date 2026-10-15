@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const { generateAiImageIfPossible } = require('./imageGen');
 
 /**
  * Escapa caracteres especiais para SVG seguro.
@@ -156,10 +157,41 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
       inputBuffer = fs.readFileSync(imageUrl);
     }
 
-    // Se não houver imagem válida baixada, gera card moderno premium como base
+    // Se não houver imagem válida baixada:
     if (!inputBuffer) {
-      console.log(`   🎨 [Mídia] Gerando card gráfico profissional com o título e marca do cliente...`);
-      inputBuffer = await generateFallbackCard(1200, 675, articleTitle, brandName, brandHandle);
+      const shouldTryAi = options.aiImage ||
+                          options.client?.generateAiImage ||
+                          process.env.GENERATE_AI_IMAGE === 'true' ||
+                          process.env.GENERATE_AI_IMAGE === 'auto';
+
+      const hasAiKey = Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
+
+      if (shouldTryAi && hasAiKey) {
+        try {
+          console.log(`   🎨 [IA Visual] Artigo sem imagem de capa. Gerando arte conceitual via IA...`);
+          const aiImageResult = await generateAiImageIfPossible({
+            title: articleTitle,
+            description: options.article?.description,
+            client: options.client,
+            options
+          });
+
+          if (aiImageResult && aiImageResult.buffer) {
+            inputBuffer = aiImageResult.buffer;
+            const aiOriginalPath = path.join(imagesDir, 'ai_cover_original.jpg');
+            fs.writeFileSync(aiOriginalPath, inputBuffer);
+            console.log(`   ✓ Arte gerada com sucesso via ${aiImageResult.provider} (${aiImageResult.model})!`);
+          }
+        } catch (aiErr) {
+          console.warn(`   ⚠️ [IA Visual Aviso] Falha ao gerar via IA (${aiErr.message}). Alternando para card SVG.`);
+        }
+      }
+
+      // Fallback para card gráfico elegante em SVG se a IA não gerou
+      if (!inputBuffer) {
+        console.log(`   🎨 [Mídia] Gerando card gráfico profissional com o título e marca do cliente...`);
+        inputBuffer = await generateFallbackCard(1200, 675, articleTitle, brandName, brandHandle);
+      }
     }
 
     const formats = [

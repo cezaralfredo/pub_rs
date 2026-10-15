@@ -44,14 +44,20 @@ O `pub_rs` conta com arquitetura modular multi-provedor com detecção automáti
 
 ---
 
-## 🎨 Processamento Gráfico & Branding com Sharp
+## 🎨 Processamento Gráfico, IA Visual & Branding com Sharp
 
 Gera automaticamente todas as variações em **WebP** e **JPG** nos padrões oficiais:
 - **16:9** (1200x675) — Horizontal para LinkedIn, X/Twitter e Facebook.
 - **4:5** (1080x1350) — Retrato ouro para Feed do Instagram com ambient blur e badge superior/inferior.
 - **1:1** (1080x1080) — Quadrado para Threads e carrossel.
 - **9:16** (1080x1920) — Vertical para Stories, Reels e WhatsApp Status.
-- **Fallback Card SVG:** Caso o artigo original não possua imagem de destaque, o `pub_rs` gera instantaneamente um card visual moderno com tipografia elegante, o título do artigo e o badge de branding do cliente.
+
+### 🖼️ Caso o artigo NÃO possua imagem de destaque:
+1. **Geração de Arte Conceitual via IA (DALL-E 3 / Imagen 3):**
+   - Se configurado (`--ai-image`, `"generateAiImage": true` no cliente ou `GENERATE_AI_IMAGE=auto` no `.env`), o `pub_rs` cria automaticamente uma ilustração conceitual em alta definição a partir do **título e resumo do artigo**, sem textos sobrepostos e com iluminação cinematográfica.
+   - Essa arte é imediatamente redimensionada e adaptada para os 4 formatos oficiais de redes sociais com os badges de marca do cliente.
+2. **Fallback para Card Gráfico SVG:**
+   - Caso nenhuma API de imagem esteja configurada ou ocorra timeout, o sistema cria um card em degradê escuro com tipografia moderna, grade sutil e a marca do cliente sobreposta via Sharp SVG.
 
 ---
 
