@@ -1,0 +1,32 @@
+[
+  {
+    "id": "usr_admin_master",
+    "name": "Administrador SaaS",
+    "email": "admin@pubrs.com",
+    "company": "pub_rs Enterprise",
+    "passwordHash": "$2b$10$clA4OVqNaj5g1W.0aO0rq.OaxxFXbq.exFMFQun2rBbrYztMi2z0y",
+    "role": "admin",
+    "plan": "agency",
+    "usage": {
+      "generationsCount": 0,
+      "monthlyLimit": 1000,
+      "currentMonth": "2026-10"
+    },
+    "createdAt": "2026-10-24T14:46:24.017Z"
+  },
+  {
+    "id": "usr_1792853513753_zx2f6",
+    "name": "Cezar Alfredo",
+    "email": "cezar_1792853513637@ondaconecta.com.br",
+    "company": "Onda Conecta Digital",
+    "passwordHash": "$2b$10$hmlWgDqZVHgGKgcsI6wWU.8MrMBUrAhntF7rmIAYm9yEpuOgL9Osi",
+    "role": "creator",
+    "plan": "pro",
+    "usage": {
+      "generationsCount": 0,
+      "monthlyLimit": 200,
+      "currentMonth": "2026-10"
+    },
+    "createdAt": "2026-10-24T14:51:53.754Z"
+  }
+]

@@ -15,31 +15,37 @@
 </head>
 <body class="dark-theme">
 
-  <!-- ========================================================================= -->
-  <!-- NAVBAR / TOPBAR                                                           -->
-  <!-- ========================================================================= -->
-  <header class="topbar">
-    <div class="topbar-container">
-      <div class="brand">
-        <div class="brand-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 11a9 9 0 0 1 9 9"></path>
-            <path d="M4 4a16 16 0 0 1 16 16"></path>
-            <circle cx="5" cy="19" r="1"></circle>
-          </svg>
+  <!-- Overlay para fechar sidebar no mobile -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+  <div class="app-layout">
+    <!-- ========================================================================= -->
+    <!-- SIDEBAR ESQUERDA (FIXA NO DESKTOP, DESLIZANTE NO MOBILE)                  -->
+    <!-- ========================================================================= -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <!-- 1. Header da Sidebar: Brand & Botão de Recolher -->
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 11a9 9 0 0 1 9 9"></path>
+              <path d="M4 4a16 16 0 0 1 16 16"></path>
+              <circle cx="5" cy="19" r="1"></circle>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">pub_rs</span>
+            <span class="brand-badge">STUDIO</span>
+          </div>
         </div>
-        <div class="brand-text">
-          <span class="brand-title">pub_rs</span>
-          <span class="brand-badge">STUDIO</span>
-        </div>
+        <button id="btn-toggle-sidebar" class="sidebar-toggle-btn" title="Recolher / Expandir menu lateral">
+          <svg class="icon-toggle" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
       </div>
 
-      <!-- Quick Status Badges -->
-      <div class="topbar-center">
-        <div class="status-pill" id="active-provider-pill" title="Provedores de IA ativos">
-          <span class="pill-dot"></span>
-          <span class="pill-label" id="provider-status-text">Verificando IA...</span>
-        </div>
+      <!-- 2. Seletor de Cliente Ativo -->
+      <div class="sidebar-client-box">
+        <span class="sidebar-section-title">CLIENTE ATIVO</span>
         <div class="client-selector-wrap">
           <label for="top-client-select" class="visually-hidden">Cliente Ativo</label>
           <select id="top-client-select" class="client-dropdown">
@@ -49,58 +55,217 @@
         </div>
       </div>
 
-      <!-- Topbar Actions -->
-      <div class="topbar-actions">
-        <button id="btn-history" class="btn-ghost" title="Ver pacotes anteriores">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          Histórico
+      <!-- 3. Navegação Principal -->
+      <nav class="sidebar-nav">
+        <span class="sidebar-section-title">NAVEGAÇÃO</span>
+        <button type="button" class="sidebar-nav-item active" id="btn-nav-studio" title="Criar / Studio">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </span>
+          <span class="nav-label">Criar / Studio</span>
         </button>
-        <button id="btn-manage-clients" class="btn-ghost" title="Gerenciar clientes e conexões de redes">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          Clientes & Redes
+
+        <button type="button" class="sidebar-nav-item" id="btn-history" title="Histórico de Pacotes">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </span>
+          <span class="nav-label">Histórico</span>
         </button>
-        <button id="btn-info" class="btn-icon" title="Sobre o pub_rs">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+
+        <button type="button" class="sidebar-nav-item" id="btn-manage-clients" title="Gerenciar Clientes & Canais">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </span>
+          <span class="nav-label">Clientes & Redes</span>
+        </button>
+
+        <button type="button" class="sidebar-nav-item" id="btn-nav-queue" title="Fila & Disparos em Background">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          </span>
+          <span class="nav-label">Fila & Background</span>
+        </button>
+      </nav>
+
+      <!-- 4. Rodapé da Sidebar: Status IA + Conta SaaS -->
+      <div class="sidebar-footer">
+        <div class="status-pill" id="active-provider-pill" title="Provedores de IA ativos">
+          <span class="pill-dot"></span>
+          <span class="pill-label" id="provider-status-text">Verificando IA...</span>
+        </div>
+
+        <div class="user-profile-badge" id="user-profile-badge" title="Minha Conta SaaS">
+          <div class="user-avatar" id="top-user-avatar">A</div>
+          <div class="user-meta">
+            <span class="user-name" id="top-user-name">Usuário</span>
+            <div class="user-submeta">
+              <span class="user-plan-tag" id="top-user-plan">PRO</span>
+              <span class="user-quota-tag" id="top-user-quota">0/200</span>
+            </div>
+          </div>
+          <button id="btn-logout" class="btn-logout" title="Sair da Conta (Logout)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </button>
+        </div>
+
+        <button id="btn-info" class="sidebar-info-link" title="Sobre o pub_rs">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          <span class="info-label">Sobre o pub_rs v3</span>
         </button>
       </div>
-    </div>
-  </header>
+    </aside>
+
+    <!-- ========================================================================= -->
+    <!-- WORKSPACE PRINCIPAL (DIREITA)                                             -->
+    <!-- ========================================================================= -->
+    <div class="app-main-area">
+      <!-- Workspace Topbar Minimalista (Mobile + Contexto) -->
+      <header class="workspace-topbar">
+        <div class="workspace-topbar-left">
+          <button id="mobile-menu-btn" class="mobile-menu-btn" title="Abrir Menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <span class="workspace-badge">ESTÚDIO DE CRIAÇÃO</span>
+        </div>
+        <div class="workspace-topbar-actions">
+          <button type="button" class="btn-ghost-sm" id="btn-theme-toggle" title="Alternar entre Fundo Branco (Claro) e Fundo Escuro">
+            <span id="theme-toggle-icon">☀️</span>
+            <span id="theme-toggle-label">Fundo Branco</span>
+          </button>
+          <button type="button" class="btn-ghost-sm" id="topbar-quick-history" title="Histórico Rápido">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Histórico
+          </button>
+        </div>
+      </header>
 
   <!-- ========================================================================= -->
   <!-- MAIN WORKSPACE                                                            -->
   <!-- ========================================================================= -->
   <main class="main-content">
     
-    <!-- Hero / Input Central -->
-    <section class="hero-section">
-      <div class="hero-header">
-        <h1 class="hero-title">Distribuição Omnichannel <span class="gradient-text">Automatizada</span></h1>
-        <p class="hero-subtitle">Insira a URL de qualquer artigo publicado. A plataforma cuidará do scraping, do corte inteligente nos 4 formatos de imagem e da redação sob medida para 6 redes sociais.</p>
+    <!-- ========================================================================= -->
+    <!-- VIEW 1: STUDIO DE CRIAÇÃO                                                 -->
+    <!-- ========================================================================= -->
+    <div id="view-studio" class="page-view active">
+      <!-- Studio Header & Canvas (Expandido, sem sensação de caixa fechada) -->
+      <section class="studio-canvas">
+      <div class="studio-header-wrap">
+        <div class="studio-titles">
+          <h1 class="hero-title">Distribuição Omnichannel <span class="gradient-text">Automatizada</span></h1>
+          <p class="hero-subtitle">Transforme qualquer artigo da web ou crie publicações autorais de alta conversão diretamente a partir dos interesses e pilares estratégicos do seu cliente.</p>
+        </div>
+
+        <!-- Mode Switcher Tabs amplos e elegantes -->
+        <div class="mode-tabs-wrap">
+          <button type="button" class="mode-tab-btn active" id="tab-mode-url" data-mode="url">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <span>Por Artigo (URL)</span>
+          </button>
+          <button type="button" class="mode-tab-btn" id="tab-mode-topic" data-mode="topic">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>Por Interesses / Tema Livre</span>
+            <span class="tab-badge-new">Novo</span>
+          </button>
+        </div>
       </div>
 
-      <!-- Generator Card Box -->
-      <div class="generator-card glass-panel">
+      <!-- Generator Workspace Panel (Full Width) -->
+      <div class="generator-card glass-panel" id="generator-card-box">
+
         <form id="generate-form" class="generator-form">
           
-          <!-- URL Input Bar -->
-          <div class="url-input-container">
-            <div class="input-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+          <!-- MODO 1: URL Input Bar -->
+          <div id="container-url-mode" class="input-mode-container">
+            <div class="url-input-container">
+              <div class="input-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+              </div>
+              <input 
+                type="url" 
+                id="input-url" 
+                class="url-input" 
+                placeholder="Cole a URL do artigo aqui (ex: https://anauedesign.com.br/blog/artigo...)" 
+                autocomplete="off"
+              >
+              <button type="button" id="btn-paste-url" class="btn-paste" title="Colar da área de transferência">
+                Colar
+              </button>
             </div>
-            <input 
-              type="url" 
-              id="input-url" 
-              class="url-input" 
-              placeholder="Cole a URL do artigo aqui (ex: https://anauedesign.com.br/blog/artigo...)" 
-              required
-              autocomplete="off"
-            >
-            <button type="button" id="btn-paste-url" class="btn-paste" title="Colar da área de transferência">
-              Colar
-            </button>
           </div>
 
-          <!-- Controls Grid -->
+          <!-- MODO 2: Interesses e Tópicos do Cliente (Topic-to-Post) -->
+          <div id="container-topic-mode" class="input-mode-container hidden">
+            
+            <!-- Pilares e Botão de Ideação com IA -->
+            <div class="topic-header-bar">
+              <div class="topic-header-title">
+                <span class="topic-header-icon">🏷️</span>
+                <span>Pilares de Conteúdo do Cliente:</span>
+              </div>
+              <button type="button" class="btn-ai-brainstorm" id="btn-suggest-topics" title="Sugerir ideias de pautas de alto impacto">
+                <span class="sparkle-icon">⚡</span>
+                <span id="btn-suggest-text">Sugerir Ideias de Pautas (IA)</span>
+              </button>
+            </div>
+
+            <!-- Chips de Pilares de Conteúdo -->
+            <div class="pillars-chips-wrap" id="client-pillars-wrap">
+              <span class="pillar-loading">Carregando pilares da marca...</span>
+            </div>
+
+            <!-- Box com Sugestões de Pautas (expandível) -->
+            <div id="ai-suggestions-box" class="ai-suggestions-box hidden">
+              <div class="suggestions-header">
+                <div class="suggestions-title">
+                  <span>💡 Ideias Magnéticas Recomendadas para Esta Marca:</span>
+                  <span class="suggestions-subtitle">Clique em qualquer sugestão para preencher e gerar automaticamente:</span>
+                </div>
+                <button type="button" class="btn-close-suggestions" id="btn-close-suggestions" title="Fechar sugestões">&times;</button>
+              </div>
+              <div class="suggestions-grid" id="suggestions-grid"></div>
+            </div>
+
+            <!-- Textarea do Tema / Pauta -->
+            <div class="topic-textarea-wrap">
+              <textarea 
+                id="input-topic" 
+                class="topic-textarea" 
+                placeholder="Descreva o tema, dor do mercado ou pauta que deseja abordar (ou clique em um dos pilares acima)..." 
+                rows="2"
+              ></textarea>
+            </div>
+
+            <!-- Seletores de Arquétipo e Estilo Visual -->
+            <div class="topic-meta-row">
+              <div class="control-group">
+                <label for="form-archetype-select" class="control-label">Arquétipo do Post</label>
+                <div class="custom-select-wrap">
+                  <select id="form-archetype-select" class="control-input">
+                    <option value="dica">💡 Dica Prática / Como Fazer</option>
+                    <option value="opiniao">🎯 Opinião de Especialista / Tendência</option>
+                    <option value="mito">💥 Quebra de Mito / Paradigma</option>
+                    <option value="case">📈 Estudo de Caso / Problema-Solução</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label for="form-visual-style-select" class="control-label">Estilo Visual da Imagem (IA)</label>
+                <div class="custom-select-wrap">
+                  <select id="form-visual-style-select" class="control-input">
+                    <option value="dark-cinematic">🎬 Cinematográfico Dark (Neon & Rim Light)</option>
+                    <option value="minimalist-3d">🧊 3D Minimalista Contemporâneo</option>
+                    <option value="corporate-photo">📸 Fotografia Editorial Corporativa</option>
+                    <option value="tech-vector">📐 Vetor Tech Isométrico</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Controls Grid (Comuns a ambos os modos) -->
           <div class="controls-grid">
             
             <!-- Cliente -->
@@ -146,7 +311,7 @@
               <input type="checkbox" id="toggle-ai-image" checked>
               <span class="toggle-slider"></span>
               <span class="toggle-label">
-                <strong>Gerar Arte com IA</strong> se faltar imagem original
+                <strong>Gerar Arte com IA</strong> (DALL-E 3 / Imagen 3)
               </span>
             </label>
 
@@ -444,326 +609,472 @@
       </div>
 
     </section>
+    </div> <!-- /#view-studio -->
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 2: FILA & BACKGROUND DE CANAIS (GESTÃO DE CLIENTES & REDES)           -->
+    <!-- ========================================================================= -->
+    <div id="view-management" class="page-view hidden">
+      <section class="management-canvas">
+
+        <!-- Management Header Expandido (Clean, sem caixa fechada) -->
+        <div class="management-header-wrap">
+          <div class="management-titles">
+            <h1 class="hero-title">Fila & Background <span class="gradient-text">de Canais</span></h1>
+            <p class="hero-subtitle">Monitore tarefas agendadas em segundo plano, configure integrações das redes sociais, chaves de IA dedicada e pilares da marca.</p>
+          </div>
+
+          <!-- Ações do Cabeçalho: Seletor de Cliente, Novo, Excluir e Voltar -->
+          <div class="management-header-actions">
+            <div class="management-client-picker">
+              <span class="management-picker-label">Cliente Ativo:</span>
+              <select id="modal-client-select" class="client-dropdown" title="Selecione o cliente para configurar"></select>
+            </div>
+            <button type="button" id="btn-new-client" class="btn-ghost-sm" title="Cadastrar nova marca/cliente">
+              <span>＋ Novo Cliente</span>
+            </button>
+            <button type="button" id="btn-delete-client" class="btn-ghost-sm btn-danger" title="Excluir este cliente">
+              <span>🗑️ Excluir</span>
+            </button>
+            <button type="button" id="btn-back-to-studio" class="btn-ghost-sm" title="Voltar ao Estúdio de Criação">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              <span>Voltar ao Studio</span>
+            </button>
+            <!-- Hidden button para manter compatibilidade com listener do btn-close-modal-clients se houver -->
+            <button class="visually-hidden" id="btn-close-modal-clients" aria-hidden="true"></button>
+          </div>
+        </div>
+
+        <!-- Sub-Páginas / Abas Navegacionais Fluidas e Elegantes -->
+        <div class="management-subtabs-wrap">
+          <button type="button" class="cl-tab active" data-cl-tab="cl-tab-queue">
+            <span class="cl-tab-icon">⏳</span>
+            <span class="cl-tab-label">Fila & Background</span>
+          </button>
+          <button type="button" class="cl-tab" data-cl-tab="cl-tab-channels">
+            <span class="cl-tab-icon">🌐</span>
+            <span class="cl-tab-label">Canais & Redes Sociais</span>
+          </button>
+          <button type="button" class="cl-tab" data-cl-tab="cl-tab-identity">
+            <span class="cl-tab-icon">🏢</span>
+            <span class="cl-tab-label">Identidade & Tom da Marca</span>
+          </button>
+          <button type="button" class="cl-tab" data-cl-tab="cl-tab-llm">
+            <span class="cl-tab-icon">🤖</span>
+            <span class="cl-tab-label">IA Dedicada & Chaves</span>
+          </button>
+        </div>
+
+        <!-- Conteúdo Expansivo das Sub-Páginas (Sem caixa restrita) -->
+        <div class="management-card glass-panel">
+          <form id="form-edit-client" class="client-form">
+            
+            <!-- =================================================================== -->
+            <!-- SUB-PÁGINA 1: FILA & BACKGROUND SCHEDULER                           -->
+            <!-- =================================================================== -->
+            <div id="cl-tab-queue" class="cl-tab-panel active">
+              <div class="queue-tab-header">
+                <div class="queue-header-info">
+                  <h4>Fila de Publicações em Segundo Plano</h4>
+                  <p>Acompanhe disparos agendados, em processamento e histórico de execuções automáticas.</p>
+                </div>
+                <div class="queue-header-actions">
+                  <button type="button" class="btn-ghost-sm" id="btn-refresh-queue">🔄 Atualizar Fila</button>
+                  <button type="button" class="btn-ghost-sm" id="btn-clear-queue">Limpar Concluídos</button>
+                </div>
+              </div>
+
+              <div id="queue-jobs-container" class="queue-jobs-list">
+                <div class="queue-empty">Carregando fila de background...</div>
+              </div>
+            </div>
+
+            <!-- =================================================================== -->
+            <!-- SUB-PÁGINA 2: CANAIS & REDES SOCIAIS                                -->
+            <!-- =================================================================== -->
+            <div id="cl-tab-channels" class="cl-tab-panel">
+              <div class="info-alert">
+                <span>🌐</span>
+                <p>Conecte os canais para envio imediato ou agendamento em background através do estúdio.</p>
+              </div>
+
+              <!-- Grid de Canais em 2 Colunas no Desktop -->
+              <div class="channels-grid">
+                <!-- Webhook n8n / Make -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">⚡ Webhook (n8n / Make / Metricool)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-webhook-enabled" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row-channel">
+                    <div class="form-field flex-grow">
+                      <label for="ch-webhook-url" class="field-label">URL do Webhook</label>
+                      <input type="url" id="ch-webhook-url" class="field-input" placeholder="https://seu-n8n.com/webhook/pub_rs">
+                    </div>
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="webhook">Testar</button>
+                  </div>
+                </div>
+
+                <!-- Telegram Bot API -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">✈️ Telegram (Canal ou Grupo)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-telegram-enabled">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-field">
+                      <label for="ch-telegram-token" class="field-label">Bot Token (do @BotFather)</label>
+                      <input type="password" id="ch-telegram-token" class="field-input" placeholder="ex: 123456789:ABCdefGhIjkLmNoPqRsTuVwXyZ">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-telegram-chatid" class="field-label">Chat ID ou @username_canal</label>
+                      <input type="text" id="ch-telegram-chatid" class="field-input" placeholder="ex: @meucanal ou -1001234567890">
+                    </div>
+                  </div>
+                  <div class="channel-test-btn-wrap">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="telegram">Testar Conexão Telegram</button>
+                  </div>
+                </div>
+
+                <!-- Buffer API -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">📅 Buffer API (Agendamento Multicanal Unificado)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-buffer-enabled">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-field">
+                      <label for="ch-buffer-token" class="field-label">Access Token do Buffer</label>
+                      <input type="password" id="ch-buffer-token" class="field-input" placeholder="Buffer Access Token">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-buffer-profiles" class="field-label">IDs dos Perfis (separados por vírgula)</label>
+                      <input type="text" id="ch-buffer-profiles" class="field-input" placeholder="ex: 64b8a..., 64b8b...">
+                    </div>
+                  </div>
+                  <div class="channel-test-btn-wrap">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="buffer">Testar Buffer</button>
+                  </div>
+                </div>
+
+                <!-- LinkedIn Direto -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">💼 LinkedIn Direct API (v2)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-linkedin-enabled">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-field">
+                      <label for="ch-linkedin-token" class="field-label">Access Token (OAuth 2.0)</label>
+                      <input type="password" id="ch-linkedin-token" class="field-input" placeholder="LinkedIn Access Token">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-linkedin-urn" class="field-label">Author URN (Pessoa ou Empresa)</label>
+                      <input type="text" id="ch-linkedin-urn" class="field-input" placeholder="urn:li:organization:123456 ou urn:li:person:abcdef">
+                    </div>
+                  </div>
+                  <div class="channel-test-btn-wrap">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="linkedin">Testar LinkedIn</button>
+                  </div>
+                </div>
+
+                <!-- X (Twitter) Direto -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">🐦 X (Twitter API v2)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-twitter-enabled">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row-channel">
+                    <div class="form-field flex-grow">
+                      <label for="ch-twitter-token" class="field-label">Bearer Token ou User Token</label>
+                      <input type="password" id="ch-twitter-token" class="field-input" placeholder="Twitter v2 Bearer Token">
+                    </div>
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="twitter">Testar X</button>
+                  </div>
+                </div>
+
+                <!-- Meta (Facebook & Instagram) -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">📸 Meta (Facebook Page & Instagram)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-meta-enabled">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-field">
+                      <label for="ch-meta-token" class="field-label">Page Access Token</label>
+                      <input type="password" id="ch-meta-token" class="field-input" placeholder="Meta Graph API Token">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-meta-pageid" class="field-label">Page ID</label>
+                      <input type="text" id="ch-meta-pageid" class="field-input" placeholder="ex: 1092837465">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-meta-igid" class="field-label">Instagram Account ID</label>
+                      <input type="text" id="ch-meta-igid" class="field-input" placeholder="ex: 178414000000000">
+                    </div>
+                  </div>
+                  <div class="channel-test-btn-wrap">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="meta">Testar Meta</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botão de Testar Todos os Canais -->
+              <div class="test-action-wrap">
+                <button type="button" class="btn-ghost" id="btn-test-all-channels">
+                  <span>🔌 Testar Todos os Canais Habilitados</span>
+                </button>
+                <div id="channels-test-feedback" class="test-feedback-box hidden"></div>
+              </div>
+            </div>
+
+            <!-- =================================================================== -->
+            <!-- SUB-PÁGINA 3: IDENTIDADE & TOM DA MARCA                             -->
+            <!-- =================================================================== -->
+            <div id="cl-tab-identity" class="cl-tab-panel">
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="cl-id" class="field-label">ID do Cliente (slug único)</label>
+                  <input type="text" id="cl-id" class="field-input" placeholder="ex: anaue-design" required>
+                </div>
+                <div class="form-field">
+                  <label for="cl-brandName" class="field-label">Nome da Marca</label>
+                  <input type="text" id="cl-brandName" class="field-input" placeholder="ex: Anauê Design" required>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="cl-handle" class="field-label">Handle / Arroba (@)</label>
+                  <input type="text" id="cl-handle" class="field-input" placeholder="@anauedesign">
+                </div>
+                <div class="form-field">
+                  <label for="cl-audience" class="field-label">Público-Alvo</label>
+                  <input type="text" id="cl-audience" class="field-input" placeholder="ex: Diretores, empresários e CFOs">
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="cl-niche" class="field-label">Nicho / Segmento de Atuação</label>
+                <input type="text" id="cl-niche" class="field-input" placeholder="ex: Marketing Digital de Alta Performance, Design Estratégico e Tecnologia Web">
+              </div>
+
+              <div class="form-field">
+                <label for="cl-pillars" class="field-label">Pilares Editoriais de Conteúdo & Interesses (um por linha)</label>
+                <textarea id="cl-pillars" class="field-input" rows="3" placeholder="Mídia Paga & Performance (Google Ads, Meta Ads)&#10;Fim dos Cookies & First-Party Data&#10;Core Web Vitals & Otimização de Conversão"></textarea>
+                <small class="field-hint">Usados para sugerir ideias inteligentes e gerar posts autorais diretamente por interesses.</small>
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="cl-visual-style" class="field-label">Estilo Visual de Imagem Padrão (IA)</label>
+                  <select id="cl-visual-style" class="field-input">
+                    <option value="dark-cinematic">🎬 Cinematográfico Dark (Neon & Rim Light)</option>
+                    <option value="minimalist-3d">🧊 3D Minimalista Contemporâneo</option>
+                    <option value="corporate-photo">📸 Fotografia Editorial Corporativa</option>
+                    <option value="tech-vector">📐 Vetor Tech Isométrico</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="cl-colors" class="field-label">Cores da Marca (hexadecimais)</label>
+                  <input type="text" id="cl-colors" class="field-input" placeholder="#0052FF, #0A0E17, #00D2FF">
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="cl-tone" class="field-label">Tom de Voz da Marca</label>
+                <input type="text" id="cl-tone" class="field-input" placeholder="ex: Consultivo, inovador, estratégico e focado em ROI">
+              </div>
+
+              <div class="form-field">
+                <label for="cl-negatives" class="field-label">Palavras Proibidas / Negativas (separadas por vírgula)</label>
+                <input type="text" id="cl-negatives" class="field-input" placeholder="grátis, fórmula mágica, fácil, milagre">
+              </div>
+
+              <div class="form-field">
+                <label for="cl-hashtags" class="field-label">Hashtags Padrão (separadas por vírgula)</label>
+                <input type="text" id="cl-hashtags" class="field-input" placeholder="#Marketing, #Performance, #Negocios">
+              </div>
+
+              <div class="form-field">
+                <label for="cl-cta" class="field-label">Chamada para Ação Padrão (CTA)</label>
+                <input type="text" id="cl-cta" class="field-input" placeholder="Qual a sua visão sobre esse tema? Deixe nos comentários:">
+              </div>
+
+              <div class="form-field">
+                <label for="cl-comment-tpl" class="field-label">Template do 1º Comentário ({URL} será substituído)</label>
+                <input type="text" id="cl-comment-tpl" class="field-input" placeholder="👉 Acesse o conteúdo completo e todos os dados aqui: {URL}">
+              </div>
+            </div>
+
+            <!-- =================================================================== -->
+            <!-- SUB-PÁGINA 4: IA DEDICADA & CHAVES                                  -->
+            <!-- =================================================================== -->
+            <div id="cl-tab-llm" class="cl-tab-panel">
+              <div class="info-alert">
+                <span>💡</span>
+                <p>Configure uma chave própria para este cliente ou deixe em branco para utilizar os provedores globais do sistema (.env).</p>
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="cl-llm-provider" class="field-label">Provedor Preferencial</label>
+                  <select id="cl-llm-provider" class="field-input">
+                    <option value="auto">Automático (Herda do sistema)</option>
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic Claude</option>
+                    <option value="groq">Groq</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="ollama">Ollama (Local)</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="cl-llm-model" class="field-label">Modelo Customizado (Opcional)</label>
+                  <input type="text" id="cl-llm-model" class="field-input" placeholder="ex: gpt-4o, gemini-2.5-flash, claude-3-5-sonnet">
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="cl-llm-baseurl" class="field-label">Endpoint / Base URL Customizado (Opcional)</label>
+                <input type="url" id="cl-llm-baseurl" class="field-input" placeholder="ex: http://localhost:11434 (padrão Ollama) ou gateway corporativo">
+                <small class="field-hint">Útil para instâncias locais de Ollama, vLLM ou proxies internos de IA.</small>
+              </div>
+
+              <div class="form-field">
+                <label for="cl-llm-key" class="field-label">Chave de API Dedicada do Cliente (Opcional)</label>
+                <div class="input-password-wrap">
+                  <input type="password" id="cl-llm-key" class="field-input" placeholder="Cole a chave privada aqui (será armazenada de forma segura)">
+                  <button type="button" class="btn-toggle-eye" id="btn-toggle-key-eye" title="Mostrar/Ocultar chave">👁️</button>
+                </div>
+                <small class="field-hint">Se a chave já foi salva, ela aparecerá como mascarada (ex: sk-...abcd).</small>
+              </div>
+
+              <div class="form-field">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="cl-gen-ai-image" checked>
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Gerar arte visual via IA para este cliente se o post não tiver capa</span>
+                </label>
+              </div>
+
+              <!-- Botão de Teste de Conexão com LLM -->
+              <div class="test-action-wrap">
+                <button type="button" class="btn-ghost" id="btn-test-llm-direct">
+                  <span>⚡ Testar Conexão com a IA Selecionada</span>
+                </button>
+                <div id="llm-test-feedback" class="test-feedback-box hidden"></div>
+              </div>
+            </div>
+
+            <!-- Rodapé / Barra de Ações com Design Limpo -->
+            <div class="management-footer">
+              <button type="button" class="btn-ghost" id="btn-test-client-conn">
+                <span>🔌 Testar Conexão Geral</span>
+              </button>
+              <div class="management-footer-right">
+                <button type="button" class="btn-ghost" id="btn-cancel-client">Voltar ao Studio</button>
+                <button type="submit" class="btn-primary-action">Salvar Configurações</button>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+      </section>
+    </div> <!-- /#view-management -->
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 3: HISTÓRICO DE PUBLICAÇÕES & PACOTES SALVOS                          -->
+    <!-- ========================================================================= -->
+    <div id="view-history" class="page-view hidden">
+      <section class="history-canvas">
+
+        <!-- History Header Expandido (Clean, sem gaveta/caixa) -->
+        <div class="history-header-wrap">
+          <div class="history-titles">
+            <h1 class="hero-title">Histórico de <span class="gradient-text">Publicações</span></h1>
+            <p class="hero-subtitle">Consulte, filtre e recupere pacotes de distribuição omnichannel gerados anteriormente para qualquer marca.</p>
+          </div>
+
+          <!-- Ações e Filtros Rápidos -->
+          <div class="history-header-actions">
+            <div class="history-search-box">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="history-search-input" class="history-search-input" placeholder="Buscar por título ou ID...">
+            </div>
+
+            <div class="history-filter-box">
+              <label for="history-client-filter" class="visually-hidden">Filtrar por Cliente</label>
+              <select id="history-client-filter" class="client-dropdown" title="Filtrar histórico por marca">
+                <option value="">Todas as Marcas</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn-ghost-sm" id="btn-refresh-history" title="Recarregar histórico de pacotes">
+              <span>🔄 Atualizar</span>
+            </button>
+
+            <button type="button" class="btn-ghost-sm" id="btn-history-back-studio" title="Voltar ao Estúdio de Criação">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              <span>Voltar ao Studio</span>
+            </button>
+
+            <!-- Hidden button para manter compatibilidade com listener do drawer legado se houver -->
+            <button class="visually-hidden" id="btn-close-drawer" aria-hidden="true"></button>
+          </div>
+        </div>
+
+        <!-- Barra de Métricas / Resumo Rápido -->
+        <div class="history-stats-bar">
+          <div class="history-stat-card">
+            <span class="stat-number" id="hist-stat-total">0</span>
+            <span class="stat-label">Pacotes Salvos</span>
+          </div>
+          <div class="history-stat-card">
+            <span class="stat-number" id="hist-stat-clients">0</span>
+            <span class="stat-label">Marcas com Histórico</span>
+          </div>
+          <div class="history-stat-card">
+            <span class="stat-number" id="hist-stat-latest">--</span>
+            <span class="stat-label">Último Pacote</span>
+          </div>
+        </div>
+
+        <!-- Grade Expansiva de Cards do Histórico -->
+        <div class="history-content-card glass-panel">
+          <div class="history-grid" id="history-items-container">
+            <div class="history-loading-wrap">
+              <p>Consultando histórico de pacotes gerados...</p>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div> <!-- /#view-history -->
 
   </main>
-
-  <!-- ========================================================================= -->
-  <!-- MODAL: GERENCIAR CLIENTES, IA DEDICADA & CANAIS DE REDES                  -->
-  <!-- ========================================================================= -->
-  <div id="modal-clients" class="modal-overlay hidden">
-    <div class="modal-dialog glass-panel modal-lg">
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <h3 class="modal-title">Gestão de Clientes & Background de Canais</h3>
-          <p class="modal-subtitle">Configure credenciais das redes sociais, chaves de IA dedicadas e agendamentos em background.</p>
-        </div>
-        <div class="modal-header-actions">
-          <select id="modal-client-select" class="client-dropdown" title="Selecione o cliente para gerenciar"></select>
-          <button type="button" id="btn-new-client" class="btn-ghost-sm" title="Cadastrar nova marca/cliente">＋ Novo</button>
-          <button type="button" id="btn-delete-client" class="btn-ghost-sm btn-danger" title="Excluir este cliente">🗑️</button>
-          <button class="modal-close" id="btn-close-modal-clients">&times;</button>
-        </div>
-      </div>
-
-      <!-- Abas internas do formulário do cliente -->
-      <div class="client-modal-tabs">
-        <button type="button" class="cl-tab active" data-cl-tab="cl-tab-identity">🏢 Identidade & Tom</button>
-        <button type="button" class="cl-tab" data-cl-tab="cl-tab-llm">🤖 IA Dedicada & Chave</button>
-        <button type="button" class="cl-tab" data-cl-tab="cl-tab-channels">🌐 Canais & Redes Sociais</button>
-        <button type="button" class="cl-tab" data-cl-tab="cl-tab-queue">⏳ Fila & Background</button>
-      </div>
-
-      <div class="modal-body">
-        <form id="form-edit-client" class="client-form">
-          
-          <!-- TAB A: IDENTIDADE & TOM -->
-          <div id="cl-tab-identity" class="cl-tab-panel active">
-            <div class="form-row">
-              <div class="form-field">
-                <label for="cl-id" class="field-label">ID do Cliente (slug único)</label>
-                <input type="text" id="cl-id" class="field-input" placeholder="ex: anaue-design" required>
-              </div>
-              <div class="form-field">
-                <label for="cl-brandName" class="field-label">Nome da Marca</label>
-                <input type="text" id="cl-brandName" class="field-input" placeholder="ex: Anauê Design" required>
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-field">
-                <label for="cl-handle" class="field-label">Handle / Arroba (@)</label>
-                <input type="text" id="cl-handle" class="field-input" placeholder="@anauedesign">
-              </div>
-              <div class="form-field">
-                <label for="cl-audience" class="field-label">Público-Alvo</label>
-                <input type="text" id="cl-audience" class="field-input" placeholder="ex: Diretores, empresários e CFOs">
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label for="cl-tone" class="field-label">Tom de Voz da Marca</label>
-              <input type="text" id="cl-tone" class="field-input" placeholder="ex: Consultivo, inovador, estratégico e focado em ROI">
-            </div>
-
-            <div class="form-field">
-              <label for="cl-hashtags" class="field-label">Hashtags Padrão (separadas por vírgula)</label>
-              <input type="text" id="cl-hashtags" class="field-input" placeholder="#Marketing, #Performance, #Negocios">
-            </div>
-
-            <div class="form-field">
-              <label for="cl-cta" class="field-label">Chamada para Ação Padrão (CTA)</label>
-              <input type="text" id="cl-cta" class="field-input" placeholder="Qual a sua visão sobre esse tema? Deixe nos comentários:">
-            </div>
-
-            <div class="form-field">
-              <label for="cl-comment-tpl" class="field-label">Template do 1º Comentário ({URL} será substituído)</label>
-              <input type="text" id="cl-comment-tpl" class="field-input" placeholder="👉 Acesse o artigo completo e todos os dados aqui: {URL}">
-            </div>
-          </div>
-
-          <!-- TAB B: IA DEDICADA & CHAVES -->
-          <div id="cl-tab-llm" class="cl-tab-panel">
-            <div class="info-alert">
-              <span>💡</span>
-              <p>Configure uma chave própria para este cliente ou deixe em branco para utilizar os provedores globais do sistema (.env).</p>
-            </div>
-
-            <div class="form-row">
-              <div class="form-field">
-                <label for="cl-llm-provider" class="field-label">Provedor Preferencial</label>
-                <select id="cl-llm-provider" class="field-input">
-                  <option value="auto">Automático (Herda do sistema)</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic Claude</option>
-                  <option value="groq">Groq</option>
-                  <option value="deepseek">DeepSeek</option>
-                  <option value="openrouter">OpenRouter</option>
-                  <option value="ollama">Ollama (Local)</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label for="cl-llm-model" class="field-label">Modelo Customizado (Opcional)</label>
-                <input type="text" id="cl-llm-model" class="field-input" placeholder="ex: gpt-4o, gemini-2.5-flash, claude-3-5-sonnet">
-              </div>
-            </div>
-
-            <div class="form-field">
-              <label for="cl-llm-baseurl" class="field-label">Endpoint / Base URL Customizado (Opcional)</label>
-              <input type="url" id="cl-llm-baseurl" class="field-input" placeholder="ex: http://localhost:11434 (padrão Ollama) ou gateway corporativo">
-              <small class="field-hint">Útil para instâncias locais de Ollama, vLLM ou proxies internos de IA.</small>
-            </div>
-
-            <div class="form-field">
-              <label for="cl-llm-key" class="field-label">Chave de API Dedicada do Cliente (Opcional)</label>
-              <div class="input-password-wrap">
-                <input type="password" id="cl-llm-key" class="field-input" placeholder="Cole a chave privada aqui (será armazenada de forma segura)">
-                <button type="button" class="btn-toggle-eye" id="btn-toggle-key-eye" title="Mostrar/Ocultar chave">👁️</button>
-              </div>
-              <small class="field-hint">Se a chave já foi salva, ela aparecerá como mascarada (ex: sk-...abcd).</small>
-            </div>
-
-            <div class="form-field">
-              <label class="toggle-switch">
-                <input type="checkbox" id="cl-gen-ai-image" checked>
-                <span class="toggle-slider"></span>
-                <span class="toggle-label">Gerar arte visual via IA para este cliente se o post não tiver capa</span>
-              </label>
-            </div>
-
-            <!-- Botão de Teste de Conexão com LLM -->
-            <div class="test-action-wrap">
-              <button type="button" class="btn-ghost" id="btn-test-llm-direct">
-                <span>⚡ Testar Conexão com a IA Selecionada</span>
-              </button>
-              <div id="llm-test-feedback" class="test-feedback-box hidden"></div>
-            </div>
-          </div>
-
-          <!-- TAB C: CANAIS & REDES SOCIAIS -->
-          <div id="cl-tab-channels" class="cl-tab-panel">
-            <div class="info-alert">
-              <span>🌐</span>
-              <p>Conecte os canais para envio imediato ou agendamento em background através do estúdio.</p>
-            </div>
-
-            <!-- Webhook n8n / Make -->
-            <div class="channel-box">
-              <div class="channel-header">
-                <span class="channel-name">⚡ Webhook (n8n / Make / Metricool)</span>
-                <label class="toggle-switch-sm">
-                  <input type="checkbox" id="ch-webhook-enabled" checked>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="form-row-channel">
-                <div class="form-field flex-grow">
-                  <label for="ch-webhook-url" class="field-label">URL do Webhook</label>
-                  <input type="url" id="ch-webhook-url" class="field-input" placeholder="https://seu-n8n.com/webhook/pub_rs">
-                </div>
-                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="webhook">Testar</button>
-              </div>
-            </div>
-
-            <!-- Telegram Bot API -->
-            <div class="channel-box">
-              <div class="channel-header">
-                <span class="channel-name">✈️ Telegram (Canal ou Grupo)</span>
-                <label class="toggle-switch-sm">
-                  <input type="checkbox" id="ch-telegram-enabled">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="form-row">
-                <div class="form-field">
-                  <label for="ch-telegram-token" class="field-label">Bot Token (do @BotFather)</label>
-                  <input type="password" id="ch-telegram-token" class="field-input" placeholder="ex: 123456789:ABCdefGhIjkLmNoPqRsTuVwXyZ">
-                </div>
-                <div class="form-field">
-                  <label for="ch-telegram-chatid" class="field-label">Chat ID ou @username_canal</label>
-                  <input type="text" id="ch-telegram-chatid" class="field-input" placeholder="ex: @meucanal ou -1001234567890">
-                </div>
-              </div>
-              <div class="channel-test-btn-wrap">
-                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="telegram">Testar Conexão Telegram</button>
-              </div>
-            </div>
-
-            <!-- Buffer API -->
-            <div class="channel-box">
-              <div class="channel-header">
-                <span class="channel-name">📅 Buffer API (Agendamento Multicanal Unificado)</span>
-                <label class="toggle-switch-sm">
-                  <input type="checkbox" id="ch-buffer-enabled">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="form-row">
-                <div class="form-field">
-                  <label for="ch-buffer-token" class="field-label">Access Token do Buffer</label>
-                  <input type="password" id="ch-buffer-token" class="field-input" placeholder="Buffer Access Token">
-                </div>
-                <div class="form-field">
-                  <label for="ch-buffer-profiles" class="field-label">IDs dos Perfis (separados por vírgula)</label>
-                  <input type="text" id="ch-buffer-profiles" class="field-input" placeholder="ex: 64b8a..., 64b8b...">
-                </div>
-              </div>
-              <div class="channel-test-btn-wrap">
-                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="buffer">Testar Buffer</button>
-              </div>
-            </div>
-
-            <!-- LinkedIn Direto -->
-            <div class="channel-box">
-              <div class="channel-header">
-                <span class="channel-name">💼 LinkedIn Direct API (v2)</span>
-                <label class="toggle-switch-sm">
-                  <input type="checkbox" id="ch-linkedin-enabled">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="form-row">
-                <div class="form-field">
-                  <label for="ch-linkedin-token" class="field-label">Access Token (OAuth 2.0)</label>
-                  <input type="password" id="ch-linkedin-token" class="field-input" placeholder="LinkedIn Access Token">
-                </div>
-                <div class="form-field">
-                  <label for="ch-linkedin-urn" class="field-label">Author URN (Pessoa ou Empresa)</label>
-                  <input type="text" id="ch-linkedin-urn" class="field-input" placeholder="urn:li:organization:123456 ou urn:li:person:abcdef">
-                </div>
-              </div>
-              <div class="channel-test-btn-wrap">
-                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="linkedin">Testar LinkedIn</button>
-              </div>
-            </div>
-
-            <!-- X (Twitter) Direto -->
-            <div class="channel-box">
-              <div class="channel-header">
-                <span class="channel-name">🐦 X (Twitter API v2)</span>
-                <label class="toggle-switch-sm">
-                  <input type="checkbox" id="ch-twitter-enabled">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="form-row-channel">
-                <div class="form-field flex-grow">
-                  <label for="ch-twitter-token" class="field-label">Bearer Token ou User Token</label>
-                  <input type="password" id="ch-twitter-token" class="field-input" placeholder="Twitter v2 Bearer Token">
-                </div>
-                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="twitter">Testar X</button>
-              </div>
-            </div>
-
-            <!-- Meta (Facebook & Instagram) -->
-            <div class="channel-box">
-              <div class="channel-header">
-                <span class="channel-name">📸 Meta (Facebook Page & Instagram)</span>
-                <label class="toggle-switch-sm">
-                  <input type="checkbox" id="ch-meta-enabled">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <div class="form-row">
-                <div class="form-field">
-                  <label for="ch-meta-token" class="field-label">Page Access Token</label>
-                  <input type="password" id="ch-meta-token" class="field-input" placeholder="Meta Graph API Token">
-                </div>
-                <div class="form-field">
-                  <label for="ch-meta-pageid" class="field-label">Page ID</label>
-                  <input type="text" id="ch-meta-pageid" class="field-input" placeholder="ex: 1092837465">
-                </div>
-                <div class="form-field">
-                  <label for="ch-meta-igid" class="field-label">Instagram Account ID</label>
-                  <input type="text" id="ch-meta-igid" class="field-input" placeholder="ex: 178414000000000">
-                </div>
-              </div>
-              <div class="channel-test-btn-wrap">
-                <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="meta">Testar Meta</button>
-              </div>
-            </div>
-
-            <!-- Botão de Testar Todos os Canais -->
-            <div class="test-action-wrap">
-              <button type="button" class="btn-ghost" id="btn-test-all-channels">
-                <span>🔌 Testar Todos os Canais Habilitados</span>
-              </button>
-              <div id="channels-test-feedback" class="test-feedback-box hidden"></div>
-            </div>
-
-          </div>
-
-          <!-- TAB D: FILA & BACKGROUND SCHEDULER -->
-          <div id="cl-tab-queue" class="cl-tab-panel">
-            <div class="queue-tab-header">
-              <div class="queue-header-info">
-                <h4>Fila de Publicações em Segundo Plano</h4>
-                <p>Acompanhe disparos agendados, em processamento e histórico de execuções automáticas.</p>
-              </div>
-              <div class="queue-header-actions">
-                <button type="button" class="btn-ghost-sm" id="btn-refresh-queue">🔄 Atualizar</button>
-                <button type="button" class="btn-ghost-sm" id="btn-clear-queue">Limpar Concluídos</button>
-              </div>
-            </div>
-
-            <div id="queue-jobs-container" class="queue-jobs-list">
-              <div class="queue-empty">Carregando fila de background...</div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn-ghost" id="btn-test-client-conn">
-              <span>🔌 Testar Conexão Geral</span>
-            </button>
-            <div class="modal-footer-right">
-              <button type="button" class="btn-ghost" id="btn-cancel-client">Cancelar</button>
-              <button type="submit" class="btn-primary-action">Salvar Configurações</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+    </div> <!-- /.app-main-area -->
+  </div> <!-- /.app-layout -->
 
   <!-- ========================================================================= -->
   <!-- MODAL: OPÇÕES DE PUBLICAÇÃO (IMEDIATO OU AGENDADO EM BACKGROUND)          -->
@@ -855,23 +1166,6 @@
       </div>
     </div>
   </div>
-
-  <!-- ========================================================================= -->
-  <!-- DRAWER: HISTÓRICO                                                         -->
-  <!-- ========================================================================= -->
-  <aside id="drawer-history" class="drawer-overlay hidden">
-    <div class="drawer-panel glass-panel">
-      <div class="drawer-header">
-        <h3 class="drawer-title">Histórico de Pacotes</h3>
-        <button class="drawer-close" id="btn-close-drawer">&times;</button>
-      </div>
-      <div class="drawer-body">
-        <div class="history-list" id="history-items-container">
-          <p class="history-empty">Nenhum pacote anterior encontrado.</p>
-        </div>
-      </div>
-    </div>
-  </aside>
 
   <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toast-container" class="toast-container"></div>

@@ -3,17 +3,34 @@
   "name": "Cliente Padrão",
   "brandName": "Marca",
   "brandHandle": "@marca",
+  "niche": "Estratégia de Negócios, Inovação e Crescimento Digital",
   "tone": "Profissional, autoritário, direto ao ponto e focado em valor prático",
-  "targetAudience": "Profissionais e tomadores de decisão",
+  "targetAudience": "Profissionais, gestores e tomadores de decisão",
+  "contentPillars": [
+    "Tendências de Mercado e Transformação Digital",
+    "Gestão Estratégica e Liderança",
+    "Inovação Tecnológica e Produtividade",
+    "Crescimento de Negócios e Vendas B2B"
+  ],
+  "visualIdentity": {
+    "style": "minimalist-3d",
+    "preferredColors": ["#6366F1", "#0F172A", "#A855F7"],
+    "brandBadgePosition": "top-right"
+  },
+  "negativeKeywords": [
+    "fórmula mágica",
+    "fácil",
+    "grátis"
+  ],
   "defaultHashtags": [
     "#Negocios",
     "#Inovacao",
     "#Estrategia",
     "#Tendencias"
   ],
-  "callToAction": "Confira a análise completa e compartilhe sua visão:",
+  "callToAction": "Confira a análise completa e compartilhe sua visão nos comentários:",
   "includeFirstComment": true,
-  "commentTemplate": "👉 Leia o artigo completo com todas as referências aqui: {URL}",
+  "commentTemplate": "👉 Acesse os conteúdos completos e novidades no nosso portal: {URL}",
   "llm": {
     "provider": "auto",
     "model": "",

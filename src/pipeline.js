@@ -4,6 +4,7 @@ const { scrapeArticle } = require('./scraper');
 const { processSocialImages } = require('./imageProcessor');
 const { generateSocialCopies } = require('./copywriter');
 const { exportAndDispatch } = require('./dispatcher');
+const { synthesizeTopicContent } = require('./topicSynthesizer');
 const { validatePublicUrl, sanitizeIdentifier } = require('./security/validator');
 
 /**
@@ -32,45 +33,99 @@ function loadClientConfig(clientId) {
 
 /**
  * Executa o pipeline completo de forma unificada para CLI e API Web.
+ * Suporta dois modos de operação:
+ * 1. Modo 'url': Extrai conteúdo de um artigo web existente via scraping.
+ * 2. Modo 'topic': Cria conteúdo autoral a partir de tópicos/interesses do cliente.
  */
 async function runPipeline({
+  mode = 'url',
   url,
+  topic,
+  archetype = 'dica',
+  visualStyle,
   clientId = 'anaue-design',
   provider,
   model,
   aiImage = false,
   onProgress = () => {}
 }) {
-  // 0. Validação de Segurança
-  const safeUrl = validatePublicUrl(url);
   const clientConfig = loadClientConfig(clientId);
+  const isTopicMode = mode === 'topic' || (Boolean(topic) && !url);
 
   onProgress({
     step: 0,
     status: 'starting',
-    message: `Iniciando automação omnichannel para o cliente "${clientConfig.name || clientConfig.brandName}"...`
+    message: isTopicMode
+      ? `Iniciando criação autoral para o cliente "${clientConfig.name || clientConfig.brandName}"...`
+      : `Iniciando automação omnichannel para o cliente "${clientConfig.name || clientConfig.brandName}"...`
   });
 
-  // 1. Scraping
-  onProgress({
-    step: 1,
-    status: 'scraping',
-    message: 'Extraindo dados semânticos, JSON-LD e conteúdo da URL...'
-  });
+  let article = null;
+  let effectiveAiImage = aiImage;
 
-  const article = await scrapeArticle(safeUrl);
-
-  onProgress({
-    step: 1,
-    status: 'scraping_done',
-    message: `Conteúdo extraído com sucesso: "${article.title}"`,
-    data: {
-      title: article.title,
-      description: article.description,
-      imageUrl: article.imageUrl,
-      headingsCount: article.headings.length
+  // 1. Obtenção do Conteúdo (Scraping ou Síntese de Tópico)
+  if (isTopicMode) {
+    if (!topic || !topic.trim()) {
+      throw new Error('Informe um tópico ou interesse do cliente para a geração.');
     }
-  });
+
+    onProgress({
+      step: 1,
+      status: 'synthesizing',
+      message: `Sintetizando conteúdo estratégico para o tema: "${topic}"...`
+    });
+
+    article = await synthesizeTopicContent({
+      topic,
+      archetype,
+      client: clientConfig,
+      visualStyle,
+      options: { provider, model }
+    });
+
+    // No modo tópico, a geração visual de IA é ativada por padrão para criar arte autoral
+    effectiveAiImage = true;
+
+    onProgress({
+      step: 1,
+      status: 'synthesizing_done',
+      message: `Conteúdo estruturado com sucesso: "${article.title}"`,
+      data: {
+        title: article.title,
+        description: article.description,
+        archetype: article.archetype,
+        headingsCount: article.headings.length,
+        isTopicMode: true
+      }
+    });
+  } else {
+    // Modo clássico por URL
+    if (!url) {
+      throw new Error('A URL do artigo é obrigatória para o modo de scraping.');
+    }
+
+    const safeUrl = validatePublicUrl(url);
+
+    onProgress({
+      step: 1,
+      status: 'scraping',
+      message: 'Extraindo dados semânticos, JSON-LD e conteúdo da URL...'
+    });
+
+    article = await scrapeArticle(safeUrl);
+
+    onProgress({
+      step: 1,
+      status: 'scraping_done',
+      message: `Conteúdo extraído com sucesso: "${article.title}"`,
+      data: {
+        title: article.title,
+        description: article.description,
+        imageUrl: article.imageUrl,
+        headingsCount: article.headings.length
+      }
+    });
+  }
 
   // Diretório de saída
   const dateStr = new Date().toISOString().slice(0, 10);
@@ -86,11 +141,13 @@ async function runPipeline({
     message: 'Gerando mídias nos 4 padrões oficiais (16:9, 4:5, 1:1, 9:16) com branding...'
   });
 
-  const images = await processSocialImages(article.imageUrl, outputDir, {
+  const images = await processSocialImages(article.imageUrl || null, outputDir, {
     client: clientConfig,
     title: article.title,
     article,
-    aiImage,
+    aiImage: effectiveAiImage,
+    visualStyle: visualStyle || article.visualStyle,
+    visualPromptHint: article.visualPromptHint,
     provider
   });
 

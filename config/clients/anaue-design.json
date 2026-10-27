@@ -3,8 +3,28 @@
   "name": "Anauê Design",
   "brandName": "Anauê Design",
   "brandHandle": "@anauedesign",
+  "niche": "Marketing Digital de Alta Performance, Design Estratégico e Tecnologia Web",
   "tone": "Especialista, tecnológico, estratégico, focado em ROI, Core Web Vitals e inovação digital",
-  "targetAudience": "Empresários, diretores de marketing, gestores de tecnologia e fundadores de empresas",
+  "targetAudience": "Empresários, diretores de marketing (CMOs), gestores de tecnologia e fundadores de empresas",
+  "contentPillars": [
+    "Mídia Paga & Performance de Alta Escala (Google Ads, Meta Ads)",
+    "Fim dos Cookies de Terceiros, First-Party Data & Atribuição de ROI",
+    "Core Web Vitals, Velocidade e Otimização de Conversão (CRO)",
+    "Inteligência Artificial & Automação de Marketing",
+    "Branding Digital & Experiência do Usuário (UI/UX)"
+  ],
+  "visualIdentity": {
+    "style": "dark-cinematic",
+    "preferredColors": ["#0052FF", "#0A0E17", "#00D2FF"],
+    "brandBadgePosition": "top-right"
+  },
+  "negativeKeywords": [
+    "grátis",
+    "fórmula mágica",
+    "fácil",
+    "milagre",
+    "barato"
+  ],
   "defaultHashtags": [
     "#MarketingDigital",
     "#Performance",

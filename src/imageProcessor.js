@@ -44,11 +44,15 @@ function wrapText(text, maxCharsPerLine = 34, maxLines = 4) {
 /**
  * Cria um card gráfico moderno de backup quando o artigo não tem imagem original.
  */
-async function generateFallbackCard(width, height, title, brandName, brandHandle) {
+async function generateFallbackCard(width, height, title, brandName, brandHandle, client = {}) {
   const cleanTitle = escapeXml(title || 'Artigo em Destaque');
   const cleanBrand = escapeXml(brandName || 'Onda Conecta').toUpperCase();
   const cleanHandle = escapeXml(brandHandle || '');
   const lines = wrapText(title, 32, 4);
+
+  const colors = client.visualIdentity?.preferredColors || ['#38bdf8', '#818cf8'];
+  const color1 = colors[0] || '#38bdf8';
+  const color2 = colors[1] || colors[0] || '#818cf8';
 
   const tspans = lines.map((line, idx) => 
     `<tspan x="100" dy="${idx === 0 ? 0 : 58}">${escapeXml(line)}</tspan>`
@@ -63,8 +67,8 @@ async function generateFallbackCard(width, height, title, brandName, brandHandle
         <stop offset="100%" stop-color="#1e1b4b" />
       </linearGradient>
       <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#38bdf8" />
-        <stop offset="100%" stop-color="#818cf8" />
+        <stop offset="0%" stop-color="${color1}" />
+        <stop offset="100%" stop-color="${color2}" />
       </linearGradient>
     </defs>
 
@@ -168,12 +172,16 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
 
       if (shouldTryAi && hasAiKey) {
         try {
-          console.log(`   🎨 [IA Visual] Artigo sem imagem de capa. Gerando arte conceitual via IA...`);
+          console.log(`   🎨 [IA Visual] Solicitando arte conceitual via IA...`);
           const aiImageResult = await generateAiImageIfPossible({
             title: articleTitle,
             description: options.article?.description,
             client: options.client,
-            options
+            options: {
+              ...options,
+              visualStyle: options.visualStyle || options.article?.visualStyle,
+              visualPromptHint: options.visualPromptHint || options.article?.visualPromptHint
+            }
           });
 
           if (aiImageResult && aiImageResult.buffer) {
@@ -190,7 +198,7 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
       // Fallback para card gráfico elegante em SVG se a IA não gerou
       if (!inputBuffer) {
         console.log(`   🎨 [Mídia] Gerando card gráfico profissional com o título e marca do cliente...`);
-        inputBuffer = await generateFallbackCard(1200, 675, articleTitle, brandName, brandHandle);
+        inputBuffer = await generateFallbackCard(1200, 675, articleTitle, brandName, brandHandle, options.client);
       }
     }
 

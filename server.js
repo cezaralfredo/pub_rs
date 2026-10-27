@@ -4,6 +4,8 @@ const path = require('path');
 const express = require('express');
 const { runPipeline, loadClientConfig } = require('./src/pipeline');
 const { detectAvailableProviders, testLlmConnection } = require('./src/llm');
+const { suggestTopicIdeas, ARCHETYPES } = require('./src/topicSynthesizer');
+const { STYLE_DESCRIPTIONS } = require('./src/imageGen');
 const { validatePublicUrl, sanitizeIdentifier, safePathResolve } = require('./src/security/validator');
 const { maskClientSecrets, mergeClientSecrets } = require('./src/security/masker');
 const { dispatchToClientChannels, publishToWebhook, testChannelConnection } = require('./src/publisher');
@@ -16,9 +18,28 @@ const {
   clearCompleted,
   startBackgroundWorker
 } = require('./src/queue');
+const {
+  initUserStore,
+  findUserByEmail,
+  createUser,
+  verifyPassword,
+  sanitizeUser,
+  incrementUserUsage,
+  checkUserQuota,
+  updateUser
+} = require('./src/security/userStore');
+const {
+  generateToken,
+  requireAuth,
+  requireAdmin,
+  loginRateLimiter
+} = require('./src/security/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Inicializa a base de dados de usuários do SaaS (cria admin se não existir)
+initUserStore();
 
 // Middleware de Segurança e Headers
 app.use((req, res, next) => {
@@ -37,7 +58,7 @@ function rateLimiter(req, res, next) {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
   const now = Date.now();
   const windowMs = 5 * 60 * 1000;
-  const maxRequests = 40;
+  const maxRequests = 60;
 
   const userStats = rateLimitMap.get(ip) || { count: 0, firstRequest: now };
 
@@ -60,6 +81,87 @@ function rateLimiter(req, res, next) {
 }
 
 // ---------------------------------------------------------------------------
+// 0. AUTENTICAÇÃO E GESTÃO SAAS (AUTH & TENANCY)
+// ---------------------------------------------------------------------------
+
+// Login com email e senha
+app.post('/api/auth/login', loginRateLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+    }
+
+    const user = findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha.' });
+    }
+
+    const isMatch = await verifyPassword(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Credenciais inválidas. Verifique seu e-mail e senha.' });
+    }
+
+    const token = generateToken(user);
+    res.json({
+      success: true,
+      message: 'Login realizado com sucesso!',
+      token,
+      user: sanitizeUser(user)
+    });
+  } catch (err) {
+    console.error('[AUTH LOGIN ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Registro de Nova Conta / Tenant
+app.post('/api/auth/register', loginRateLimiter, async (req, res) => {
+  try {
+    const { name, email, password, company, plan } = req.body || {};
+    const newUser = await createUser({ name, email, password, company, plan });
+    const token = generateToken(newUser);
+
+    res.status(201).json({
+      success: true,
+      message: 'Conta criada com sucesso!',
+      token,
+      user: newUser
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Perfil do Usuário Autenticado
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({
+    success: true,
+    user: req.user
+  });
+});
+
+// Atualizar Perfil do Usuário
+app.put('/api/auth/profile', requireAuth, async (req, res) => {
+  try {
+    const { name, company, newPassword } = req.body || {};
+    const updated = await updateUser(req.user.id, { name, company, newPassword });
+    res.json({
+      success: true,
+      message: 'Perfil atualizado com sucesso!',
+      user: updated
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Logout (para conformidade de sessão)
+app.post('/api/auth/logout', (req, res) => {
+  res.json({ success: true, message: 'Sessão encerrada com sucesso.' });
+});
+
+// ---------------------------------------------------------------------------
 // 1. ROTAS DE ESTADO E INFORMAÇÕES
 // ---------------------------------------------------------------------------
 
@@ -72,15 +174,17 @@ app.get('/api/status', (req, res) => {
 
   res.json({
     name: 'pub_rs Studio',
-    version: '2.5.0',
+    version: '3.0.0',
     providers: detectAvailableProviders(),
     clients,
+    archetypes: ARCHETYPES,
+    visualStyles: STYLE_DESCRIPTIONS,
     hasImageGen: Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY)
   });
 });
 
 // Listar todos os clientes cadastrados (com segredos mascarados)
-app.get('/api/clients', (req, res) => {
+app.get('/api/clients', requireAuth, (req, res) => {
   const clientsDir = path.join(__dirname, 'config', 'clients');
   if (!fs.existsSync(clientsDir)) {
     return res.json([]);
@@ -100,7 +204,7 @@ app.get('/api/clients', (req, res) => {
 });
 
 // Obter detalhes de um cliente específico (mascarado)
-app.get('/api/clients/:id', (req, res) => {
+app.get('/api/clients/:id', requireAuth, (req, res) => {
   try {
     const safeId = sanitizeIdentifier(req.params.id);
     const clientsDir = path.join(__dirname, 'config', 'clients');
@@ -118,7 +222,7 @@ app.get('/api/clients/:id', (req, res) => {
 });
 
 // Cadastrar ou atualizar cliente (com fusão segura de tokens e segredos)
-app.post('/api/clients', (req, res) => {
+app.post('/api/clients', requireAuth, (req, res) => {
   try {
     const clientData = req.body;
     if (!clientData || !clientData.id || !clientData.brandName) {
@@ -147,6 +251,24 @@ app.post('/api/clients', (req, res) => {
       name: merged.name || merged.brandName,
       brandName: merged.brandName,
       brandHandle: merged.brandHandle || '',
+      niche: merged.niche || '',
+      contentPillars: Array.isArray(merged.contentPillars)
+        ? merged.contentPillars
+        : (typeof merged.contentPillars === 'string'
+          ? merged.contentPillars.split('\n').map(s => s.trim()).filter(Boolean)
+          : []),
+      visualIdentity: {
+        style: merged.visualIdentity?.style || 'dark-cinematic',
+        preferredColors: Array.isArray(merged.visualIdentity?.preferredColors)
+          ? merged.visualIdentity.preferredColors
+          : ['#0052FF', '#0A0E17', '#00D2FF'],
+        brandBadgePosition: merged.visualIdentity?.brandBadgePosition || 'top-right'
+      },
+      negativeKeywords: Array.isArray(merged.negativeKeywords)
+        ? merged.negativeKeywords
+        : (typeof merged.negativeKeywords === 'string'
+          ? merged.negativeKeywords.split(',').map(s => s.trim()).filter(Boolean)
+          : []),
       tone: merged.tone || 'Profissional e estratégico',
       targetAudience: merged.targetAudience || 'Profissionais e tomadores de decisão',
       llm: {
@@ -206,7 +328,7 @@ app.post('/api/clients', (req, res) => {
 });
 
 // Deletar cliente
-app.delete('/api/clients/:id', (req, res) => {
+app.delete('/api/clients/:id', requireAuth, (req, res) => {
   try {
     const safeId = sanitizeIdentifier(req.params.id);
     if (safeId === 'default' || safeId === 'anaue-design') {
@@ -227,7 +349,7 @@ app.delete('/api/clients/:id', (req, res) => {
 });
 
 // Testar conexão de LLM ou Canais do Cliente salvo
-app.post('/api/clients/:id/test-connection', async (req, res) => {
+app.post('/api/clients/:id/test-connection', requireAuth, async (req, res) => {
   try {
     const safeId = sanitizeIdentifier(req.params.id);
     const clientsDir = path.join(__dirname, 'config', 'clients');
@@ -269,7 +391,7 @@ app.post('/api/clients/:id/test-connection', async (req, res) => {
 });
 
 // Testar conexão de LLM diretamente com dados do formulário da UI
-app.post('/api/clients/test-llm-direct', async (req, res) => {
+app.post('/api/clients/test-llm-direct', requireAuth, async (req, res) => {
   try {
     const { provider, apiKey, model, baseUrl, clientId } = req.body || {};
     let realApiKey = apiKey;
@@ -301,7 +423,7 @@ app.post('/api/clients/test-llm-direct', async (req, res) => {
 });
 
 // Testar canal de rede social diretamente com dados do formulário da UI
-app.post('/api/clients/test-channel-direct', async (req, res) => {
+app.post('/api/clients/test-channel-direct', requireAuth, async (req, res) => {
   try {
     const { channel, config, clientId } = req.body || {};
     let testConfig = { ...(config || {}) };
@@ -336,7 +458,7 @@ app.post('/api/clients/test-channel-direct', async (req, res) => {
 // ---------------------------------------------------------------------------
 
 // Listar todos os trabalhos na fila de background
-app.get('/api/queue', (req, res) => {
+app.get('/api/queue', requireAuth, (req, res) => {
   try {
     const jobs = getJobs();
     res.json(jobs);
@@ -346,7 +468,7 @@ app.get('/api/queue', (req, res) => {
 });
 
 // Enfileirar pacote para publicação imediata ou agendada em background
-app.post('/api/queue', rateLimiter, (req, res) => {
+app.post('/api/queue', requireAuth, rateLimiter, (req, res) => {
   try {
     const { packageId, clientId, scheduledFor, targetChannels } = req.body || {};
 
@@ -375,7 +497,7 @@ app.post('/api/queue', rateLimiter, (req, res) => {
 });
 
 // Repetir disparo de um trabalho da fila
-app.post('/api/queue/:id/retry', (req, res) => {
+app.post('/api/queue/:id/retry', requireAuth, (req, res) => {
   try {
     const job = retryJob(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job não encontrado na fila.' });
@@ -386,7 +508,7 @@ app.post('/api/queue/:id/retry', (req, res) => {
 });
 
 // Cancelar agendamento de um trabalho da fila
-app.delete('/api/queue/:id', (req, res) => {
+app.delete('/api/queue/:id', requireAuth, (req, res) => {
   try {
     const job = cancelJob(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job não encontrado na fila.' });
@@ -397,7 +519,7 @@ app.delete('/api/queue/:id', (req, res) => {
 });
 
 // Limpar trabalhos concluídos ou cancelados
-app.post('/api/queue/clear-completed', (req, res) => {
+app.post('/api/queue/clear-completed', requireAuth, (req, res) => {
   try {
     const result = clearCompleted();
     res.json({ success: true, ...result });
@@ -411,7 +533,7 @@ app.post('/api/queue/clear-completed', (req, res) => {
 // ---------------------------------------------------------------------------
 
 // Publicar pacote diretamente nos canais do cliente
-app.post('/api/packages/:packageId/publish', rateLimiter, async (req, res) => {
+app.post('/api/packages/:packageId/publish', requireAuth, rateLimiter, async (req, res) => {
   try {
     const safePackageId = sanitizeIdentifier(req.params.packageId);
     const { targetChannels } = req.body || {};
@@ -455,7 +577,7 @@ app.post('/api/packages/:packageId/publish', rateLimiter, async (req, res) => {
 });
 
 // Obter logs de despacho de um pacote
-app.get('/api/packages/:packageId/dispatch-log', (req, res) => {
+app.get('/api/packages/:packageId/dispatch-log', requireAuth, (req, res) => {
   try {
     const safePackageId = sanitizeIdentifier(req.params.packageId);
     const outputBase = path.join(__dirname, 'output');
@@ -477,7 +599,7 @@ app.get('/api/packages/:packageId/dispatch-log', (req, res) => {
 // ---------------------------------------------------------------------------
 
 // Listar pacotes salvos em output/
-app.get('/api/packages', (req, res) => {
+app.get('/api/packages', requireAuth, (req, res) => {
   const outputBase = path.join(__dirname, 'output');
   if (!fs.existsSync(outputBase)) {
     return res.json([]);
@@ -517,7 +639,7 @@ app.get('/api/packages', (req, res) => {
 });
 
 // Obter detalhes de um pacote salvo
-app.get('/api/packages/:packageId', (req, res) => {
+app.get('/api/packages/:packageId', requireAuth, (req, res) => {
   try {
     const safePackageId = sanitizeIdentifier(req.params.packageId);
     const outputBase = path.join(__dirname, 'output');
@@ -562,6 +684,24 @@ app.get('/api/packages/:packageId', (req, res) => {
   }
 });
 
+// Deletar pacote salvo do histórico
+app.delete('/api/packages/:packageId', requireAuth, (req, res) => {
+  try {
+    const safePackageId = sanitizeIdentifier(req.params.packageId);
+    const outputBase = path.join(__dirname, 'output');
+    const packageDir = safePathResolve(outputBase, safePackageId);
+
+    if (!fs.existsSync(packageDir)) {
+      return res.status(404).json({ error: 'Pacote não encontrado.' });
+    }
+
+    fs.rmSync(packageDir, { recursive: true, force: true });
+    res.json({ success: true, message: `Pacote ${safePackageId} removido com sucesso.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Servir arquivos de imagem gerados com segurança
 app.get('/api/media/:packageId/:filename', (req, res) => {
   try {
@@ -592,25 +732,67 @@ app.get('/api/media/:packageId/:filename', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. EXECUÇÃO DO PIPELINE
+// 4. EXECUÇÃO DO PIPELINE & IDEAÇÃO DE PAUTAS
 // ---------------------------------------------------------------------------
 
-// Execução padrão via POST JSON
-app.post('/api/generate', rateLimiter, async (req, res) => {
+// Sugerir ideias de pautas com base nos interesses/pilares do cliente (AI Brainstorming)
+app.post('/api/topics/suggest', requireAuth, rateLimiter, async (req, res) => {
   try {
-    const { url, clientId, provider, model, aiImage } = req.body;
+    const { clientId, count, provider, model } = req.body || {};
+    const safeClientId = clientId ? sanitizeIdentifier(clientId) : 'anaue-design';
+    const client = loadClientConfig(safeClientId);
 
-    if (!url) {
-      return res.status(400).json({ error: 'A URL do artigo é obrigatória.' });
+    console.log(`\n💡 [AI BRAINSTORMING] Gerando sugestões de pautas para "${client.name || client.brandName}"...`);
+    const result = await suggestTopicIdeas(client, {
+      count: parseInt(count, 10) || 4,
+      provider,
+      model
+    });
+
+    res.json({
+      success: true,
+      clientId: client.id,
+      ...result
+    });
+  } catch (err) {
+    console.error('[TOPIC SUGGEST ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Execução padrão via POST JSON
+app.post('/api/generate', requireAuth, rateLimiter, async (req, res) => {
+  try {
+    // Validação de cota do plano SaaS
+    const quotaCheck = checkUserQuota(req.user.id);
+    if (!quotaCheck.allowed) {
+      return res.status(403).json({ error: quotaCheck.error, code: 'QUOTA_EXCEEDED' });
+    }
+
+    const { mode = 'url', url, topic, archetype, visualStyle, clientId, provider, model, aiImage } = req.body;
+    const isTopicMode = mode === 'topic' || (Boolean(topic) && !url);
+
+    if (!isTopicMode && !url) {
+      return res.status(400).json({ error: 'A URL do artigo é obrigatória para o modo por URL.' });
+    }
+    if (isTopicMode && (!topic || !topic.trim())) {
+      return res.status(400).json({ error: 'O tema/tópico é obrigatório para o modo por interesses.' });
     }
 
     const result = await runPipeline({
+      mode: isTopicMode ? 'topic' : 'url',
       url,
+      topic,
+      archetype,
+      visualStyle,
       clientId: clientId || 'anaue-design',
       provider,
       model,
       aiImage: Boolean(aiImage)
     });
+
+    // Incrementa o uso mensal do plano do usuário
+    incrementUserUsage(req.user.id);
 
     res.json({
       success: true,
@@ -628,11 +810,21 @@ app.post('/api/generate', rateLimiter, async (req, res) => {
 });
 
 // Execução em tempo real com streaming SSE (Server-Sent Events)
-app.get('/api/generate/stream', rateLimiter, async (req, res) => {
-  const { url, clientId, provider, model, aiImage } = req.query;
+app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
+  // Validação de cota do plano SaaS
+  const quotaCheck = checkUserQuota(req.user.id);
+  if (!quotaCheck.allowed) {
+    return res.status(403).json({ error: quotaCheck.error, code: 'QUOTA_EXCEEDED' });
+  }
 
-  if (!url) {
-    return res.status(400).json({ error: 'A URL do artigo é obrigatória.' });
+  const { mode = 'url', url, topic, archetype, visualStyle, clientId, provider, model, aiImage } = req.query;
+  const isTopicMode = mode === 'topic' || (Boolean(topic) && !url);
+
+  if (!isTopicMode && !url) {
+    return res.status(400).json({ error: 'A URL do artigo é obrigatória para o modo por URL.' });
+  }
+  if (isTopicMode && (!topic || !topic.trim())) {
+    return res.status(400).json({ error: 'O tema/tópico é obrigatório para o modo por interesses.' });
   }
 
   // Configuração SSE
@@ -647,10 +839,18 @@ app.get('/api/generate/stream', rateLimiter, async (req, res) => {
   };
 
   try {
-    sendEvent('progress', { step: 0, status: 'started', message: 'Iniciando automação...' });
+    sendEvent('progress', {
+      step: 0,
+      status: 'started',
+      message: isTopicMode ? 'Iniciando criação a partir de interesses...' : 'Iniciando automação por URL...'
+    });
 
     const result = await runPipeline({
+      mode: isTopicMode ? 'topic' : 'url',
       url,
+      topic,
+      archetype,
+      visualStyle,
       clientId: clientId || 'anaue-design',
       provider,
       model,
@@ -659,6 +859,9 @@ app.get('/api/generate/stream', rateLimiter, async (req, res) => {
         sendEvent('progress', progress);
       }
     });
+
+    // Incrementa cota do plano do usuário ao finalizar com sucesso
+    incrementUserUsage(req.user.id);
 
     sendEvent('done', {
       success: true,

@@ -1,18 +1,40 @@
 /**
  * Módulo de Geração de Imagens via IA (DALL-E 3 e Google Imagen 3)
- * Cria ilustrações e fotos conceituais de alta definição a partir do título e contexto do artigo.
+ * Cria ilustrações, fotos conceituais e renders 3D de alta definição alinhados
+ * à identidade visual da marca e aos interesses/tópicos do cliente.
  */
+
+const STYLE_DESCRIPTIONS = {
+  'dark-cinematic': 'Dark moody cinematic atmosphere, deep obsidian and charcoal background, dramatic volumetric rim lighting, subtle neon cyan or electric blue glows, ultra-high-definition 8k cinematic composition, sleek depth of field.',
+  'minimalist-3d': 'Clean minimalist 3D isometric render, smooth matte clay textures, floating geometric shapes, frosted glass details, soft studio ambient lighting, elegant contemporary design inspired by Apple and Stripe aesthetics.',
+  'corporate-photo': 'Prestigious editorial business photography, authentic modern high-tech workspace, natural directional window light, shallow depth of field, candid executive posture, shot on Hasselblad 100mm lens.',
+  'tech-vector': 'Sleek futuristic digital vector illustration, refined network nodes and data flow connections, sophisticated enterprise tech gradients, clean isometric technology architecture.'
+};
 
 /**
  * Constrói um prompt visual editorial otimizado para geradores de imagem.
  */
-function buildVisualPrompt(title, description, client) {
-  const brandTone = client?.tone || 'Modern, clean and professional';
-  const cleanTitle = (title || 'Innovation and Technology').replace(/["\n\r]/g, ' ').trim();
-  const cleanDesc = (description || '').slice(0, 200).replace(/["\n\r]/g, ' ').trim();
+function buildVisualPrompt(title, description, client = {}, options = {}) {
+  const cleanTitle = (title || 'Innovation and Strategy').replace(/["\n\r]/g, ' ').trim();
+  const cleanDesc = (description || '').slice(0, 240).replace(/["\n\r]/g, ' ').trim();
+  const visualHint = (options.visualPromptHint || '').replace(/["\n\r]/g, ' ').trim();
 
-  // Prompt estruturado em inglês para máxima aderência estética dos modelos de imagem
-  return `A high-end, award-winning editorial conceptual visual representing: "${cleanTitle}". Context: ${cleanDesc || 'Future of technology, strategy and modern business'}. Style: minimalist, elegant corporate aesthetic, 3D modern geometric elements or premium editorial photography, soft cinematic studio lighting, balanced composition, vibrant yet sophisticated color grading. IMPORTANT: Absolutely NO text, NO typography, NO words, NO letters, NO watermarks. 16:9 aspect ratio.`;
+  // Determina o estilo visual selecionado ou o padrão do cliente
+  const requestedStyle = options.visualStyle || options.style || client.visualIdentity?.style || 'dark-cinematic';
+  const stylePrompt = STYLE_DESCRIPTIONS[requestedStyle] || STYLE_DESCRIPTIONS['dark-cinematic'];
+
+  // Cores da marca
+  const colors = client.visualIdentity?.preferredColors;
+  const colorHint = Array.isArray(colors) && colors.length > 0
+    ? `Color grading featuring subtle accents of ${colors.join(', ')}.`
+    : '';
+
+  // Cena visual principal (usa dica conceitual sintetizada se houver)
+  const sceneDescription = visualHint 
+    ? `Conceptual visual scene: ${visualHint}. Core theme: "${cleanTitle}".`
+    : `Conceptual visual representation of: "${cleanTitle}". Narrative context: ${cleanDesc || 'Modern business strategy, technological innovation and future market impact'}.`;
+
+  return `Award-winning high-end editorial conceptual artwork. ${sceneDescription} Style aesthetic: ${stylePrompt} ${colorHint} Masterpiece composition, perfectly balanced, volumetric soft studio lighting, ultra-detailed textures. CRITICAL CONSTRAINT: Absolutely NO text, NO typography, NO letters, NO words, NO logos, NO watermarks, NO interface elements. Aspect ratio 16:9.`.trim();
 }
 
 /**
@@ -99,16 +121,17 @@ async function generateImagen(prompt, apiKey, model = 'imagen-3.0-generate-002')
  * Tenta gerar a imagem via IA utilizando o melhor provedor configurado.
  */
 async function generateAiImageIfPossible({ title, description, client, options = {} }) {
-  const prompt = buildVisualPrompt(title, description, client);
+  const prompt = buildVisualPrompt(title, description, client, options);
 
-  const preferredProvider = (options.provider || process.env.IMAGE_PROVIDER || '').toLowerCase();
-  const openAiKey = process.env.OPENAI_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const preferredProvider = (options.imageProvider || options.provider || process.env.IMAGE_PROVIDER || '').toLowerCase();
+  const clientKey = client?.llm?.apiKey;
+  const openAiKey = (client?.llm?.provider === 'openai' && clientKey) ? clientKey : process.env.OPENAI_API_KEY;
+  const geminiKey = (client?.llm?.provider === 'gemini' && clientKey) ? clientKey : process.env.GEMINI_API_KEY;
 
-  // Se preferir OpenAI explicitamente ou se tiver chave da OpenAI
+  // 1. Se preferir OpenAI explicitamente ou se tiver chave da OpenAI
   if ((preferredProvider === 'openai' || !geminiKey) && openAiKey) {
     try {
-      console.log(`   🎨 [DALL-E 3] Solicitando geração de imagem para a OpenAI...`);
+      console.log(`   🎨 [DALL-E 3] Solicitando geração de arte alinhada ao estilo "${options.visualStyle || client?.visualIdentity?.style || 'dark-cinematic'}"...`);
       return await generateDallE(prompt, openAiKey, options.imageModel || process.env.IMAGE_MODEL || 'dall-e-3');
     } catch (err) {
       console.warn(`   ⚠️ [DALL-E Erro] ${err.message}.`);
@@ -120,10 +143,10 @@ async function generateAiImageIfPossible({ title, description, client, options =
     }
   }
 
-  // Se tiver chave do Google Gemini / Imagen
+  // 2. Se tiver chave do Google Gemini / Imagen
   if (geminiKey) {
     try {
-      console.log(`   🎨 [Google Imagen 3] Solicitando geração de imagem conceitual...`);
+      console.log(`   🎨 [Google Imagen 3] Solicitando geração de arte no estilo "${options.visualStyle || client?.visualIdentity?.style || 'dark-cinematic'}"...`);
       return await generateImagen(prompt, geminiKey, options.imageModel || process.env.IMAGE_MODEL || 'imagen-3.0-generate-002');
     } catch (err) {
       console.warn(`   ⚠️ [Imagen Erro] ${err.message}.`);
@@ -139,6 +162,7 @@ async function generateAiImageIfPossible({ title, description, client, options =
 }
 
 module.exports = {
+  STYLE_DESCRIPTIONS,
   buildVisualPrompt,
   generateAiImageIfPossible,
   generateDallE,

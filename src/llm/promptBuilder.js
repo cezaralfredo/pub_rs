@@ -1,5 +1,6 @@
 /**
  * Constrói o prompt padrão e diretrizes para qualquer provedor de LLM.
+ * Suporta modo clássico (Artigo Web/URL) e novo modo autoral (Interesses/Tópicos do Cliente).
  */
 function buildCopywriterPrompt(article, client) {
   const brandName = client.name || client.brandName || 'Marca';
@@ -8,19 +9,32 @@ function buildCopywriterPrompt(article, client) {
   const audience = client.targetAudience || 'Profissionais, gestores e tomadores de decisão';
   const hashtags = Array.isArray(client.defaultHashtags) ? client.defaultHashtags : [];
   const cta = client.callToAction || 'Qual a sua visão sobre esse tema? Deixe nos comentários:';
-  const commentTpl = client.commentTemplate || '👉 Acesse o artigo completo e todos os dados aqui: {URL}';
+  const commentTpl = client.commentTemplate || '👉 Acesse o conteúdo completo e todos os dados aqui: {URL}';
+  const negativeKeywords = Array.isArray(client.negativeKeywords) ? client.negativeKeywords : [];
 
-  const systemInstructions = `Você é um estrategista sênior de Marketing de Conteúdo, Copywriting e Social Media Omnichannel.
-Sua missão é transformar um artigo publicado na web em um pacote de alta conversão para 6 redes sociais:
-1. LinkedIn (post executivo, reflexivo, focado em tomadores de decisão. NÃO inclua links no corpo do post!).
-2. Instagram Feed (formato carrossel/retrato com gancho magnético, 3-4 lições escaneáveis, chamada para comentar para receber link no direct ou visitar a bio).
-3. Instagram Stories (texto curto/teaser para figurinha de link).
-4. X (Twitter) (thread de exatamente 3 tweets concisos, com gancho, síntese e link no 3º tweet).
-5. Threads (post conversacional, ágil, sem jargões corporativos pesados, com pergunta instigante).
-6. Facebook (post editorial completo, persuasivo e explicativo).
+  const isTopic = Boolean(article.isTopicMode);
+  const archetype = article.archetype || 'dica';
+
+  const contextDescription = isTopic
+    ? `um TEMA ESTRATÉGICO AUTORAL (${article.title}) alinhado aos pilares de interesse da marca (Arquétipo: "${archetype}")`
+    : `um artigo publicado na web ("${article.title}")`;
+
+  const negativeDirective = negativeKeywords.length > 0
+    ? `PALAVRAS E EXPRESSÕES ESTRITAMENTE PROIBIDAS (NÃO utilize de forma alguma): ${JSON.stringify(negativeKeywords)}`
+    : '';
+
+  const systemInstructions = `Você é um estrategista sênior de Marketing de Conteúdo, Copywriting e Social Media Omnichannel de nível internacional.
+Sua missão é transformar ${contextDescription} em um pacote de alta conversão, autoridade e engajamento para 6 redes sociais:
+
+1. LinkedIn (post executivo, reflexivo, com storytelling ou framework claro, focado em tomadores de decisão. NÃO inclua links no corpo do post!).
+2. Instagram Feed (formato carrossel/retrato com gancho magnético nos primeiros 100 caracteres, 3-4 lições escaneáveis, chamada para comentar para receber link no direct ou visitar a bio).
+3. Instagram Stories (texto curto, teaser instigante com chamada para figurinha de link/interação).
+4. X (Twitter) (thread magnética de exatamente 3 tweets concisos: Gancho de impacto no 1º, desenvolvimento e dados no 2º, conclusão com link {TWITTER_URL} no 3º).
+5. Threads (post conversacional, ágil, sem jargões corporativos pesados, com pergunta instigante no final).
+6. Facebook (post editorial persuasivo, explicativo e completo com link {FACEBOOK_URL}).
 
 IMPORTANTE SOBRE LINKS / UTMS:
-Onde houver indicação de link para ler o artigo, use EXATAMENTE os seguintes marcadores especiais para que o sistema injete os parâmetros UTM corretos:
+Onde houver indicação de link, use EXATAMENTE os seguintes marcadores para que o sistema injete os parâmetros UTM corretos:
 - {LINKEDIN_URL}
 - {INSTAGRAM_URL}
 - {STORIES_URL}
@@ -28,7 +42,9 @@ Onde houver indicação de link para ler o artigo, use EXATAMENTE os seguintes m
 - {THREADS_URL}
 - {FACEBOOK_URL}
 
-No LinkedIn e Instagram Feed, produza também o texto do "primeiro comentário" com o link ({LINKEDIN_URL} e {INSTAGRAM_URL}).
+No LinkedIn e Instagram Feed, produza também o texto do "primeiro comentário" contendo o link correspondente ({LINKEDIN_URL} e {INSTAGRAM_URL}).
+
+${negativeDirective}
 
 RETORNO ESTRITAMENTE EM JSON:
 Você DEVE responder EXCLUSIVAMENTE um objeto JSON válido, sem texto introdutório e sem explicações antes ou depois.
@@ -60,7 +76,7 @@ Estrutura exigida:
   }
 }`;
 
-  const userContent = `=== ARTIGO BASE ===
+  const userContent = `=== CONTEÚDO BASE (${isTopic ? 'TÓPICO AUTORAL DO CLIENTE' : 'ARTIGO WEB'}) ===
 Título: "${article.title}"
 Descrição/Resumo: "${article.description || 'Não especificado'}"
 Subtítulos/Seções: ${JSON.stringify(article.headings || [])}
@@ -69,9 +85,9 @@ Trechos Relevantes:
 """
 ${article.fullTextSnippet || (article.paragraphs && article.paragraphs.slice(0, 5).join('\n\n')) || ''}
 """
-URL Original: "${article.canonicalUrl || article.url}"
+URL / Destino: "${article.canonicalUrl || article.url}"
 
-=== DIRETRIZES DO CLIENTE ===
+=== DIRETRIZES DA MARCA ===
 Nome da Marca: "${brandName}"
 Handle/Arroba: "${brandHandle}"
 Tom de Voz: "${tone}"

@@ -9,20 +9,26 @@ Aplicação independente e multi-cliente desenvolvida para transformar qualquer 
 No terminal, dentro da pasta `e:\Projetos\pub_rs`:
 
 ```bash
-# Ajuda e listagem de clientes e provedores disponíveis
+# Ajuda e listagem de opções, clientes e provedores disponíveis
 node index.js --help
 
-# Uso padrão com cliente padrão (Anauê Design)
-node index.js --url https://anauedesign.com.br/blog/midia-paga-roi-real-atribuicao-first-party-data.html
+# 1. Modo Clássico: A partir de URL de Artigo publicado
+node index.js --url https://anauedesign.com.br/blog/artigo.html --client anaue-design
+
+# 2. Modo Autoral: A partir de Interesses/Pautas do Cliente (Topic-to-Post)
+node index.js --topic "O Fim dos Cookies de Terceiros e o ROI de Mídia Paga" --client anaue-design --archetype opiniao --style dark-cinematic
+
+# 3. Brainstorming Inteligente com IA: Sugestão de pautas baseadas nos pilares do cliente
+node index.js --client anaue-design --suggest-topics
 
 # Escolhendo o provedor de IA via CLI (ex: Groq, Anthropic, OpenAI ou Gemini)
-node index.js --url https://seusite.com/artigo --provider groq --model llama-3.3-70b-versatile
-node index.js --url https://seusite.com/artigo --provider anthropic --model claude-3-5-sonnet-20241022
-node index.js --url https://seusite.com/artigo --provider openai --model gpt-4o-mini
-node index.js --url https://seusite.com/artigo --provider gemini --model gemini-2.5-flash
+node index.js --topic "Tendências de IA no B2B" --provider groq --model llama-3.3-70b-versatile
+node index.js --topic "Estratégias de CRO" --provider anthropic --model claude-3-5-sonnet-20241022
+node index.js --topic "Core Web Vitals" --provider openai --model gpt-4o-mini
+node index.js --topic "First-Party Data" --provider gemini --model gemini-2.5-flash
 
 # Uso com LLM local via Ollama (zero custo e 100% privado)
-node index.js --url https://seusite.com/artigo --provider ollama --model llama3
+node index.js --topic "Segurança de Dados" --provider ollama --model llama3
 ```
 
 ---
@@ -147,4 +153,31 @@ Acesse no navegador: **`http://localhost:3001`**
 3. **Studio Interativo de Copies & Mídias:**
    - Pré-visualização de copies adaptadas por canal, contador de caracteres, suporte a primeiro comentário para engajamento e threads completas.
    - Galeria com download em 1 clique das artes cortadas em WebP e JPG para todos os formatos (16:9, 4:5, 1:1, 9:16).
+
+---
+
+## 🔒 Arquitetura SaaS & Segurança Corporativa
+
+O `pub_rs Studio` conta com uma infraestrutura multi-tenant completa para operação em modelo SaaS:
+
+### 1. Autenticação & Sessões
+- **Página de Acesso:** Interface em glassmorphism dark-theme (`/login.html`) com suporte a Login e Cadastro com alternância de abas.
+- **JWT (JSON Web Tokens):** Assinatura com algoritmo HS256, expiração de 7 dias e suporte tanto a cabeçalhos `Authorization: Bearer <token>` quanto a query params `?token=<token>` (para streaming em tempo real via Server-Sent Events).
+- **Criptografia de Senhas:** Hashing unidirecional com salt de 10 rounds via `bcryptjs`.
+- **Proteção Anti-Força Bruta:** Rate limiter inteligente bloqueando IPs após 10 tentativas com falha em janela de 15 minutos.
+
+### 2. Planos e Quotas de Geração
+Os limites são controlados e reiniciados automaticamente mês a mês:
+
+| Plano | Cota Mensal | Limite de Clientes | Perfil Ideal |
+| :--- | :--- | :--- | :--- |
+| **Starter** | 50 gerações/mês | Até 2 marcas | Criadores de conteúdo solo e pequenas empresas |
+| **Pro Creator** | 200 gerações/mês | Até 10 marcas | Consultores, social media managers e PMEs |
+| **Agency Enterprise** | 1.000 gerações/mês | Até 50 marcas | Agências de publicidade e times de marketing de grande escala |
+
+### 3. Credenciais Padrão do Administrador (Demo)
+- **E-mail:** `admin@pubrs.com`
+- **Senha:** `admin123`
+- *Dica:* Na tela de login, há um botão de 1 clique **"⚡ Preencher Acesso"** para testes rápidos de avaliação.
+
 

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  pub_rs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pub_rs:latest
+    container_name: pub_rs
+    restart: unless-stopped
+    ports:
+      - "3002:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+    volumes:
+      - pub_rs_data:/app/data
+      - pub_rs_clients:/app/config/clients
+      - pub_rs_output:/app/output
+    networks:
+      - npm
+
+volumes:
+  pub_rs_data:
+  pub_rs_clients:
+  pub_rs_output:
+
+networks:
+  npm:
+    external: true
+    name: ${NPM_NETWORK:-nginx-proxy_default}

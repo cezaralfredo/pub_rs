@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Acesso — pub_rs Studio SaaS</title>
+  <meta name="description" content="Acesse o pub_rs Studio, a plataforma SaaS de automação multicanal de conteúdo e redes sociais com IA.">
+  
+  <!-- Google Fonts: Outfit, Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Estilos específicos da página de Login SaaS */
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      background: radial-gradient(circle at 15% 20%, rgba(0, 82, 255, 0.15) 0%, transparent 45%),
+                  radial-gradient(circle at 85% 80%, rgba(0, 210, 255, 0.12) 0%, transparent 50%),
+                  #070a12;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 1020px;
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 2rem;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 2.5rem;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7),
+                  0 0 40px -10px rgba(0, 82, 255, 0.25);
+      position: relative;
+      z-index: 2;
+    }
+
+    @media (max-width: 860px) {
+      .auth-container {
+        grid-template-columns: 1fr;
+        padding: 1.75rem;
+      }
+      .auth-hero-panel {
+        display: none;
+      }
+    }
+
+    /* Painel Lateral de Destaque */
+    .auth-hero-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      padding-right: 2.5rem;
+    }
+
+    .hero-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .hero-brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0052ff, #00d2ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(0, 82, 255, 0.35);
+    }
+
+    .hero-brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-brand-pill {
+      font-size: 0.65rem;
+      background: rgba(0, 82, 255, 0.2);
+      border: 1px solid rgba(0, 82, 255, 0.4);
+      color: #38bdf8;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      font-weight: 700;
+      margin-left: 0.4rem;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-tagline {
+      margin-top: 2rem;
+    }
+
+    .hero-tagline h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #fff;
+      margin-bottom: 0.85rem;
+    }
+
+    .hero-tagline p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .hero-features {
+      list-style: none;
+      padding: 0;
+      margin: 2rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+
+    .hero-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .feat-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(0, 82, 255, 0.18);
+      border: 1px solid rgba(0, 82, 255, 0.35);
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+    }
+
+    .hero-stats-row {
+      display: flex;
+      gap: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stat-item-num {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+
+    .stat-item-lbl {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Painel do Formulário */
+    .auth-form-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 0.35rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 1.75rem;
+    }
+
+    .auth-tab-btn {
+      flex: 1;
+      padding: 0.65rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .auth-tab-btn.active {
+      background: linear-gradient(135deg, #0052ff, #0077ff);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 82, 255, 0.3);
+    }
+
+    .auth-demo-banner {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px dashed rgba(56, 189, 248, 0.4);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .auth-demo-text {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      line-height: 1.35;
+    }
+
+    .auth-demo-text strong {
+      color: #38bdf8;
+    }
+
+    .btn-fill-demo {
+      padding: 0.4rem 0.85rem;
+      font-size: 0.78rem;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .btn-fill-demo:hover {
+      background: rgba(56, 189, 248, 0.3);
+      color: #fff;
+    }
+
+    .auth-form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .auth-form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #cbd5e1;
+      margin-bottom: 0.4rem;
+    }
+
+    .auth-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .auth-input-wrap svg.input-icon {
+      position: absolute;
+      left: 1rem;
+      color: #64748b;
+      pointer-events: none;
+    }
+
+    .auth-input {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 0.75rem 2.8rem 0.75rem 2.75rem;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.92rem;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .auth-input:focus {
+      border-color: #0052ff;
+      background: rgba(15, 23, 42, 0.95);
+      box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.25);
+    }
+
+    .auth-input.no-icon {
+      padding-left: 1rem;
+    }
+
+    .btn-toggle-pwd {
+      position: absolute;
+      right: 0.75rem;
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s;
+    }
+
+    .btn-toggle-pwd:hover {
+      color: #cbd5e1;
+    }
+
+    .plan-selector-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+      margin-top: 0.5rem;
+    }
+
+    .plan-card-opt {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 0.75rem 0.5rem;
+      background: rgba(15, 23, 42, 0.6);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .plan-card-opt:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    .plan-card-opt.selected {
+      border-color: #0052ff;
+      background: rgba(0, 82, 255, 0.15);
+      box-shadow: 0 0 12px rgba(0, 82, 255, 0.25);
+    }
+
+    .plan-opt-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .plan-opt-limit {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-top: 0.2rem;
+    }
+
+    .btn-auth-submit {
+      width: 100%;
+      padding: 0.85rem;
+      background: linear-gradient(135deg, #0052ff, #00d2ff);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 82, 255, 0.35);
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+
+    .btn-auth-submit:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 25px rgba(0, 82, 255, 0.45);
+      filter: brightness(1.08);
+    }
+
+    .btn-auth-submit:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .auth-alert {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+
+    .auth-alert.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .auth-alert.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #6ee7b7;
+    }
+
+    .auth-security-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      margin-top: 1.75rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sec-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body class="dark-theme auth-page">
+
+  <div class="auth-container">
+    
+    <!-- Painel Lateral: Branding e Proposta de Valor -->
+    <div class="auth-hero-panel">
+      <div>
+        <div class="hero-brand">
+          <div class="hero-brand-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 11a9 9 0 0 1 9 9"></path>
+              <path d="M4 4a16 16 0 0 1 16 16"></path>
+              <circle cx="5" cy="19" r="1"></circle>
+            </svg>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <span class="hero-brand-title">pub_rs</span>
+            <span class="hero-brand-pill">ENTERPRISE SAAS</span>
+          </div>
+        </div>
+
+        <div class="hero-tagline">
+          <h2>Distribuição Autônoma de Conteúdo com IA</h2>
+          <p>Potencialize sua marca com publicações profissionais para LinkedIn, Instagram, Telegram, Twitter e Buffer geradas em segundos com inteligência artificial de ponta.</p>
+        </div>
+
+        <ul class="hero-features">
+          <li>
+            <div class="feat-icon">⚡</div>
+            <span><strong>Transformação Imediata:</strong> Extraia sínteses e copies completas a partir de qualquer link da web ou tema livre.</span>
+          </li>
+          <li>
+            <div class="feat-icon">🎨</div>
+            <span><strong>Imagens de Alta Conversão:</strong> Criação visual automática em múltiplos formatos (16:9, 1:1 e 9:16) no padrão da sua marca.</span>
+          </li>
+          <li>
+            <div class="feat-icon">📡</div>
+            <span><strong>Omnichannel Simultâneo:</strong> Dispare para múltiplos canais instantaneamente ou agende para os melhores horários.</span>
+          </li>
+          <li>
+            <div class="feat-icon">🔒</div>
+            <span><strong>Segurança Corporativa:</strong> Criptografia de ponta a ponta com JWT, Bcrypt e proteção contra ataques de força bruta.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="hero-stats-row">
+        <div>
+          <div class="stat-item-num">100%</div>
+          <div class="stat-item-lbl">Autônomo</div>
+        </div>
+        <div>
+          <div class="stat-item-num">&lt; 45s</div>
+          <div class="stat-item-lbl">Tempo Médio</div>
+        </div>
+        <div>
+          <div class="stat-item-num">6+ Redes</div>
+          <div class="stat-item-lbl">Integradas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel Principal de Acesso (Login / Cadastro) -->
+    <div class="auth-form-panel">
+      
+      <!-- Alternador de Abas -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="tab-login" onclick="switchAuthTab('login')">
+          Fazer Login
+        </button>
+        <button type="button" class="auth-tab-btn" id="tab-register" onclick="switchAuthTab('register')">
+          Criar Conta SaaS
+        </button>
+      </div>
+
+      <!-- Banner de Demonstração / Preenchimento Rápido -->
+      <div class="auth-demo-banner" id="demo-banner">
+        <div class="auth-demo-text">
+          <strong>Acesso Administrador:</strong> admin@pubrs.com / admin123
+        </div>
+        <button type="button" class="btn-fill-demo" onclick="fillDemoCredentials()">
+          ⚡ Preencher Acesso
+        </button>
+      </div>
+
+      <!-- Mensagens de Feedback (Alertas) -->
+      <div id="auth-alert" class="auth-alert"></div>
+
+      <!-- FORMULÁRIO DE LOGIN -->
+      <form id="form-login" onsubmit="handleLoginSubmit(event)">
+        <div class="auth-form-group">
+          <label for="login-email">E-mail Corporativo</label>
+          <div class="auth-input-wrap">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <input type="email" id="login-email" class="auth-input" placeholder="seu.email@empresa.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label for="login-password">Senha</label>
+          <div class="auth-input-wrap">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="password" id="login-password" class="auth-input" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="btn-toggle-pwd" onclick="togglePasswordVisibility('login-password', this)" title="Mostrar/ocultar senha">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="btn-auth-submit">
+          <span>Acessar Plataforma</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </form>
+
+      <!-- FORMULÁRIO DE REGISTRO / CRIAR CONTA -->
+      <form id="form-register" style="display: none;" onsubmit="handleRegisterSubmit(event)">
+        <div class="auth-form-group">
+          <label for="reg-name">Nome Completo</label>
+          <div class="auth-input-wrap">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <input type="text" id="reg-name" class="auth-input" placeholder="Ex: Cezar Alfredo" required>
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label for="reg-email">E-mail Profissional</label>
+          <div class="auth-input-wrap">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <input type="email" id="reg-email" class="auth-input" placeholder="contato@minhaempresa.com" required>
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label for="reg-company">Empresa / Agência</label>
+          <div class="auth-input-wrap">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            <input type="text" id="reg-company" class="auth-input" placeholder="Ex: Anauê Design Studio">
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label for="reg-password">Senha (mínimo 6 caracteres)</label>
+          <div class="auth-input-wrap">
+            <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="password" id="reg-password" class="auth-input" placeholder="••••••••" required minlength="6">
+            <button type="button" class="btn-toggle-pwd" onclick="togglePasswordVisibility('reg-password', this)" title="Mostrar/ocultar senha">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="auth-form-group">
+          <label>Selecione seu Plano</label>
+          <div class="plan-selector-grid">
+            <div class="plan-card-opt" onclick="selectPlan('starter', this)">
+              <div class="plan-opt-name">Starter</div>
+              <div class="plan-opt-limit">50 posts/mês</div>
+            </div>
+            <div class="plan-card-opt selected" onclick="selectPlan('pro', this)">
+              <div class="plan-opt-name">Pro</div>
+              <div class="plan-opt-limit">200 posts/mês</div>
+            </div>
+            <div class="plan-card-opt" onclick="selectPlan('agency', this)">
+              <div class="plan-opt-name">Agency</div>
+              <div class="plan-opt-limit">1000 posts/mês</div>
+            </div>
+          </div>
+          <input type="hidden" id="reg-plan" value="pro">
+        </div>
+
+        <button type="submit" id="btn-reg-submit" class="btn-auth-submit">
+          <span>Criar Minha Conta</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </form>
+
+      <!-- Selos de Segurança da Plataforma -->
+      <div class="auth-security-badges">
+        <div class="sec-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>JWT Seguro</span>
+        </div>
+        <div class="sec-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Bcrypt Hash</span>
+        </div>
+        <div class="sec-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span>Rate Limit Ativo</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // Se o usuário já possuir token válido, redireciona direto para o Studio
+    (async function checkExistingAuth() {
+      const token = localStorage.getItem('pub_rs_token');
+      if (token) {
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            window.location.href = '/index.html';
+          } else {
+            localStorage.removeItem('pub_rs_token');
+            localStorage.removeItem('pub_rs_user');
+          }
+        } catch {
+          // Permanece na tela de login se houver falha de rede
+        }
+      }
+    })();
+
+    // Alternador de Abas (Login / Cadastro)
+    function switchAuthTab(tab) {
+      const tabLogin = document.getElementById('tab-login');
+      const tabRegister = document.getElementById('tab-register');
+      const formLogin = document.getElementById('form-login');
+      const formRegister = document.getElementById('form-register');
+      const demoBanner = document.getElementById('demo-banner');
+      hideAlert();
+
+      if (tab === 'login') {
+        tabLogin.classList.add('active');
+        tabRegister.classList.remove('active');
+        formLogin.style.display = 'block';
+        formRegister.style.display = 'none';
+        demoBanner.style.display = 'flex';
+      } else {
+        tabLogin.classList.remove('active');
+        tabRegister.classList.add('active');
+        formLogin.style.display = 'none';
+        formRegister.style.display = 'block';
+        demoBanner.style.display = 'none';
+      }
+    }
+
+    // Preencher dados padrão de Administrador
+    function fillDemoCredentials() {
+      document.getElementById('login-email').value = 'admin@pubrs.com';
+      document.getElementById('login-password').value = 'admin123';
+      showAlert('Credenciais padrão de administrador preenchidas. Clique em "Acessar Plataforma"!', 'success');
+    }
+
+    // Seleção de Plano no Cadastro
+    function selectPlan(planKey, el) {
+      document.querySelectorAll('.plan-card-opt').forEach(card => card.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('reg-plan').value = planKey;
+    }
+
+    // Toggle para visualizar/ocultar senha
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+      } else {
+        input.type = 'password';
+        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+      }
+    }
+
+    // Exibir Alerta
+    function showAlert(msg, type = 'error') {
+      const alertEl = document.getElementById('auth-alert');
+      alertEl.textContent = msg;
+      alertEl.className = `auth-alert ${type}`;
+    }
+
+    function hideAlert() {
+      const alertEl = document.getElementById('auth-alert');
+      alertEl.className = 'auth-alert';
+      alertEl.style.display = 'none';
+    }
+
+    // Submissão do Login
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      hideAlert();
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('btn-login-submit');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>Autenticando...</span>';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Falha ao autenticar.');
+        }
+
+        // Armazena token e informações da sessão
+        localStorage.setItem('pub_rs_token', data.token);
+        localStorage.setItem('pub_rs_user', JSON.stringify(data.user));
+
+        showAlert('Login realizado com sucesso! Redirecionando para o Studio...', 'success');
+        setTimeout(() => {
+          window.location.href = '/index.html';
+        }, 600);
+      } catch (err) {
+        showAlert(err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = `<span>Acessar Plataforma</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+      }
+    }
+
+    // Submissão do Cadastro
+    async function handleRegisterSubmit(e) {
+      e.preventDefault();
+      hideAlert();
+
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const company = document.getElementById('reg-company').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const plan = document.getElementById('reg-plan').value;
+      const btn = document.getElementById('btn-reg-submit');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>Criando conta...</span>';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, company, plan })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Erro ao criar conta.');
+        }
+
+        localStorage.setItem('pub_rs_token', data.token);
+        localStorage.setItem('pub_rs_user', JSON.stringify(data.user));
+
+        showAlert('Conta criada com sucesso! Bem-vindo ao pub_rs Studio.', 'success');
+        setTimeout(() => {
+          window.location.href = '/index.html';
+        }, 700);
+      } catch (err) {
+        showAlert(err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = `<span>Criar Minha Conta</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+      }
+    }
+  </script>
+</body>
+</html>
