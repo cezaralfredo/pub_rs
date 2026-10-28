@@ -1,3 +1,6 @@
-﻿node_modules/
+node_modules/
 .env
 output/
+data/queue.json
+data/rss_history.json
+

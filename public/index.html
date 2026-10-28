@@ -65,6 +65,13 @@
           <span class="nav-label">Criar / Studio</span>
         </button>
 
+        <button type="button" class="sidebar-nav-item" id="btn-nav-calendar" title="Calendário Editorial Interativo">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </span>
+          <span class="nav-label">Calendário</span>
+        </button>
+
         <button type="button" class="sidebar-nav-item" id="btn-history" title="Histórico de Pacotes">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -1147,6 +1154,89 @@
       </section>
     </div> <!-- /#view-history -->
 
+    <!-- ========================================================================= -->
+    <!-- VIEW 4: CALENDÁRIO EDITORIAL INTERATIVO (FASE 2)                         -->
+    <!-- ========================================================================= -->
+    <div id="view-calendar" class="page-view hidden">
+      <section class="calendar-canvas">
+
+        <!-- Header Expandido do Calendário (Clean, sem caixa/gaveta) -->
+        <div class="calendar-header-wrap">
+          <div class="calendar-titles">
+            <h1 class="hero-title">Calendário <span class="gradient-text">Editorial</span></h1>
+            <p class="hero-subtitle">Planeje e visualize a grade de publicação omnichannel, slots de pico de engajamento e monitoramento autônomo de RSS.</p>
+          </div>
+
+          <!-- Ações do Calendário: Navegação, Filtros e Ingestão RSS -->
+          <div class="calendar-header-actions">
+            <div class="calendar-nav-group">
+              <button type="button" class="btn-ghost-sm" id="btn-calendar-prev" title="Mês anterior">◀</button>
+              <button type="button" class="btn-ghost-sm" id="btn-calendar-today" title="Ir para o mês atual">Hoje</button>
+              <button type="button" class="btn-ghost-sm" id="btn-calendar-next" title="Próximo mês">▶</button>
+              <span class="calendar-month-indicator" id="calendar-current-month-label">Carregando...</span>
+            </div>
+
+            <div class="calendar-filter-box">
+              <label for="calendar-client-filter" class="visually-hidden">Filtrar por Cliente</label>
+              <select id="calendar-client-filter" class="client-dropdown" title="Filtrar calendário por marca">
+                <option value="all">Todas as Marcas</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn-secondary-action" id="btn-rss-check-now" title="Verificar novos artigos nos feeds RSS das marcas agora (Zero-Click)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>
+              <span id="rss-check-label">Verificar RSS</span>
+            </button>
+
+            <button type="button" class="btn-ghost-sm" id="btn-calendar-back-studio" title="Voltar ao Estúdio de Criação">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              <span>Voltar ao Studio</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Métricas Rápidas do Mês + Status do Ingestor RSS -->
+        <div class="calendar-stats-bar">
+          <div class="calendar-stat-card">
+            <span class="stat-number" id="cal-stat-total">0</span>
+            <span class="stat-label">Publicações no Mês</span>
+          </div>
+          <div class="calendar-stat-card">
+            <span class="stat-number highlight-scheduled" id="cal-stat-scheduled">0</span>
+            <span class="stat-label">Agendados na Fila</span>
+          </div>
+          <div class="calendar-stat-card">
+            <span class="stat-number highlight-published" id="cal-stat-published">0</span>
+            <span class="stat-label">Já Publicados</span>
+          </div>
+          <div class="calendar-stat-card rss-info-card">
+            <div class="rss-status-badge">
+              <span class="rss-dot active"></span>
+              <span class="rss-title">Monitoramento Zero-Click RSS</span>
+            </div>
+            <span class="stat-subtext" id="rss-status-text">Ativo (feeds a cada 30 min)</span>
+          </div>
+        </div>
+
+        <!-- Grade Visual do Calendário (7 colunas) -->
+        <div class="calendar-content-card glass-panel">
+          <div class="calendar-weekdays-header">
+            <span>Dom</span>
+            <span>Seg</span>
+            <span>Ter</span>
+            <span>Qua</span>
+            <span>Qui</span>
+            <span>Sex</span>
+            <span>Sáb</span>
+          </div>
+          <div class="calendar-grid-cells" id="calendar-grid-cells">
+            <!-- Células geradas via Javascript -->
+          </div>
+        </div>
+
+      </section>
+    </div> <!-- /#view-calendar -->
+
   </main>
     </div> <!-- /.app-main-area -->
   </div> <!-- /.app-layout -->
@@ -1211,13 +1301,37 @@
 
         <!-- Input de Agendamento (aparece quando modo schedule ativo) -->
         <div id="schedule-datetime-wrap" class="form-field hidden" style="margin-top: 14px;">
-          <label for="publish-schedule-time" class="field-label">Data e Hora do Disparo</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+            <label for="publish-schedule-time" class="field-label" style="margin: 0;">Data e Hora do Disparo</label>
+            <button type="button" id="btn-smart-slot" class="btn-smart-slot-action" title="Calcular e selecionar automaticamente o próximo horário de pico de engajamento para a marca">
+              ✨ Horário Ideal (Smart Slot)
+            </button>
+          </div>
           <input type="datetime-local" id="publish-schedule-time" class="field-input">
+          <small id="smart-slot-hint" class="field-hint" style="display: none; margin-top: 6px; font-size: 0.8rem;"></small>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-ghost" id="btn-cancel-publish-dialog">Cancelar</button>
         <button type="button" class="btn-primary-action" id="btn-confirm-publish">Confirmar Envio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: DETALHES DO EVENTO NO CALENDÁRIO                                   -->
+  <!-- ========================================================================= -->
+  <div id="modal-calendar-event" class="modal-overlay hidden">
+    <div class="modal-dialog glass-panel" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="cal-modal-title">Publicação no Calendário</h3>
+        <button class="modal-close" id="btn-close-calendar-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="cal-modal-body">
+        <!-- Preenchido dinamicamente via JS -->
+      </div>
+      <div class="modal-footer" id="cal-modal-footer">
+        <button type="button" class="btn-ghost" id="btn-dismiss-calendar-modal">Fechar</button>
       </div>
     </div>
   </div>

@@ -56,7 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedModalClientId: null,
     historyPackages: [],
     historySearchTerm: '',
-    historyFilterClient: ''
+    historyFilterClient: '',
+    calendar: {
+      currentYear: new Date().getFullYear(),
+      currentMonth: new Date().getMonth() + 1,
+      selectedClient: 'all',
+      events: [],
+      metrics: { total: 0, scheduled: 0, published: 0 }
+    }
   };
 
   // Elementos do DOM
@@ -170,6 +177,27 @@ document.addEventListener('DOMContentLoaded', () => {
     viewStudio: document.getElementById('view-studio'),
     viewManagement: document.getElementById('view-management'),
     viewHistory: document.getElementById('view-history'),
+    viewCalendar: document.getElementById('view-calendar'),
+    btnNavCalendar: document.getElementById('btn-nav-calendar'),
+    btnCalendarBackStudio: document.getElementById('btn-calendar-back-studio'),
+    btnCalendarPrev: document.getElementById('btn-calendar-prev'),
+    btnCalendarToday: document.getElementById('btn-calendar-today'),
+    btnCalendarNext: document.getElementById('btn-calendar-next'),
+    calendarMonthIndicator: document.getElementById('calendar-current-month-label'),
+    calendarClientFilter: document.getElementById('calendar-client-filter'),
+    calendarGridCells: document.getElementById('calendar-grid-cells'),
+    calStatTotal: document.getElementById('cal-stat-total'),
+    calStatScheduled: document.getElementById('cal-stat-scheduled'),
+    calStatPublished: document.getElementById('cal-stat-published'),
+    btnRssCheckNow: document.getElementById('btn-rss-check-now'),
+    rssCheckLabel: document.getElementById('rss-check-label'),
+    rssStatusText: document.getElementById('rss-status-text'),
+    btnSmartSlot: document.getElementById('btn-smart-slot'),
+    modalCalendarEvent: document.getElementById('modal-calendar-event'),
+    calModalTitle: document.getElementById('cal-modal-title'),
+    calModalBody: document.getElementById('cal-modal-body'),
+    btnCloseCalendarModal: document.getElementById('btn-close-calendar-modal'),
+    btnDismissCalendarModal: document.getElementById('btn-dismiss-calendar-modal'),
     btnBackToStudio: document.getElementById('btn-back-to-studio'),
     btnHistoryBackStudio: document.getElementById('btn-history-back-studio'),
     btnRefreshHistory: document.getElementById('btn-refresh-history'),
@@ -299,6 +327,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (elements.modalClientSelect) {
         elements.modalClientSelect.innerHTML = optionsHtml;
       }
+      if (elements.calendarClientFilter) {
+        elements.calendarClientFilter.innerHTML = '<option value="all">Todas as Marcas</option>' +
+          clients.map(c => `<option value="${c.id}">${c.name || c.brandName}</option>`).join('');
+      }
 
       elements.topClientSelect.addEventListener('change', (e) => {
         elements.formClientSelect.value = e.target.value;
@@ -323,9 +355,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewStudio = elements.viewStudio || document.getElementById('view-studio');
     const viewManagement = elements.viewManagement || document.getElementById('view-management');
     const viewHistory = elements.viewHistory || document.getElementById('view-history');
+    const viewCalendar = elements.viewCalendar || document.getElementById('view-calendar');
     const badge = elements.workspaceBadge || document.querySelector('.workspace-badge');
     const btnNavStudio = document.getElementById('btn-nav-studio');
     const btnNavQueue = document.getElementById('btn-nav-queue');
+    const btnNavCalendar = document.getElementById('btn-nav-calendar');
     const btnManageClients = document.getElementById('btn-manage-clients');
     const btnHistory = elements.btnHistory || document.getElementById('btn-history');
 
@@ -335,18 +369,29 @@ document.addEventListener('DOMContentLoaded', () => {
       if (viewStudio) viewStudio.classList.remove('hidden');
       if (viewManagement) viewManagement.classList.add('hidden');
       if (viewHistory) viewHistory.classList.add('hidden');
+      if (viewCalendar) viewCalendar.classList.add('hidden');
       if (btnNavStudio) btnNavStudio.classList.add('active');
       if (badge) badge.textContent = 'ESTÚDIO DE CRIAÇÃO';
+    } else if (viewName === 'calendar') {
+      if (viewStudio) viewStudio.classList.add('hidden');
+      if (viewManagement) viewManagement.classList.add('hidden');
+      if (viewHistory) viewHistory.classList.add('hidden');
+      if (viewCalendar) viewCalendar.classList.remove('hidden');
+      if (btnNavCalendar) btnNavCalendar.classList.add('active');
+      if (badge) badge.textContent = 'CALENDÁRIO EDITORIAL & AGENDAMENTO';
+      loadCalendarEvents();
     } else if (viewName === 'history') {
       if (viewStudio) viewStudio.classList.add('hidden');
       if (viewManagement) viewManagement.classList.add('hidden');
       if (viewHistory) viewHistory.classList.remove('hidden');
+      if (viewCalendar) viewCalendar.classList.add('hidden');
       if (btnHistory) btnHistory.classList.add('active');
       if (badge) badge.textContent = 'HISTÓRICO DE PUBLICAÇÕES';
       loadHistory();
     } else if (viewName === 'management' || viewName === 'queue' || viewName === 'clients') {
       if (viewStudio) viewStudio.classList.add('hidden');
       if (viewHistory) viewHistory.classList.add('hidden');
+      if (viewCalendar) viewCalendar.classList.add('hidden');
       if (viewManagement) viewManagement.classList.remove('hidden');
 
       if (viewName === 'queue' || subTabId === 'cl-tab-queue') {
@@ -892,6 +937,58 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('queue', 'cl-tab-queue');
         loadQueueJobs();
       });
+    }
+
+    // Item de navegação: Calendário Editorial (Fase 2)
+    const btnNavCalendar = document.getElementById('btn-nav-calendar');
+    if (btnNavCalendar) {
+      btnNavCalendar.addEventListener('click', () => {
+        switchView('calendar');
+      });
+    }
+
+    // Botão Voltar ao Studio do Calendário
+    if (elements.btnCalendarBackStudio) {
+      elements.btnCalendarBackStudio.addEventListener('click', () => {
+        switchView('studio');
+      });
+    }
+
+    // Navegação do Calendário (Mês Anterior, Próximo e Hoje)
+    if (elements.btnCalendarPrev) {
+      elements.btnCalendarPrev.addEventListener('click', () => changeCalendarMonth(-1));
+    }
+    if (elements.btnCalendarNext) {
+      elements.btnCalendarNext.addEventListener('click', () => changeCalendarMonth(1));
+    }
+    if (elements.btnCalendarToday) {
+      elements.btnCalendarToday.addEventListener('click', () => goToCalendarToday());
+    }
+
+    // Filtro por Cliente no Calendário
+    if (elements.calendarClientFilter) {
+      elements.calendarClientFilter.addEventListener('change', (e) => {
+        state.calendar.selectedClient = e.target.value;
+        loadCalendarEvents();
+      });
+    }
+
+    // Botão Checagem de RSS Zero-Click
+    if (elements.btnRssCheckNow) {
+      elements.btnRssCheckNow.addEventListener('click', handleRssCheckNow);
+    }
+
+    // Botão Smart Slot no modal de publicação
+    if (elements.btnSmartSlot) {
+      elements.btnSmartSlot.addEventListener('click', fillSmartSlot);
+    }
+
+    // Modal de detalhes do evento do calendário
+    if (elements.btnCloseCalendarModal) {
+      elements.btnCloseCalendarModal.addEventListener('click', closeCalendarModal);
+    }
+    if (elements.btnDismissCalendarModal) {
+      elements.btnDismissCalendarModal.addEventListener('click', closeCalendarModal);
     }
 
     // Atalho rápido de histórico na topbar
@@ -2118,6 +2215,365 @@ document.addEventListener('DOMContentLoaded', () => {
       window.scrollTo({ top: elements.resultsStudio?.offsetTop || 0, behavior: 'smooth' });
     } catch (err) {
       showToast(err.message, 'error');
+    }
+  }
+
+  // ===========================================================================
+  // 9.5. CALENDÁRIO EDITORIAL INTERATIVO & RSS ZERO-CLICK (FASE 2)
+  // ===========================================================================
+  function changeCalendarMonth(delta) {
+    let nextMonth = state.calendar.currentMonth + delta;
+    let nextYear = state.calendar.currentYear;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear += 1;
+    } else if (nextMonth < 1) {
+      nextMonth = 12;
+      nextYear -= 1;
+    }
+    state.calendar.currentMonth = nextMonth;
+    state.calendar.currentYear = nextYear;
+    loadCalendarEvents();
+  }
+
+  function goToCalendarToday() {
+    const now = new Date();
+    state.calendar.currentMonth = now.getMonth() + 1;
+    state.calendar.currentYear = now.getFullYear();
+    loadCalendarEvents();
+  }
+
+  async function loadCalendarEvents() {
+    if (!elements.calendarGridCells) return;
+
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    if (elements.calendarMonthIndicator) {
+      elements.calendarMonthIndicator.textContent = `${monthNames[state.calendar.currentMonth - 1]} ${state.calendar.currentYear}`;
+    }
+
+    elements.calendarGridCells.innerHTML = `
+      <div class="calendar-loading-state" style="grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--text-muted);">
+        <p>Carregando publicações do calendário editorial...</p>
+      </div>
+    `;
+
+    try {
+      const qs = new URLSearchParams({
+        year: state.calendar.currentYear,
+        month: state.calendar.currentMonth,
+        clientId: state.calendar.selectedClient
+      });
+      const res = await authFetch(`/api/calendar/events?${qs.toString()}`);
+      if (!res.ok) throw new Error('Falha ao carregar eventos do calendário.');
+      const data = await res.json();
+
+      state.calendar.events = data.events || [];
+      state.calendar.metrics = data.metrics || { total: 0, scheduled: 0, published: 0 };
+
+      if (elements.calStatTotal) elements.calStatTotal.textContent = state.calendar.metrics.total;
+      if (elements.calStatScheduled) elements.calStatScheduled.textContent = state.calendar.metrics.scheduled;
+      if (elements.calStatPublished) elements.calStatPublished.textContent = state.calendar.metrics.published;
+
+      renderCalendarGrid();
+    } catch (err) {
+      elements.calendarGridCells.innerHTML = `
+        <div class="calendar-loading-state" style="grid-column: 1 / -1; padding: 30px; text-align: center; color: var(--accent-rose);">
+          <p>Erro ao carregar calendário: ${escapeHtml(err.message)}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderCalendarGrid() {
+    if (!elements.calendarGridCells) return;
+    const year = state.calendar.currentYear;
+    const month = state.calendar.currentMonth;
+
+    const firstDayIndex = new Date(year, month - 1, 1).getDay(); // 0 = Domingo, 6 = Sábado
+    const daysInCurrentMonth = new Date(year, month, 0).getDate();
+    const daysInPrevMonth = new Date(year, month - 1, 0).getDate();
+
+    const today = new Date();
+    const isCurrentMonthActual = today.getFullYear() === year && (today.getMonth() + 1) === month;
+    const todayDate = today.getDate();
+
+    let cellsHtml = '';
+
+    // Células do mês anterior (padding)
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const prevDayNum = daysInPrevMonth - i;
+      cellsHtml += `
+        <div class="calendar-day-cell calendar-cell-other-month">
+          <div class="calendar-day-header">
+            <span class="calendar-day-num">${prevDayNum}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Mapeamento dos eventos por dia
+    const eventsByDay = {};
+    (state.calendar.events || []).forEach(evt => {
+      if (!evt.date) return;
+      const d = new Date(evt.date);
+      if (d.getFullYear() === year && (d.getMonth() + 1) === month) {
+        const day = d.getDate();
+        if (!eventsByDay[day]) eventsByDay[day] = [];
+        eventsByDay[day].push(evt);
+      }
+    });
+
+    // Células do mês corrente
+    for (let day = 1; day <= daysInCurrentMonth; day++) {
+      const isToday = isCurrentMonthActual && day === todayDate;
+      const dayEvents = eventsByDay[day] || [];
+
+      let eventsHtml = '';
+      if (dayEvents.length > 0) {
+        eventsHtml = dayEvents.map(evt => {
+          const isScheduled = evt.status === 'scheduled';
+          const isPublished = evt.status === 'published';
+          const badgeClass = isScheduled ? 'cal-event-scheduled' : (isPublished ? 'cal-event-published' : 'cal-event-draft');
+
+          let timeStr = '';
+          if (evt.date) {
+            const dt = new Date(evt.date);
+            timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          }
+
+          // Ícones dos canais
+          const channelIconsMap = {
+            webhook: '⚡',
+            telegram: '✈️',
+            linkedin: '💼',
+            twitter: '🐦',
+            x: '🐦',
+            buffer: '📅',
+            meta: '📸',
+            instagram: '📸'
+          };
+          const channelsIcons = (evt.targetChannels || ['multicanal']).map(ch => channelIconsMap[ch.toLowerCase()] || '🌐').slice(0, 3).join('');
+
+          return `
+            <div class="calendar-event-card ${badgeClass}" data-event-id="${escapeHtml(evt.id || '')}" title="${escapeHtml(evt.title)}">
+              <div class="calendar-event-top">
+                <span class="cal-event-time">${timeStr}</span>
+                <span class="cal-event-channels">${channelsIcons}</span>
+              </div>
+              <div class="cal-event-title">${escapeHtml(evt.title || 'Sem título')}</div>
+              <div class="cal-event-client">🏢 ${escapeHtml(evt.client || 'Marca')}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      cellsHtml += `
+        <div class="calendar-day-cell ${isToday ? 'is-today' : ''}" data-day="${day}">
+          <div class="calendar-day-header">
+            <span class="calendar-day-num">${day}</span>
+            ${isToday ? '<span class="today-tag">Hoje</span>' : ''}
+            ${dayEvents.length > 0 ? `<span class="day-events-count">${dayEvents.length}</span>` : ''}
+          </div>
+          <div class="calendar-day-events">
+            ${eventsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    // Preenche o final da última semana para manter a grade alinhada (múltiplo de 7)
+    const totalCellsSoFar = firstDayIndex + daysInCurrentMonth;
+    const remainingCells = (7 - (totalCellsSoFar % 7)) % 7;
+    for (let day = 1; day <= remainingCells; day++) {
+      cellsHtml += `
+        <div class="calendar-day-cell calendar-cell-other-month">
+          <div class="calendar-day-header">
+            <span class="calendar-day-num">${day}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    elements.calendarGridCells.innerHTML = cellsHtml;
+
+    // Vincula clique nos cards de evento para abrir modal de detalhes
+    elements.calendarGridCells.querySelectorAll('.calendar-event-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const eventId = card.getAttribute('data-event-id');
+        const found = (state.calendar.events || []).find(ev => ev.id === eventId);
+        if (found) {
+          openCalendarEventModal(found);
+        }
+      });
+    });
+  }
+
+  function openCalendarEventModal(event) {
+    if (!elements.modalCalendarEvent) return;
+
+    const isScheduled = event.status === 'scheduled';
+    const isPublished = event.status === 'published';
+    const dateFormatted = event.date ? new Date(event.date).toLocaleString('pt-BR') : 'Data não informada';
+
+    const channelsBadges = (event.targetChannels || ['Todos os configurados']).map(ch => 
+      `<span class="cl-badge cl-badge-active" style="text-transform: capitalize;">${escapeHtml(ch)}</span>`
+    ).join(' ');
+
+    if (elements.calModalTitle) {
+      elements.calModalTitle.textContent = isScheduled ? '📅 Publicação Agendada' : '📦 Publicação Concluída';
+    }
+
+    if (elements.calModalBody) {
+      elements.calModalBody.innerHTML = `
+        <div class="cal-modal-detail-wrap" style="display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <h4 style="margin: 0 0 6px 0; font-size: 1.15rem; color: var(--text-heading);">${escapeHtml(event.title || 'Sem título')}</h4>
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-muted);">
+              <span>🏢 Marca: <strong>${escapeHtml(event.client || 'default')}</strong></span>
+              <span>•</span>
+              <span>🕒 ${dateFormatted}</span>
+            </div>
+          </div>
+
+          <div style="background: var(--surface-secondary); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;">Canais de Distribuição</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              ${channelsBadges}
+            </div>
+          </div>
+
+          <div style="background: var(--surface-secondary); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;">Status de Execução</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="pill-dot ${isScheduled ? 'scheduled' : 'active'}"></span>
+              <span style="font-weight: 600; color: ${isScheduled ? 'var(--accent-amber)' : 'var(--accent-emerald)'};">
+                ${isScheduled ? 'Agendado na Fila de Background' : 'Publicado com Sucesso'}
+              </span>
+            </div>
+          </div>
+
+          ${event.packageId ? `
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+              <button type="button" class="btn-primary-action btn-cal-open-package" data-pkg-id="${escapeHtml(event.packageId)}" style="flex: 1;">
+                ⚡ Abrir no Estúdio
+              </button>
+              ${isScheduled ? `
+                <button type="button" class="btn-ghost btn-cal-go-queue" style="flex: 1;">
+                  ⏳ Ir para Fila
+                </button>
+              ` : ''}
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      // Ações dos botões dentro do modal
+      const btnOpenPkg = elements.calModalBody.querySelector('.btn-cal-open-package');
+      if (btnOpenPkg) {
+        btnOpenPkg.addEventListener('click', () => {
+          closeCalendarModal();
+          openPackageFromHistory(event.packageId);
+        });
+      }
+
+      const btnGoQueue = elements.calModalBody.querySelector('.btn-cal-go-queue');
+      if (btnGoQueue) {
+        btnGoQueue.addEventListener('click', () => {
+          closeCalendarModal();
+          switchView('queue', 'cl-tab-queue');
+          loadQueueJobs();
+        });
+      }
+    }
+
+    elements.modalCalendarEvent.classList.remove('hidden');
+  }
+
+  function closeCalendarModal() {
+    if (elements.modalCalendarEvent) {
+      elements.modalCalendarEvent.classList.add('hidden');
+    }
+  }
+
+  async function fillSmartSlot() {
+    if (!elements.btnSmartSlot || !elements.publishScheduleTime) return;
+
+    try {
+      elements.btnSmartSlot.disabled = true;
+      elements.btnSmartSlot.textContent = '⏳ Calculando pico...';
+
+      const clientId = elements.topClientSelect?.value || 'anaue-design';
+      const res = await authFetch(`/api/schedule/next-slot?clientId=${encodeURIComponent(clientId)}`);
+      const data = await res.json();
+
+      if (data.success && data.slot) {
+        const slotDate = new Date(data.slot.iso || data.slot.slotDate);
+        const tzOffset = slotDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(slotDate.getTime() - tzOffset)).toISOString().slice(0, 16);
+        elements.publishScheduleTime.value = localISOTime;
+
+        const hint = document.getElementById('smart-slot-hint');
+        if (hint) {
+          hint.style.display = 'block';
+          hint.textContent = `🎯 Slot Otimizado: ${data.slot.label} (${data.slot.recommendedChannel || 'Multicanal'})`;
+        }
+        showToast(`Slot inteligente selecionado: ${data.slot.label}!`, 'success');
+      } else {
+        showToast('Não foi possível calcular o próximo slot inteligente.', 'warning');
+      }
+    } catch (err) {
+      showToast(`Erro ao buscar slot inteligente: ${err.message}`, 'error');
+    } finally {
+      elements.btnSmartSlot.disabled = false;
+      elements.btnSmartSlot.textContent = '✨ Horário Ideal (Smart Slot)';
+    }
+  }
+
+  async function handleRssCheckNow() {
+    if (!elements.btnRssCheckNow) return;
+
+    try {
+      elements.btnRssCheckNow.disabled = true;
+      if (elements.rssCheckLabel) elements.rssCheckLabel.textContent = 'Verificando feeds...';
+
+      const clientId = state.calendar.selectedClient;
+      const res = await authFetch('/api/rss/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          force: true,
+          clientId: clientId && clientId !== 'all' ? clientId : undefined
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao checar feeds RSS');
+
+      const totalFound = (data.results || []).reduce((acc, r) => acc + (r.detected || 0), 0);
+      const totalEnqueued = (data.results || []).reduce((acc, r) => acc + (r.enqueued || 0), 0);
+
+      if (elements.rssStatusText) {
+        const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        elements.rssStatusText.textContent = `Última checagem: hoje às ${now} (${totalEnqueued} novos agendados)`;
+      }
+
+      if (totalEnqueued > 0) {
+        showToast(`✨ Zero-Click: ${totalEnqueued} novo(s) artigo(s) importados e agendados no calendário!`, 'success');
+        loadCalendarEvents();
+      } else if (totalFound > 0) {
+        showToast(`Feeds verificados: ${totalFound} artigos já processados anteriormente (anti-duplicidade ativo).`, 'info');
+      } else {
+        showToast('Nenhum artigo novo detectado nos feeds RSS dos clientes.', 'info');
+      }
+    } catch (err) {
+      showToast(`Erro na automação RSS: ${err.message}`, 'error');
+    } finally {
+      elements.btnRssCheckNow.disabled = false;
+      if (elements.rssCheckLabel) elements.rssCheckLabel.textContent = 'Verificar RSS';
     }
   }
 

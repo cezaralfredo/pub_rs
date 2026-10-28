@@ -19,6 +19,15 @@ const {
   startBackgroundWorker
 } = require('./src/queue');
 const {
+  getCalendarEvents,
+  getNextAvailableSlot
+} = require('./src/smartScheduler');
+const {
+  checkClientFeeds,
+  startRssWatcher,
+  loadRssHistory
+} = require('./src/rssWatcher');
+const {
   initUserStore,
   findUserByEmail,
   createUser,
@@ -529,6 +538,84 @@ app.post('/api/queue/clear-completed', requireAuth, (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// 2.5. CALENDÁRIO EDITORIAL INTELIGENTE & AUTOMAÇÃO RSS (FASE 2)
+// ---------------------------------------------------------------------------
+
+// Obter eventos consolidados do calendário (agendamentos futuros + histórico)
+app.get('/api/calendar/events', requireAuth, (req, res) => {
+  try {
+    const { year, month, clientId } = req.query;
+    const parsedYear = year ? parseInt(year, 10) : undefined;
+    const parsedMonth = month ? parseInt(month, 10) : undefined;
+
+    const data = getCalendarEvents({
+      year: parsedYear,
+      month: parsedMonth,
+      clientId: clientId && clientId !== 'all' ? clientId : undefined
+    });
+
+    res.json({
+      success: true,
+      ...data
+    });
+  } catch (err) {
+    console.error('[CALENDAR API ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sugerir o próximo horário de pico / ideal (Smart Scheduler)
+app.get('/api/schedule/next-slot', requireAuth, (req, res) => {
+  try {
+    const { clientId, preferredHour } = req.query;
+    const hour = preferredHour ? parseInt(preferredHour, 10) : undefined;
+
+    const slot = getNextAvailableSlot(clientId || 'anaue-design', hour);
+
+    res.json({
+      success: true,
+      slot
+    });
+  } catch (err) {
+    console.error('[SMART SCHEDULER ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Disparar checagem autônoma de RSS dos clientes (Zero-Click Ingestor)
+app.post('/api/rss/check', requireAuth, async (req, res) => {
+  try {
+    const { force, clientId } = req.body || {};
+    const result = await checkClientFeeds({
+      force: Boolean(force),
+      clientId: clientId && clientId !== 'all' ? clientId : undefined
+    });
+
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (err) {
+    console.error('[RSS CHECK API ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Obter status e histórico de execuções do RSS Watcher
+app.get('/api/rss/status', requireAuth, (req, res) => {
+  try {
+    const history = loadRssHistory();
+    res.json({
+      success: true,
+      ...history
+    });
+  } catch (err) {
+    console.error('[RSS STATUS API ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 3. DISPARO DIRETO E HISTÓRICO DE PACOTES GERADOS
 // ---------------------------------------------------------------------------
 
@@ -908,4 +995,8 @@ app.listen(PORT, () => {
 
   // Inicia o worker de publicação e agendamento em background
   startBackgroundWorker(25000);
+
+  // Inicia o Ingestor Autônomo de RSS / Sitemaps dos Clientes (Zero-Click)
+  const rssInterval = parseInt(process.env.RSS_INTERVAL_MINUTES, 10) || 30;
+  startRssWatcher(rssInterval);
 });
