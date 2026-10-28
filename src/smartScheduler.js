@@ -131,14 +131,16 @@ function getCalendarEvents({ year, month, clientId } = {}) {
           scheduledFor = linkedJob.scheduledFor;
         }
 
+        const targetDateObj = scheduledFor ? new Date(scheduledFor) : eventDate;
+
         events.push({
           id: `pkg_${dirName}`,
           packageId: dirName,
           title: payload.article?.title || dirName,
           client: pkgClientId,
           brandName: payload.brand || pkgClientId,
-          date: (scheduledFor || eventDate).toISOString(),
-          displayTime: new Date(scheduledFor || eventDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          date: targetDateObj.toISOString(),
+          displayTime: targetDateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           status, // 'published', 'scheduled', 'draft', 'failed'
           hasCarousel: Boolean(payload.carousel),
           targetChannels: linkedJob ? linkedJob.targetChannels : ['linkedin', 'instagram', 'twitter', 'facebook'],

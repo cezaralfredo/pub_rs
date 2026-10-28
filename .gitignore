@@ -3,4 +3,6 @@ node_modules/
 output/
 data/queue.json
 data/rss_history.json
+data/analytics_events.json
+
 

@@ -63,6 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedClient: 'all',
       events: [],
       metrics: { total: 0, scheduled: 0, published: 0 }
+    },
+    analytics: {
+      periodDays: 30,
+      selectedClient: 'all',
+      data: null,
+      selectedRecyclePackage: null
     }
   };
 
@@ -178,7 +184,25 @@ document.addEventListener('DOMContentLoaded', () => {
     viewManagement: document.getElementById('view-management'),
     viewHistory: document.getElementById('view-history'),
     viewCalendar: document.getElementById('view-calendar'),
+    viewAnalytics: document.getElementById('view-analytics'),
     btnNavCalendar: document.getElementById('btn-nav-calendar'),
+    btnNavAnalytics: document.getElementById('btn-nav-analytics'),
+    btnAnalyticsBackStudio: document.getElementById('btn-analytics-back-studio'),
+    analyticsPeriodSelect: document.getElementById('analytics-period-select'),
+    analyticsClientFilterSelect: document.getElementById('analytics-client-filter-select'),
+    btnExportAnalyticsCsv: document.getElementById('btn-export-analytics-csv'),
+    kpiTotalReach: document.getElementById('kpi-total-reach'),
+    kpiTotalClicks: document.getElementById('kpi-total-clicks'),
+    kpiAvgEngagement: document.getElementById('kpi-avg-engagement'),
+    kpiEvergreenCount: document.getElementById('kpi-evergreen-count'),
+    analyticsChannelsList: document.getElementById('analytics-channels-list'),
+    analyticsEvergreenList: document.getElementById('analytics-evergreen-list'),
+    analyticsTableBody: document.getElementById('analytics-table-body'),
+    modalRecyclePost: document.getElementById('modal-recycle-post'),
+    recycleModalBody: document.getElementById('recycle-modal-body'),
+    btnCloseRecycleModal: document.getElementById('btn-close-recycle-modal'),
+    btnCancelRecycle: document.getElementById('btn-cancel-recycle'),
+    btnConfirmRecycle: document.getElementById('btn-confirm-recycle'),
     btnCalendarBackStudio: document.getElementById('btn-calendar-back-studio'),
     btnCalendarPrev: document.getElementById('btn-calendar-prev'),
     btnCalendarToday: document.getElementById('btn-calendar-today'),
@@ -331,6 +355,10 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.calendarClientFilter.innerHTML = '<option value="all">Todas as Marcas</option>' +
           clients.map(c => `<option value="${c.id}">${c.name || c.brandName}</option>`).join('');
       }
+      if (elements.analyticsClientFilterSelect) {
+        elements.analyticsClientFilterSelect.innerHTML = '<option value="all">Todas as Marcas</option>' +
+          clients.map(c => `<option value="${c.id}">${c.name || c.brandName}</option>`).join('');
+      }
 
       elements.topClientSelect.addEventListener('change', (e) => {
         elements.formClientSelect.value = e.target.value;
@@ -356,10 +384,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewManagement = elements.viewManagement || document.getElementById('view-management');
     const viewHistory = elements.viewHistory || document.getElementById('view-history');
     const viewCalendar = elements.viewCalendar || document.getElementById('view-calendar');
+    const viewAnalytics = elements.viewAnalytics || document.getElementById('view-analytics');
     const badge = elements.workspaceBadge || document.querySelector('.workspace-badge');
     const btnNavStudio = document.getElementById('btn-nav-studio');
     const btnNavQueue = document.getElementById('btn-nav-queue');
     const btnNavCalendar = document.getElementById('btn-nav-calendar');
+    const btnNavAnalytics = document.getElementById('btn-nav-analytics');
     const btnManageClients = document.getElementById('btn-manage-clients');
     const btnHistory = elements.btnHistory || document.getElementById('btn-history');
 
@@ -370,21 +400,33 @@ document.addEventListener('DOMContentLoaded', () => {
       if (viewManagement) viewManagement.classList.add('hidden');
       if (viewHistory) viewHistory.classList.add('hidden');
       if (viewCalendar) viewCalendar.classList.add('hidden');
+      if (viewAnalytics) viewAnalytics.classList.add('hidden');
       if (btnNavStudio) btnNavStudio.classList.add('active');
       if (badge) badge.textContent = 'ESTÚDIO DE CRIAÇÃO';
     } else if (viewName === 'calendar') {
       if (viewStudio) viewStudio.classList.add('hidden');
       if (viewManagement) viewManagement.classList.add('hidden');
       if (viewHistory) viewHistory.classList.add('hidden');
+      if (viewAnalytics) viewAnalytics.classList.add('hidden');
       if (viewCalendar) viewCalendar.classList.remove('hidden');
       if (btnNavCalendar) btnNavCalendar.classList.add('active');
       if (badge) badge.textContent = 'CALENDÁRIO EDITORIAL & AGENDAMENTO';
       loadCalendarEvents();
+    } else if (viewName === 'analytics') {
+      if (viewStudio) viewStudio.classList.add('hidden');
+      if (viewManagement) viewManagement.classList.add('hidden');
+      if (viewHistory) viewHistory.classList.add('hidden');
+      if (viewCalendar) viewCalendar.classList.add('hidden');
+      if (viewAnalytics) viewAnalytics.classList.remove('hidden');
+      if (btnNavAnalytics) btnNavAnalytics.classList.add('active');
+      if (badge) badge.textContent = 'ANALYTICS & PERFORMANCE EDITORIAL';
+      loadAnalytics();
     } else if (viewName === 'history') {
       if (viewStudio) viewStudio.classList.add('hidden');
       if (viewManagement) viewManagement.classList.add('hidden');
-      if (viewHistory) viewHistory.classList.remove('hidden');
       if (viewCalendar) viewCalendar.classList.add('hidden');
+      if (viewAnalytics) viewAnalytics.classList.add('hidden');
+      if (viewHistory) viewHistory.classList.remove('hidden');
       if (btnHistory) btnHistory.classList.add('active');
       if (badge) badge.textContent = 'HISTÓRICO DE PUBLICAÇÕES';
       loadHistory();
@@ -392,6 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (viewStudio) viewStudio.classList.add('hidden');
       if (viewHistory) viewHistory.classList.add('hidden');
       if (viewCalendar) viewCalendar.classList.add('hidden');
+      if (viewAnalytics) viewAnalytics.classList.add('hidden');
       if (viewManagement) viewManagement.classList.remove('hidden');
 
       if (viewName === 'queue' || subTabId === 'cl-tab-queue') {
@@ -945,6 +988,51 @@ document.addEventListener('DOMContentLoaded', () => {
       btnNavCalendar.addEventListener('click', () => {
         switchView('calendar');
       });
+    }
+
+    // Item de navegação: Analytics & ROI (Fase 3)
+    const btnNavAnalytics = document.getElementById('btn-nav-analytics');
+    if (btnNavAnalytics) {
+      btnNavAnalytics.addEventListener('click', () => {
+        switchView('analytics');
+      });
+    }
+
+    // Botão Voltar ao Studio do Analytics
+    if (elements.btnAnalyticsBackStudio) {
+      elements.btnAnalyticsBackStudio.addEventListener('click', () => {
+        switchView('studio');
+      });
+    }
+
+    // Filtros de Período e Marca no Analytics
+    if (elements.analyticsPeriodSelect) {
+      elements.analyticsPeriodSelect.addEventListener('change', (e) => {
+        state.analytics.periodDays = parseInt(e.target.value, 10);
+        loadAnalytics();
+      });
+    }
+    if (elements.analyticsClientFilterSelect) {
+      elements.analyticsClientFilterSelect.addEventListener('change', (e) => {
+        state.analytics.selectedClient = e.target.value;
+        loadAnalytics();
+      });
+    }
+
+    // Exportação do Relatório CSV de Analytics
+    if (elements.btnExportAnalyticsCsv) {
+      elements.btnExportAnalyticsCsv.addEventListener('click', handleExportAnalyticsCsv);
+    }
+
+    // Modais de Reciclagem Evergreen
+    if (elements.btnCloseRecycleModal) {
+      elements.btnCloseRecycleModal.addEventListener('click', closeRecycleModal);
+    }
+    if (elements.btnCancelRecycle) {
+      elements.btnCancelRecycle.addEventListener('click', closeRecycleModal);
+    }
+    if (elements.btnConfirmRecycle) {
+      elements.btnConfirmRecycle.addEventListener('click', handleConfirmRecycle);
     }
 
     // Botão Voltar ao Studio do Calendário
@@ -2574,6 +2662,292 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       elements.btnRssCheckNow.disabled = false;
       if (elements.rssCheckLabel) elements.rssCheckLabel.textContent = 'Verificar RSS';
+    }
+  }
+
+  // ===========================================================================
+  // 9.8. ANALYTICS & PERFORMANCE EDITORIAL (FASE 3)
+  // ===========================================================================
+  async function loadAnalytics() {
+    try {
+      const period = state.analytics.periodDays || 30;
+      const client = state.analytics.selectedClient || 'all';
+
+      const res = await authFetch(`/api/analytics/overview?periodDays=${period}&clientId=${encodeURIComponent(client)}`);
+      if (!res.ok) throw new Error('Falha ao carregar métricas de analytics.');
+      const data = await res.json();
+      state.analytics.data = data;
+
+      // 1. Atualizar KPIs Globais
+      if (elements.kpiTotalReach) elements.kpiTotalReach.textContent = (data.kpis?.totalReach || 0).toLocaleString('pt-BR');
+      if (elements.kpiTotalClicks) elements.kpiTotalClicks.textContent = (data.kpis?.totalClicks || 0).toLocaleString('pt-BR');
+      if (elements.kpiAvgEngagement) elements.kpiAvgEngagement.textContent = `${data.kpis?.avgEngagementRate || 0}%`;
+      if (elements.kpiEvergreenCount) elements.kpiEvergreenCount.textContent = (data.kpis?.evergreenCount || 0);
+
+      // 2. Renderizar Divisão por Canais
+      renderChannelsBreakdown(data.channelsBreakdown);
+
+      // 3. Renderizar Oportunidades Evergreen
+      renderEvergreenOpportunities(data.evergreenPosts);
+
+      // 4. Renderizar Tabela de Posts
+      renderAnalyticsTable(data.posts);
+    } catch (err) {
+      showToast(`Erro ao carregar analytics: ${err.message}`, 'error');
+    }
+  }
+
+  function renderChannelsBreakdown(channels) {
+    if (!elements.analyticsChannelsList) return;
+    if (!channels || Object.keys(channels).length === 0) {
+      elements.analyticsChannelsList.innerHTML = '<p class="text-muted" style="font-size:0.85rem; padding: 12px;">Nenhum dado disponível para o período.</p>';
+      return;
+    }
+
+    const channelIcons = {
+      linkedin: '💼',
+      instagram: '📸',
+      twitter: '🐦',
+      facebook: '🌐'
+    };
+
+    elements.analyticsChannelsList.innerHTML = Object.entries(channels).map(([key, item]) => `
+      <div class="channel-perf-item">
+        <div class="channel-perf-top">
+          <span class="channel-perf-name">${channelIcons[key] || '🌐'} ${escapeHtml(item.name)}</span>
+          <span class="channel-perf-share">${item.share}% do total</span>
+        </div>
+        <div class="channel-perf-bar-track">
+          <div class="channel-perf-bar-fill" style="width: ${item.share}%; background: ${item.color || 'var(--accent-cyan)'};"></div>
+        </div>
+        <div class="channel-perf-bottom">
+          <span class="channel-perf-clicks">${item.clicks} cliques rastreados</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderEvergreenOpportunities(evergreenPosts) {
+    if (!elements.analyticsEvergreenList) return;
+    if (!evergreenPosts || evergreenPosts.length === 0) {
+      elements.analyticsEvergreenList.innerHTML = `
+        <div class="evergreen-empty-state">
+          <span>🌿</span>
+          <p>Nenhuma oportunidade de reciclagem no momento. Continue publicando para acumular histórico de engajamento.</p>
+        </div>
+      `;
+      return;
+    }
+
+    elements.analyticsEvergreenList.innerHTML = evergreenPosts.map(post => `
+      <div class="evergreen-item-card">
+        <div class="evergreen-item-header">
+          <h4 class="evergreen-item-title">${escapeHtml(post.title)}</h4>
+          <span class="evergreen-item-badge">🔥 ${post.engagementRate}% Engajamento</span>
+        </div>
+        <div class="evergreen-item-meta">
+          <span>🏢 ${escapeHtml(post.brandName || post.client)}</span>
+          <span>•</span>
+          <span>👁️ ${post.reach.toLocaleString('pt-BR')} alcance</span>
+          <span>•</span>
+          <span>🖱️ ${post.clicks} cliques</span>
+        </div>
+        <div class="evergreen-item-actions">
+          <button type="button" class="btn-primary-action btn-recycle-open" data-pkg-id="${escapeHtml(post.packageId)}">
+            ♻️ Reciclar com Novo Gancho
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    elements.analyticsEvergreenList.querySelectorAll('.btn-recycle-open').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pkgId = btn.getAttribute('data-pkg-id');
+        const post = (state.analytics.data?.posts || []).find(p => p.packageId === pkgId);
+        if (post) openRecycleModal(post);
+      });
+    });
+  }
+
+  function renderAnalyticsTable(posts) {
+    if (!elements.analyticsTableBody) return;
+    if (!posts || posts.length === 0) {
+      elements.analyticsTableBody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 24px; color: var(--text-muted);">
+            Nenhuma publicação encontrada para o filtro selecionado.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    elements.analyticsTableBody.innerHTML = posts.map(post => `
+      <tr>
+        <td class="table-col-title" title="${escapeHtml(post.title)}">
+          <strong>${escapeHtml(post.title)}</strong>
+          ${post.hasCarousel ? '<span class="cl-badge cl-badge-active" style="margin-left: 6px;">📑 Carrossel</span>' : ''}
+        </td>
+        <td>🏢 ${escapeHtml(post.brandName || post.client)}</td>
+        <td>${escapeHtml(post.formattedDate)}</td>
+        <td>${post.reach.toLocaleString('pt-BR')}</td>
+        <td><strong>${post.clicks}</strong></td>
+        <td>${post.likes}</td>
+        <td>
+          <span class="rate-badge ${post.engagementRate >= 4.0 ? 'rate-high' : 'rate-normal'}">
+            ${post.engagementRate}%
+          </span>
+        </td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" class="btn-ghost-sm btn-table-open-pkg" data-pkg-id="${escapeHtml(post.packageId)}" title="Abrir no Studio">
+              ⚡ Studio
+            </button>
+            <button type="button" class="btn-ghost-sm btn-table-recycle-pkg" data-pkg-id="${escapeHtml(post.packageId)}" title="Reciclar Conteúdo">
+              ♻️
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    elements.analyticsTableBody.querySelectorAll('.btn-table-open-pkg').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pkgId = btn.getAttribute('data-pkg-id');
+        openPackageFromHistory(pkgId);
+      });
+    });
+
+    elements.analyticsTableBody.querySelectorAll('.btn-table-recycle-pkg').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pkgId = btn.getAttribute('data-pkg-id');
+        const post = (state.analytics.data?.posts || []).find(p => p.packageId === pkgId);
+        if (post) openRecycleModal(post);
+      });
+    });
+  }
+
+  function openRecycleModal(post) {
+    if (!elements.modalRecyclePost || !elements.recycleModalBody) return;
+    state.analytics.selectedRecyclePackage = post;
+
+    elements.recycleModalBody.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div>
+          <h4 style="margin: 0 0 6px 0; font-size: 1.1rem; color: var(--text-heading);">${escapeHtml(post.title)}</h4>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Marca: <strong>${escapeHtml(post.brandName || post.client)}</strong> • Engajamento Anterior: <strong>${post.engagementRate}%</strong></span>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+          <label class="field-label" style="margin-bottom: 6px;">Selecione o Gancho Alternativo para Reciclagem:</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label class="radio-card active" style="padding: 10px; cursor: pointer;">
+              <input type="radio" name="recycle-hook" value="contrarian" checked>
+              <div style="margin-left: 8px;">
+                <strong>⚡ Gancho Contrariano / Disruptivo</strong>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Quebra o senso comum e desafia o pensamento padrão da indústria.</div>
+              </div>
+            </label>
+            <label class="radio-card" style="padding: 10px; cursor: pointer;">
+              <input type="radio" name="recycle-hook" value="dataDriven">
+              <div style="margin-left: 8px;">
+                <strong>📊 Gancho Data-Driven / Estatístico</strong>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Foco em métricas, números e provas analíticas.</div>
+              </div>
+            </label>
+            <label class="radio-card" style="padding: 10px; cursor: pointer;">
+              <input type="radio" name="recycle-hook" value="storytelling">
+              <div style="margin-left: 8px;">
+                <strong>📖 Gancho Storytelling / Narrativo</strong>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Conecta pela jornada e experiência prática do leitor.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div style="font-size: 0.85rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px;">
+          <span>🎯</span>
+          <span>O algoritmo calculará o próximo slot livre de pico para agendamento automático.</span>
+        </div>
+      </div>
+    `;
+
+    // Atualiza estilo dos radio buttons dentro do modal
+    elements.recycleModalBody.querySelectorAll('input[name="recycle-hook"]').forEach(input => {
+      input.addEventListener('change', () => {
+        elements.recycleModalBody.querySelectorAll('.radio-card').forEach(rc => rc.classList.remove('active'));
+        input.closest('.radio-card')?.classList.add('active');
+      });
+    });
+
+    elements.modalRecyclePost.classList.remove('hidden');
+  }
+
+  function closeRecycleModal() {
+    if (elements.modalRecyclePost) {
+      elements.modalRecyclePost.classList.add('hidden');
+    }
+  }
+
+  async function handleConfirmRecycle() {
+    const post = state.analytics.selectedRecyclePackage;
+    if (!post) return;
+
+    const hookType = document.querySelector('input[name="recycle-hook"]:checked')?.value || 'contrarian';
+
+    try {
+      if (elements.btnConfirmRecycle) {
+        elements.btnConfirmRecycle.disabled = true;
+        elements.btnConfirmRecycle.textContent = 'Agendando...';
+      }
+
+      const res = await authFetch('/api/analytics/recycle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageId: post.packageId,
+          hookType
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao reciclar post');
+
+      closeRecycleModal();
+      showToast(`♻️ Post reciclado com sucesso! Encaixado no Smart Slot: ${data.scheduledSlot?.label || 'Amanhã'}!`, 'success');
+      loadAnalytics();
+    } catch (err) {
+      showToast(`Erro ao reciclar publicação: ${err.message}`, 'error');
+    } finally {
+      if (elements.btnConfirmRecycle) {
+        elements.btnConfirmRecycle.disabled = false;
+        elements.btnConfirmRecycle.textContent = 'Encaixar no Smart Slot';
+      }
+    }
+  }
+
+  async function handleExportAnalyticsCsv() {
+    try {
+      showToast('Gerando exportação de métricas...', 'info');
+      const period = state.analytics.periodDays || 30;
+      const client = state.analytics.selectedClient || 'all';
+
+      const res = await authFetch(`/api/analytics/export?periodDays=${period}&clientId=${encodeURIComponent(client)}`);
+      if (!res.ok) throw new Error('Falha ao exportar CSV.');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pub_rs_analytics_relatorio_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      showToast('Relatório CSV baixado com sucesso!', 'success');
+    } catch (err) {
+      showToast(`Erro na exportação CSV: ${err.message}`, 'error');
     }
   }
 

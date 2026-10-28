@@ -72,6 +72,13 @@
           <span class="nav-label">Calendário</span>
         </button>
 
+        <button type="button" class="sidebar-nav-item" id="btn-nav-analytics" title="Analytics Unificado & ROI Editorial">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </span>
+          <span class="nav-label">Analytics & ROI</span>
+        </button>
+
         <button type="button" class="sidebar-nav-item" id="btn-history" title="Histórico de Pacotes">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -1237,6 +1244,137 @@
       </section>
     </div> <!-- /#view-calendar -->
 
+    <!-- ========================================================================= -->
+    <!-- VIEW 5: ANALYTICS UNIFICADO & ROI EDITORIAL (FASE 3)                      -->
+    <!-- ========================================================================= -->
+    <div id="view-analytics" class="page-view hidden">
+      <section class="analytics-canvas">
+
+        <!-- Header Expandido do Analytics (Clean, sem caixa fechada) -->
+        <div class="analytics-header-wrap">
+          <div class="analytics-titles">
+            <h1 class="hero-title">Analytics & <span class="gradient-text">Performance</span></h1>
+            <p class="hero-subtitle">Métricas omnichannel consolidadas, atribuição UTM, taxa de conversão e reciclagem de conteúdos evergreen.</p>
+          </div>
+
+          <!-- Ações do Analytics: Período, Marcas e Exportação CSV -->
+          <div class="analytics-header-actions">
+            <div class="analytics-period-selector">
+              <label for="analytics-period-select" class="visually-hidden">Período</label>
+              <select id="analytics-period-select" class="client-dropdown">
+                <option value="7">Últimos 7 dias</option>
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+                <option value="0">Todo o período</option>
+              </select>
+            </div>
+
+            <div class="analytics-client-filter">
+              <label for="analytics-client-filter-select" class="visually-hidden">Marca</label>
+              <select id="analytics-client-filter-select" class="client-dropdown">
+                <option value="all">Todas as Marcas</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn-secondary-action" id="btn-export-analytics-csv" title="Exportar relatório completo em arquivo CSV para Excel">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Exportar CSV</span>
+            </button>
+
+            <button type="button" class="btn-ghost-sm" id="btn-analytics-back-studio" title="Voltar ao Estúdio de Criação">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              <span>Voltar ao Studio</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de KPIs Globais -->
+        <div class="analytics-kpi-grid">
+          <div class="analytics-kpi-card">
+            <div class="kpi-icon-wrap kpi-reach">👁️</div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-total-reach">0</span>
+              <span class="kpi-label">Alcance Total Estimado</span>
+            </div>
+          </div>
+          <div class="analytics-kpi-card">
+            <div class="kpi-icon-wrap kpi-clicks">🖱️</div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-total-clicks">0</span>
+              <span class="kpi-label">Cliques no Link (UTM)</span>
+            </div>
+          </div>
+          <div class="analytics-kpi-card">
+            <div class="kpi-icon-wrap kpi-engagement">🔥</div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-avg-engagement">0.00%</span>
+              <span class="kpi-label">Taxa Média Engajamento</span>
+            </div>
+          </div>
+          <div class="analytics-kpi-card">
+            <div class="kpi-icon-wrap kpi-evergreen">♻️</div>
+            <div class="kpi-data">
+              <span class="kpi-value" id="kpi-evergreen-count">0</span>
+              <span class="kpi-label">Conteúdos Evergreen</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Distribuição por Canal & Destaques Evergreen -->
+        <div class="analytics-dual-panel">
+          <!-- Coluna 1: Desempenho por Canal Social -->
+          <div class="analytics-panel-card glass-panel">
+            <div class="panel-card-header">
+              <h3 class="panel-card-title">Desempenho por Rede Social</h3>
+              <span class="panel-card-subtitle">Distribuição relativa de conversão</span>
+            </div>
+            <div class="channels-performance-list" id="analytics-channels-list">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+
+          <!-- Coluna 2: Oportunidades Evergreen para Reciclagem -->
+          <div class="analytics-panel-card glass-panel">
+            <div class="panel-card-header">
+              <h3 class="panel-card-title">Reciclagem de Conteúdo Evergreen</h3>
+              <span class="panel-card-subtitle">Posts de alta conversão recomendados</span>
+            </div>
+            <div class="evergreen-list" id="analytics-evergreen-list">
+              <!-- Renderizado via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela Expansiva de Performance das Publicações -->
+        <div class="analytics-table-card glass-panel">
+          <div class="panel-card-header" style="margin-bottom: 16px;">
+            <h3 class="panel-card-title">Publicações & Métricas Detalhadas</h3>
+            <span class="panel-card-subtitle">Desempenho individual por pacote gerado</span>
+          </div>
+          <div class="analytics-table-wrap">
+            <table class="analytics-table">
+              <thead>
+                <tr>
+                  <th>Publicação</th>
+                  <th>Marca</th>
+                  <th>Data</th>
+                  <th>Alcance</th>
+                  <th>Cliques</th>
+                  <th>Curtidas</th>
+                  <th>Taxa (%)</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="analytics-table-body">
+                <!-- Renderizado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div> <!-- /#view-analytics -->
+
   </main>
     </div> <!-- /.app-main-area -->
   </div> <!-- /.app-layout -->
@@ -1352,6 +1490,25 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-primary-action" id="btn-ok-dispatch">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: RECICLAGEM INTELIGENTE DE POST EVERGREEN (FASE 3)                  -->
+  <!-- ========================================================================= -->
+  <div id="modal-recycle-post" class="modal-overlay hidden">
+    <div class="modal-dialog glass-panel" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 class="modal-title">♻️ Reciclar Conteúdo Evergreen</h3>
+        <button class="modal-close" id="btn-close-recycle-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="recycle-modal-body">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" id="btn-cancel-recycle">Cancelar</button>
+        <button type="button" class="btn-primary-action" id="btn-confirm-recycle">Encaixar no Smart Slot</button>
       </div>
     </div>
   </div>

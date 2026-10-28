@@ -28,6 +28,10 @@ const {
   loadRssHistory
 } = require('./src/rssWatcher');
 const {
+  getConsolidatedAnalytics,
+  prepareEvergreenRecycle
+} = require('./src/analyticsTracker');
+const {
   initUserStore,
   findUserByEmail,
   createUser,
@@ -611,6 +615,118 @@ app.get('/api/rss/status', requireAuth, (req, res) => {
     });
   } catch (err) {
     console.error('[RSS STATUS API ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 2.8. ANALYTICS UNIFICADO, MÉTRICAS DE ENGAJAMENTO & EVERGREEN (FASE 3)
+// ---------------------------------------------------------------------------
+
+// Visão geral consolidada de Analytics e KPIs
+app.get('/api/analytics/overview', requireAuth, (req, res) => {
+  try {
+    const { clientId, periodDays } = req.query;
+    const days = periodDays ? parseInt(periodDays, 10) : 30;
+
+    const data = getConsolidatedAnalytics({
+      clientId: clientId && clientId !== 'all' ? clientId : undefined,
+      periodDays: days
+    });
+
+    res.json({
+      success: true,
+      ...data
+    });
+  } catch (err) {
+    console.error('[ANALYTICS API ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Oportunidades de reciclagem de conteúdo Evergreen
+app.get('/api/analytics/evergreen', requireAuth, (req, res) => {
+  try {
+    const { clientId } = req.query;
+    const data = getConsolidatedAnalytics({
+      clientId: clientId && clientId !== 'all' ? clientId : undefined,
+      periodDays: 0 // Sem corte de dias para evergreen
+    });
+
+    res.json({
+      success: true,
+      evergreenPosts: data.evergreenPosts || []
+    });
+  } catch (err) {
+    console.error('[EVERGREEN API ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Disparar reciclagem de post com hook alternativo no Smart Slot
+app.post('/api/analytics/recycle', requireAuth, (req, res) => {
+  try {
+    const { packageId, hookType } = req.body || {};
+    if (!packageId) {
+      return res.status(400).json({ error: 'packageId é obrigatório.' });
+    }
+
+    const recyclePlan = prepareEvergreenRecycle(packageId, hookType || 'contrarian');
+
+    // Enfileira o job na fila de background usando o próximo smart slot
+    const slot = getNextAvailableSlot(recyclePlan.client || 'anaue-design');
+    const job = enqueueJob({
+      packageId,
+      clientId: recyclePlan.client,
+      targetChannels: recyclePlan.suggestedChannels,
+      scheduledFor: slot.iso
+    });
+
+    res.json({
+      success: true,
+      message: `Conteúdo evergreen reciclado com sucesso para ${slot.formatted}!`,
+      recyclePlan,
+      scheduledSlot: slot,
+      job
+    });
+  } catch (err) {
+    console.error('[RECYCLE API ERRO]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Exportar relatório de performance em CSV
+app.get('/api/analytics/export', requireAuth, (req, res) => {
+  try {
+    const { clientId, periodDays } = req.query;
+    const data = getConsolidatedAnalytics({
+      clientId: clientId && clientId !== 'all' ? clientId : undefined,
+      periodDays: periodDays ? parseInt(periodDays, 10) : 30
+    });
+
+    const headers = ['Data', 'ID do Pacote', 'Título', 'Marca', 'Alcance', 'Impressões', 'Cliques', 'Curtidas', 'Comentários', 'Compartilhamentos', 'Taxa Engajamento (%)', 'Carrossel'];
+    const rows = (data.posts || []).map(p => [
+      `"${p.formattedDate}"`,
+      `"${p.packageId}"`,
+      `"${(p.title || '').replace(/"/g, '""')}"`,
+      `"${p.brandName || p.client}"`,
+      p.reach,
+      p.impressions,
+      p.clicks,
+      p.likes,
+      p.comments,
+      p.shares,
+      `"${p.engagementRate}%"`,
+      p.hasCarousel ? 'Sim' : 'Não'
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="pub_rs_analytics_${Date.now()}.csv"`);
+    res.send('\uFEFF' + csvContent); // BOM UTF-8 para Excel
+  } catch (err) {
+    console.error('[EXPORT API ERRO]:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
