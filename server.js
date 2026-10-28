@@ -50,6 +50,10 @@ const {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const BASE_URL = process.env.BASE_URL || 'https://social360.anauedesign.com.br';
+
+// Habilita proxy reverso para identificar IP e protocolo HTTPS reais através do Nginx Proxy Manager
+app.set('trust proxy', 1);
 
 // Inicializa a base de dados de usuários do SaaS (cria admin se não existir)
 initUserStore();
@@ -1102,10 +1106,11 @@ app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ======================================================
-  🌐 pub_rs Studio — Plataforma Omnichannel Ativa!
+  🌐 Social360 Studio — Plataforma Omnichannel Ativa!
 ======================================================
-  Local:   http://localhost:${PORT}
-  API:     http://localhost:${PORT}/api/status
+  Produção: ${BASE_URL}
+  Local:    http://localhost:${PORT}
+  API:      http://localhost:${PORT}/api/status
 ======================================================
 `);
 

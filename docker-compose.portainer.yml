@@ -13,6 +13,8 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=production
+      - BASE_URL=https://social360.anauedesign.com.br
+      - APP_DOMAIN=social360.anauedesign.com.br
     volumes:
       - pub_rs_data:/app/data
       - pub_rs_clients:/app/config/clients

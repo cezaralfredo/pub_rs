@@ -902,7 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal Info
     elements.btnInfo.addEventListener('click', () => {
-      showToast('pub_rs Studio 2.5 — Plataforma profissional de automação e distribuição multicanal.', 'info');
+      showToast('Social360 by Anauê Design — Plataforma profissional de automação e distribuição omnichannel.', 'info');
     });
 
     if (elements.btnLogout) {
