@@ -280,6 +280,12 @@ async function generateWithLlm(article, client, options = {}) {
       targetUrl,
       generatedAt: new Date().toISOString()
     },
+    hooks: {
+      contrarian: parsed.hooks?.contrarian || '',
+      dataDriven: parsed.hooks?.dataDriven || '',
+      storytelling: parsed.hooks?.storytelling || ''
+    },
+    carousel: parsed.carousel || null,
     linkedin: {
       post: replaceUrls(parsed.linkedin?.post, 'linkedin'),
       firstComment: replaceUrls(parsed.linkedin?.firstComment, 'linkedin'),
@@ -302,10 +308,14 @@ async function generateWithLlm(article, client, options = {}) {
     },
     threads: {
       post: replaceUrls(parsed.threads?.post, 'threads'),
+      thread: Array.isArray(parsed.threads?.thread)
+        ? parsed.threads.thread.map(t => replaceUrls(t, 'threads'))
+        : null,
       recommendedFormat: '1:1 ou 16:9'
     },
     facebook: {
       post: replaceUrls(parsed.facebook?.post, 'facebook'),
+      firstComment: replaceUrls(parsed.facebook?.firstComment, 'facebook'),
       recommendedFormat: '16:9 (Horizontal)'
     }
   };

@@ -702,14 +702,16 @@ app.delete('/api/packages/:packageId', requireAuth, (req, res) => {
   }
 });
 
-// Servir arquivos de imagem gerados com segurança
-app.get('/api/media/:packageId/:filename', (req, res) => {
+// Servir arquivos de mídia e carrossel PDF gerados com segurança
+function serveMediaFile(res, packageId, subDir, filename) {
   try {
-    const safePackageId = sanitizeIdentifier(req.params.packageId);
-    const safeFilename = path.basename(req.params.filename);
-
+    const safePackageId = sanitizeIdentifier(packageId);
+    const safeFilename = path.basename(filename);
     const outputBase = path.join(__dirname, 'output');
-    const filePath = safePathResolve(path.join(outputBase, safePackageId, 'images'), safeFilename);
+    const targetDir = subDir 
+      ? path.join(outputBase, safePackageId, 'images', subDir)
+      : path.join(outputBase, safePackageId, 'images');
+    const filePath = safePathResolve(targetDir, safeFilename);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).send('Arquivo não encontrado.');
@@ -720,15 +722,27 @@ app.get('/api/media/:packageId/:filename', (req, res) => {
       '.webp': 'image/webp',
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
-      '.png': 'image/png'
+      '.png': 'image/png',
+      '.pdf': 'application/pdf'
     };
 
     res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+    if (ext === '.pdf') {
+      res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath)}"`);
+    }
     res.setHeader('Cache-Control', 'public, max-age=86400');
     fs.createReadStream(filePath).pipe(res);
   } catch (err) {
     res.status(400).send('Requisição inválida.');
   }
+}
+
+app.get('/api/media/:packageId/carousel/:filename', (req, res) => {
+  serveMediaFile(res, req.params.packageId, 'carousel', req.params.filename);
+});
+
+app.get('/api/media/:packageId/:filename', (req, res) => {
+  serveMediaFile(res, req.params.packageId, null, req.params.filename);
 });
 
 // ---------------------------------------------------------------------------
@@ -801,6 +815,7 @@ app.post('/api/generate', requireAuth, rateLimiter, async (req, res) => {
       client: result.client,
       copies: result.copies,
       images: result.images,
+      carousel: result.carousel,
       webhookResult: result.dispatchResult.webhookResult
     });
   } catch (err) {
@@ -870,6 +885,7 @@ app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
       client: result.client,
       copies: result.copies,
       images: result.images,
+      carousel: result.carousel,
       webhookResult: result.dispatchResult?.webhookResult
     });
   } catch (err) {

@@ -3,6 +3,7 @@ const path = require('path');
 const { scrapeArticle } = require('./scraper');
 const { processSocialImages } = require('./imageProcessor');
 const { generateSocialCopies } = require('./copywriter');
+const { generateCarousel } = require('./carouselGenerator');
 const { exportAndDispatch } = require('./dispatcher');
 const { synthesizeTopicContent } = require('./topicSynthesizer');
 const { validatePublicUrl, sanitizeIdentifier } = require('./security/validator');
@@ -177,7 +178,33 @@ async function runPipeline({
     }
   });
 
-  // 4. Exportação e Despacho
+  // 4. Geração de Carrossel em Slides e Compilação PDF
+  let carousel = null;
+  try {
+    onProgress({
+      step: 3,
+      status: 'carousel',
+      message: 'Gerando carrossel de slides 4:5 e compilando PDF para o LinkedIn...'
+    });
+
+    carousel = await generateCarousel({
+      article,
+      client: clientConfig,
+      copies,
+      outputDir
+    });
+
+    onProgress({
+      step: 3,
+      status: 'carousel_done',
+      message: `Carrossel gerado com ${carousel.slidesCount} slides e PDF pronto.`,
+      data: { slidesCount: carousel.slidesCount }
+    });
+  } catch (carouselErr) {
+    console.warn(`   ⚠️ [CARROSSEL AVISO] Falha ao gerar carrossel (${carouselErr.message}). Continuando...`);
+  }
+
+  // 5. Exportação e Despacho
   onProgress({
     step: 4,
     status: 'exporting',
@@ -189,6 +216,7 @@ async function runPipeline({
     client: clientConfig,
     copies,
     images,
+    carousel,
     outputDir
   });
 
@@ -209,6 +237,7 @@ async function runPipeline({
     client: clientConfig,
     copies,
     images,
+    carousel,
     dispatchResult
   };
 }

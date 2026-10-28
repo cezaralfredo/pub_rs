@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const state = {
     currentPackage: null,
     currentNetwork: 'linkedin',
+    currentHook: 'original', // 'original', 'contrarian', 'dataDriven', 'storytelling'
     currentMode: 'url', // 'url' ou 'topic'
     clients: [],
     status: null,
@@ -123,15 +124,28 @@ document.addEventListener('DOMContentLoaded', () => {
     btnDownloadJson: document.getElementById('btn-download-json'),
     btnCopyAll: document.getElementById('btn-copy-all'),
 
-    // Copy Tabs
+    // Copy Tabs, Ganchos A/B & Threads
     currentNetName: document.getElementById('current-net-name'),
     currentNetFormat: document.getElementById('current-net-format'),
     currentCharCount: document.getElementById('current-char-count'),
     currentPostText: document.getElementById('current-post-text'),
+    copyBoxStandard: document.getElementById('copy-box-standard'),
+    hooksPickerCard: document.getElementById('hooks-picker-card'),
+    btnHookPills: document.querySelectorAll('.btn-hook-pill'),
+    threadViewContainer: document.getElementById('thread-view-container'),
+    threadCardsList: document.getElementById('thread-cards-list'),
+    btnCopyFullThread: document.getElementById('btn-copy-full-thread'),
     firstCommentWrap: document.getElementById('first-comment-wrap'),
     currentCommentText: document.getElementById('current-comment-text'),
     btnCopyPost: document.getElementById('btn-copy-post'),
     btnCopyComment: document.getElementById('btn-copy-comment'),
+
+    // Carrossel
+    btnOpenPdf: document.getElementById('btn-open-pdf'),
+    btnDlCarouselPdf: document.getElementById('btn-dl-carousel-pdf'),
+    carouselTitleDisplay: document.getElementById('carousel-title-display'),
+    carouselSlidesBadge: document.getElementById('carousel-slides-badge'),
+    carouselSlidesGrid: document.getElementById('carousel-slides-grid'),
 
     // Media Cards
     img16x9: document.getElementById('img-16x9'),
@@ -458,6 +472,33 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.btnCopyComment.addEventListener('click', () => {
       copyToClipboard(elements.currentCommentText.textContent, '1º Comentário copiado!');
     });
+
+    // Seletor de Ganchos Alternativos (A/B Hooks)
+    if (elements.btnHookPills) {
+      elements.btnHookPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          elements.btnHookPills.forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          state.currentHook = pill.getAttribute('data-hook') || 'original';
+          renderCurrentNetworkCopy();
+        });
+      });
+    }
+
+    // Botão Copiar Thread Completa
+    if (elements.btnCopyFullThread) {
+      elements.btnCopyFullThread.addEventListener('click', () => {
+        const net = state.currentNetwork;
+        const copies = state.currentPackage?.copies;
+        if (net === 'twitter' && Array.isArray(copies?.twitter?.thread)) {
+          copyToClipboard(copies.twitter.thread.join('\n\n───────────────\n\n'), 'Thread completa do X (Twitter) copiada!');
+        } else if (net === 'threads' && Array.isArray(copies?.threads?.thread)) {
+          copyToClipboard(copies.threads.thread.join('\n\n───────────────\n\n'), 'Thread completa do Threads copiada!');
+        } else {
+          copyToClipboard(elements.currentPostText.textContent, 'Conteúdo copiado!');
+        }
+      });
+    }
 
     elements.btnCopyJson.addEventListener('click', () => {
       copyToClipboard(elements.payloadContainer.textContent, 'JSON copiado!');
@@ -1160,11 +1201,22 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.resDateTag.textContent = new Date().toLocaleTimeString('pt-BR');
     elements.resArticleLink.href = data.article?.url || '#';
 
+    // Reset A/B Hook pill selection to 'original'
+    state.currentHook = 'original';
+    if (elements.btnHookPills) {
+      elements.btnHookPills.forEach(p => {
+        p.classList.toggle('active', p.getAttribute('data-hook') === 'original');
+      });
+    }
+
     // 1. Copies
     renderCurrentNetworkCopy();
 
     // 2. Mídias
     renderMediaGallery(data.packageId);
+
+    // 2.5 Carrossel em Slides e PDF
+    renderCarouselView(data.packageId, data.carousel || data.payload?.carousel);
 
     // 3. Relatório Executivo
     if (data.reportMd) {
@@ -1179,6 +1231,7 @@ document.addEventListener('DOMContentLoaded', () => {
       article: data.article,
       copies: data.copies,
       images: data.images,
+      carousel: data.carousel || data.payload?.carousel || null,
       webhookResult: data.webhookResult
     };
     elements.payloadContainer.textContent = JSON.stringify(fullPayload, null, 2);
@@ -1191,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state.currentPackage?.copies) return;
     const copies = state.currentPackage.copies;
     const net = state.currentNetwork;
+    const hooks = copies.hooks || {};
 
     const netLabels = {
       linkedin: 'LinkedIn Post',
@@ -1206,6 +1260,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let postText = '';
     let firstComment = '';
     let formatDesc = '';
+    let isThreadMode = false;
+    let threadItems = [];
 
     if (net === 'linkedin') {
       postText = copies.linkedin?.post || '';
@@ -1219,20 +1275,67 @@ document.addEventListener('DOMContentLoaded', () => {
       postText = copies.stories?.post || '';
       formatDesc = 'Formato ideal: 9:16 Vertical';
     } else if (net === 'twitter') {
-      postText = Array.isArray(copies.twitter?.thread) 
-        ? copies.twitter.thread.join('\n\n───────────────\n\n')
-        : (copies.twitter?.post || '');
-      formatDesc = 'Formato ideal: 16:9 Horizontal';
+      threadItems = Array.isArray(copies.twitter?.thread) 
+        ? copies.twitter.thread 
+        : [copies.twitter?.post || ''];
+      postText = threadItems.join('\n\n───────────────\n\n');
+      formatDesc = 'Formato ideal: 16:9 Horizontal (Fio de Tweets)';
+      isThreadMode = true;
     } else if (net === 'threads') {
-      postText = copies.threads?.post || '';
+      if (Array.isArray(copies.threads?.thread) && copies.threads.thread.length > 0) {
+        threadItems = copies.threads.thread;
+        postText = threadItems.join('\n\n───────────────\n\n');
+        isThreadMode = true;
+      } else {
+        postText = copies.threads?.post || '';
+      }
       formatDesc = 'Formato ideal: 1:1 Quadrado';
     } else if (net === 'facebook') {
       postText = copies.facebook?.post || '';
+      firstComment = copies.facebook?.firstComment || '';
       formatDesc = 'Formato ideal: 16:9 Horizontal';
     }
 
+    // Gerenciador de Ganchos A/B (LinkedIn, Instagram e Facebook)
+    const supportsHooks = (net === 'linkedin' || net === 'instagram' || net === 'facebook');
+    const hasAlternativeHooks = Boolean(hooks.contrarian || hooks.dataDriven || hooks.storytelling);
+
+    if (elements.hooksPickerCard) {
+      if (supportsHooks && hasAlternativeHooks) {
+        elements.hooksPickerCard.classList.remove('hidden');
+
+        // Se o usuário selecionou um gancho alternativo
+        if (state.currentHook !== 'original' && hooks[state.currentHook]) {
+          const replacementHook = hooks[state.currentHook];
+          const lines = postText.split('\n');
+          let firstParaIdx = 0;
+          while (firstParaIdx < lines.length && !lines[firstParaIdx].trim()) {
+            firstParaIdx++;
+          }
+          if (firstParaIdx < lines.length) {
+            lines[firstParaIdx] = replacementHook;
+            postText = lines.join('\n');
+          } else {
+            postText = replacementHook + '\n\n' + postText;
+          }
+        }
+      } else {
+        elements.hooksPickerCard.classList.add('hidden');
+      }
+    }
+
     elements.currentNetFormat.textContent = formatDesc;
-    elements.currentPostText.textContent = postText;
+
+    if (isThreadMode && threadItems.length > 1) {
+      if (elements.copyBoxStandard) elements.copyBoxStandard.classList.add('hidden');
+      if (elements.threadViewContainer) elements.threadViewContainer.classList.remove('hidden');
+      renderThreadCards(threadItems);
+    } else {
+      if (elements.copyBoxStandard) elements.copyBoxStandard.classList.remove('hidden');
+      if (elements.threadViewContainer) elements.threadViewContainer.classList.add('hidden');
+      elements.currentPostText.textContent = postText;
+    }
+
     elements.currentCharCount.textContent = `${postText.length} caracteres`;
 
     if (firstComment) {
@@ -1240,6 +1343,90 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.currentCommentText.textContent = firstComment;
     } else {
       elements.firstCommentWrap.classList.add('hidden');
+    }
+  }
+
+  function renderThreadCards(items) {
+    if (!elements.threadCardsList) return;
+    elements.threadCardsList.innerHTML = items.map((t, idx) => {
+      const isFirst = idx === 0;
+      const isLast = idx === items.length - 1;
+      const badge = isFirst ? 'GANCHO 🧵' : (isLast ? 'CTA & LINK 🔗' : `PONTO #${idx + 1}`);
+      return `
+        <div class="thread-item-card glass-panel">
+          <div class="thread-item-header">
+            <span class="thread-item-badge">${badge} (${idx + 1}/${items.length})</span>
+            <span class="thread-item-chars">${t.length} caracteres</span>
+            <button type="button" class="btn-copy-thread-part" data-tweet-index="${idx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span>Copiar</span>
+            </button>
+          </div>
+          <div class="thread-item-body">${escapeHtml(t)}</div>
+        </div>
+      `;
+    }).join('');
+
+    elements.threadCardsList.querySelectorAll('.btn-copy-thread-part').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-tweet-index'), 10);
+        if (items[idx]) {
+          copyToClipboard(items[idx], `Tweet ${idx + 1} copiado!`);
+        }
+      });
+    });
+  }
+
+  function renderCarouselView(packageId, carouselData) {
+    if (!packageId) return;
+
+    const pdfUrl = `/api/media/${packageId}/carousel_linkedin.pdf`;
+    if (elements.btnOpenPdf) elements.btnOpenPdf.href = pdfUrl;
+    if (elements.btnDlCarouselPdf) elements.btnDlCarouselPdf.href = pdfUrl;
+
+    if (!carouselData || !Array.isArray(carouselData.slides) || carouselData.slides.length === 0) {
+      if (elements.carouselSlidesGrid) {
+        elements.carouselSlidesGrid.innerHTML = `
+          <div class="carousel-empty-state">
+            <p>O carrossel está sendo processado ou não possui slides disponíveis para este pacote.</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    if (elements.carouselTitleDisplay) {
+      elements.carouselTitleDisplay.textContent = carouselData.title || 'Carrossel Estruturado em Slides';
+    }
+    if (elements.carouselSlidesBadge) {
+      elements.carouselSlidesBadge.textContent = `${carouselData.slidesCount || carouselData.slides.length} Slides`;
+    }
+
+    if (elements.carouselSlidesGrid) {
+      elements.carouselSlidesGrid.innerHTML = carouselData.slides.map(s => {
+        const jpgUrl = `/api/media/${packageId}/carousel/${s.jpg}`;
+        const webpUrl = `/api/media/${packageId}/carousel/${s.webp}`;
+        const typeLabel = s.type === 'cover' ? 'Capa / Gancho' : (s.type === 'cta' ? 'Fechamento & CTA' : `Slide #${String(s.index).padStart(2, '0')}`);
+
+        return `
+          <div class="carousel-slide-card glass-panel">
+            <div class="slide-card-header">
+              <span class="slide-index-pill">${typeLabel}</span>
+              <span class="slide-ratio-pill">4:5</span>
+            </div>
+            <div class="slide-thumb-wrap">
+              <img src="${jpgUrl}" alt="Slide ${s.index}" class="slide-thumb-img" loading="lazy" onerror="this.src='${webpUrl}'">
+            </div>
+            <div class="slide-card-footer">
+              <span class="slide-name-text" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || `Slide ${s.index}`)}</span>
+              <div class="slide-dl-actions">
+                <a href="${jpgUrl}" download="slide_${String(s.index).padStart(2, '0')}.jpg" class="btn-slide-dl">JPG</a>
+                <a href="${webpUrl}" download="slide_${String(s.index).padStart(2, '0')}.webp" class="btn-slide-dl">WebP</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
   }
 
@@ -1922,6 +2109,7 @@ document.addEventListener('DOMContentLoaded', () => {
         client: data.payload?.client,
         copies: data.payload?.copies,
         images: data.payload?.images,
+        carousel: data.payload?.carousel,
         reportMd: data.reportMd
       });
 

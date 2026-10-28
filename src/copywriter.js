@@ -55,6 +55,24 @@ function generateAlgorithmicCopies(article, client) {
   const cta = client.callToAction || 'Qual a sua visão sobre esse tema? Compartilhe nos comentários:';
   const commentTemplate = client.commentTemplate || '👉 Leia o artigo completo com todas as referências aqui: {URL}';
 
+  // Ganchos Alternativos (A/B Hook Generator)
+  const hooks = {
+    contrarian: `A maioria das empresas está olhando para o lado errado quando o assunto é "${article.title}". Aqui está o que quase ninguém está admitindo publicamente:`,
+    dataDriven: `Os novos números revelam uma virada de chave no mercado: quem dominar "${article.title}" terá uma vantagem competitiva desproporcional. Veja o que os dados apontam:`,
+    storytelling: `Até pouco tempo atrás, esse desafio gerava perda de tempo e recursos. Mas ao analisar a estratégia por trás de "${article.title}", a resposta ficou evidente:`
+  };
+
+  // Estrutura para Carrossel em Slides
+  const carousel = {
+    title: article.title.length > 50 ? article.title.slice(0, 47) + '...' : article.title,
+    subtitle: leadSummary.length > 90 ? leadSummary.slice(0, 87) + '...' : leadSummary,
+    slides: points.slice(0, 4).map((p, idx) => ({
+      headline: p.split(':')[0].slice(0, 45),
+      text: p.includes(':') ? p.split(':').slice(1).join(':').trim() : p
+    })),
+    cta: `Salve este carrossel e siga ${handle || brand} para mais estratégias práticas.`
+  };
+
   // 1. LINKEDIN
   const linkedinCopy = 
 `${article.title}
@@ -107,21 +125,25 @@ ${getUtmUrl(targetUrl, 'stories', slug)}`;
 
   // 4. X (TWITTER) - THREAD
   const twitterThread = [
-    `1/3 🚨 ${article.title}
+    `1/4 🚨 ${article.title}
 
-${leadSummary.length > 160 ? leadSummary.slice(0, 155) + '...' : leadSummary}`,
+${leadSummary.length > 150 ? leadSummary.slice(0, 145) + '...' : leadSummary}
 
-    `2/3 💡 Pontos centrais da análise:
+🧵 Segue o fio 👇`,
 
-${points.slice(0, 3).map(p => `• ${p}`).join('\n')}`,
+    `2/4 💡 Diagnóstico e pontos de partida:
+${points.slice(0, 2).map(p => `• ${p}`).join('\n')}`,
 
-    `3/3 🔗 Leia a matéria na íntegra com todos os dados:
+    `3/4 ⚡ Alavancas estratégicas de crescimento:
+${points.slice(2, 4).map(p => `• ${p}`).join('\n')}`,
+
+    `4/4 🔗 Leia a análise completa e acesse todas as fontes na íntegra:
 ${getUtmUrl(targetUrl, 'twitter', slug)}
 
 ${hashtags.slice(0, 3).join(' ')}`
   ];
 
-  // 5. THREADS
+  // 5. THREADS (Post + Thread opcional)
   const threadsCopy = 
 `${article.title}
 
@@ -134,7 +156,13 @@ ${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}
 
 Como você ou seu time lidam com essa questão hoje?`;
 
-  // 6. FACEBOOK
+  const threadsThread = [
+    `1/3 🚨 ${article.title}\n\n${leadSummary.slice(0, 160)}... 🧵`,
+    `2/3 💡 Principais conclusões:\n${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}`,
+    `3/3 🔗 Artigo completo com dados: ${getUtmUrl(targetUrl, 'threads', slug)}\n\nO que você achou dessa mudança?`
+  ];
+
+  // 6. FACEBOOK (Com estratégia de 1º Comentário)
   const facebookCopy = 
 `${article.title}
 
@@ -143,10 +171,11 @@ ${leadSummary}
 Pontos em destaque:
 ${formattedPoints}
 
-Acesse o artigo completo com todas as fontes e insights no link:
-${getUtmUrl(targetUrl, 'facebook', slug)}
+👇 Acesse o artigo completo com todas as fontes e insights no primeiro comentário:
 
 ${hashtagsStr}`;
+
+  const facebookComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'facebook', slug));
 
   return {
     meta: {
@@ -157,6 +186,8 @@ ${hashtagsStr}`;
       targetUrl,
       generatedAt: new Date().toISOString()
     },
+    hooks,
+    carousel,
     linkedin: {
       post: linkedinCopy,
       firstComment: linkedinComment,
@@ -177,10 +208,12 @@ ${hashtagsStr}`;
     },
     threads: {
       post: threadsCopy,
+      thread: threadsThread,
       recommendedFormat: '1:1 ou 16:9'
     },
     facebook: {
       post: facebookCopy,
+      firstComment: facebookComment,
       recommendedFormat: '16:9 (Horizontal)'
     }
   };

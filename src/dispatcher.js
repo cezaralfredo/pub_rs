@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-async function exportAndDispatch({ article, client, copies, images, outputDir }) {
+async function exportAndDispatch({ article, client, copies, images, carousel, outputDir }) {
   const copysDir = path.join(outputDir, 'copys');
   if (!fs.existsSync(copysDir)) {
     fs.mkdirSync(copysDir, { recursive: true });
@@ -15,20 +15,50 @@ async function exportAndDispatch({ article, client, copies, images, outputDir })
   fs.writeFileSync(path.join(copysDir, 'threads.txt'), copies.threads.post, 'utf8');
   fs.writeFileSync(path.join(copysDir, 'facebook.txt'), copies.facebook.post, 'utf8');
 
+  // Ganchos Alternativos (A/B Hooks)
+  if (copies.hooks) {
+    const hooksTxt =
+`=== GANCHOS ALTERNATIVOS (A/B HOOKS) ===
+
+[1. CONTRARIANO / PROVOCATIVO]:
+${copies.hooks.contrarian || 'N/A'}
+
+[2. BASEADO EM DADOS / MÉTRICAS]:
+${copies.hooks.dataDriven || 'N/A'}
+
+[3. NARRATIVO / STORYTELLING]:
+${copies.hooks.storytelling || 'N/A'}
+`;
+    fs.writeFileSync(path.join(copysDir, 'ganchos_ab.txt'), hooksTxt, 'utf8');
+  }
+
   // Primeiro comentário separado
   const firstCommentsTxt = 
 `=== PRIMEIROS COMENTÁRIOS OFICIAIS ===
 
 [LINKEDIN - 1º COMENTÁRIO]:
-${copies.linkedin.firstComment}
+${copies.linkedin.firstComment || ''}
 
 [INSTAGRAM - 1º COMENTÁRIO]:
-${copies.instagram.firstComment}
+${copies.instagram.firstComment || ''}
+
+[FACEBOOK - 1º COMENTÁRIO]:
+${copies.facebook.firstComment || ''}
 `;
   fs.writeFileSync(path.join(copysDir, 'primeiros_comentarios.txt'), firstCommentsTxt, 'utf8');
 
   // 2. Montar Relatório Markdown Executivo
   const generatorName = copies.meta?.generator || 'pub_rs Engine';
+  const carouselSection = carousel ? `
+---
+
+## 📑 Carrossel em Slides & PDF (LinkedIn Document Posts)
+
+* **Arquivo PDF Oficial:** \`images/carousel_linkedin.pdf\` (${carousel.pdfSizeKb} KB)
+* **Quantidade de Slides:** ${carousel.slidesCount} slides no formato 4:5 Retrato (1080 x 1350 px)
+* **Pasta dos Slides:** \`images/carousel/\`
+` : '';
+
   const reportMd = 
 `# 📦 Pacote de Distribuição Multicanal · pub_rs
 
@@ -47,6 +77,17 @@ ${copies.instagram.firstComment}
 | **LinkedIn / X / Facebook** | Horizontal 16:9 | 1200 x 675 px | \`images/linkedin_twitter_facebook_16x9.webp\` |
 | **Instagram Stories / Status** | Vertical 9:16 | 1080 x 1920 px | \`images/instagram_stories_reels_9x16.webp\` |
 | **Threads / Feed Quadrado** | Quadrado 1:1 | 1080 x 1080 px | \`images/instagram_threads_square_1x1.webp\` |
+${carouselSection}
+---
+
+## ⚡ Ganchos Alternativos (A/B Hooks)
+
+* **Contrariano / Provocativo:**
+  > ${copies.hooks?.contrarian || 'N/A'}
+* **Baseado em Dados:**
+  > ${copies.hooks?.dataDriven || 'N/A'}
+* **Storytelling / Desafio:**
+  > ${copies.hooks?.storytelling || 'N/A'}
 
 ---
 
@@ -99,6 +140,9 @@ ${copies.threads.post}
 \`\`\`text
 ${copies.facebook.post}
 \`\`\`
+
+**Primeiro Comentário:**
+> ${copies.facebook.firstComment || ''}
 `;
 
   fs.writeFileSync(path.join(outputDir, 'PACOTE_REDES_SOCIAIS.md'), reportMd, 'utf8');
@@ -115,6 +159,7 @@ ${copies.facebook.post}
       siteName: article.siteName
     },
     images,
+    carousel: carousel || null,
     copies,
     generatedAt: new Date().toISOString()
   };
