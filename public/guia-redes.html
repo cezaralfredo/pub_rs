@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guia de Conexão de Redes Sociais — Social360 Studio</title>
+  <meta name="description" content="Tutorial passo a passo ensinando onde e como obter tokens, IDs e chaves de API de cada rede social para configurar no Social360 Studio.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #06090e;
+      --bg-surface: #0c131d;
+      --bg-card: rgba(18, 27, 43, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(0, 82, 255, 0.3);
+      --primary: #0052ff;
+      --primary-hover: #0045d8;
+      --cyan: #00d2ff;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(0, 82, 255, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 60%, rgba(0, 210, 255, 0.08) 0%, transparent 45%);
+      background-attachment: fixed;
+      padding-bottom: 5rem;
+    }
+
+    /* Topbar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      background: rgba(6, 9, 14, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.85rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 82, 255, 0.35);
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.55rem;
+      background: rgba(0, 210, 255, 0.12);
+      border: 1px solid rgba(0, 210, 255, 0.25);
+      color: var(--cyan);
+      border-radius: 999px;
+      margin-left: 0.5rem;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-back:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1040px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Hero */
+    .guide-hero {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2.5rem 1.5rem;
+      background: linear-gradient(180deg, rgba(12, 19, 29, 0.8) 0%, rgba(6, 9, 14, 0.4) 100%);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .guide-hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    }
+
+    .hero-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--cyan);
+      background: rgba(0, 210, 255, 0.1);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.85rem;
+      background: linear-gradient(135deg, #ffffff 40%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* Quick Links Bar */
+    .quick-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: center;
+      margin-top: 1.5rem;
+    }
+
+    .nav-pill {
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-pill:hover {
+      background: rgba(0, 82, 255, 0.2);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* Section Cards */
+    .guide-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      transition: border-color 0.2s;
+    }
+
+    .guide-card:hover {
+      border-color: rgba(0, 210, 255, 0.25);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+
+    .card-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .badge-recommended {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.25rem 0.65rem;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: var(--emerald);
+      border-radius: 999px;
+    }
+
+    /* Fields required box */
+    .fields-box {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .fields-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+      margin-bottom: 0.5rem;
+    }
+
+    .fields-list {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .fields-list li {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Steps list */
+    .steps-list {
+      list-style: none;
+      counter-reset: step-counter;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .steps-list > li {
+      counter-increment: step-counter;
+      position: relative;
+      padding-left: 2.75rem;
+      font-size: 0.95rem;
+      color: #cbd5e1;
+    }
+
+    .steps-list > li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--primary), #1e40af);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.8rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 82, 255, 0.4);
+    }
+
+    .step-title {
+      font-weight: 600;
+      color: #fff;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .code-snippet {
+      background: #04060a;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: #38bdf8;
+      display: block;
+      margin: 0.5rem 0;
+      word-break: break-all;
+      user-select: all;
+    }
+
+    a.external-link {
+      color: var(--cyan);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      font-weight: 500;
+    }
+
+    a.external-link:hover {
+      color: #fff;
+    }
+
+    .alert-tip {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #a7f3d0;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+
+    .alert-warning {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #fde68a;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+
+    /* Testing info banner */
+    .testing-banner {
+      background: linear-gradient(135deg, rgba(0, 82, 255, 0.15), rgba(0, 210, 255, 0.08));
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      margin-top: 3rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .testing-icon {
+      font-size: 2.5rem;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      .topbar { padding: 0.75rem 1rem; }
+      .container { padding: 0 1rem; }
+      .hero-title { font-size: 1.7rem; }
+      .guide-card { padding: 1.25rem; }
+      .testing-banner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="/index.html" class="brand-wrap">
+      <div class="brand-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+          <path d="M2 12h20"></path>
+        </svg>
+      </div>
+      <span class="brand-title">Social360</span>
+      <span class="brand-badge">Central de Conexões</span>
+    </a>
+    <a href="/index.html" class="btn-back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      <span>Voltar ao Studio</span>
+    </a>
+  </header>
+
+  <main class="container">
+    
+    <!-- Hero -->
+    <section class="guide-hero">
+      <span class="hero-tag">Manual Oficial de Integração</span>
+      <h1 class="hero-title">Onde Obter os Dados de Cada Rede Social</h1>
+      <p class="hero-subtitle">
+        Siga as instruções abaixo para localizar e gerar com segurança as chaves de API, tokens e IDs necessários para habilitar os disparos automatizados de cada cliente.
+      </p>
+
+      <nav class="quick-nav">
+        <a href="#buffer" class="nav-pill">📅 Buffer (Multicanal)</a>
+        <a href="#telegram" class="nav-pill">✈️ Telegram (Mais Rápido)</a>
+        <a href="#webhook" class="nav-pill">⚡ Webhook (n8n/Make)</a>
+        <a href="#linkedin" class="nav-pill">💼 LinkedIn API</a>
+        <a href="#meta" class="nav-pill">📸 Meta (Instagram / FB)</a>
+        <a href="#twitter" class="nav-pill">🐦 X / Twitter</a>
+        <a href="#ai-keys" class="nav-pill">🧠 Chaves de IA</a>
+      </nav>
+    </section>
+
+    <!-- 1. BUFFER API -->
+    <article class="guide-card" id="buffer">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">📅</div>
+          <div>
+            <h2 class="card-title">Buffer API (Agendamento Multicanal Unificado)</h2>
+            <p class="card-subtitle">Publicação e agendamento para Instagram, Facebook, LinkedIn, X, TikTok e Pinterest em um só lugar.</p>
+          </div>
+        </div>
+        <span class="badge-recommended">Altamente Recomendado</span>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>Access Token do Buffer</li>
+          <li>IDs dos Perfis (separados por vírgula)</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Conectar suas redes no Buffer:</strong>
+          Acesse <a href="https://buffer.com" target="_blank" class="external-link">buffer.com</a> e adicione os canais sociais da sua empresa/cliente normalmente no painel.
+        </li>
+        <li>
+          <strong class="step-title">Criar o App de Desenvolvedor:</strong>
+          Acesse o portal de desenvolvedores do Buffer: <a href="https://buffer.com/developers/apps" target="_blank" class="external-link">buffer.com/developers/apps</a>.<br>
+          Clique em <strong>"Create an App"</strong>, nomeie como <code>Social360 Studio</code> e preencha as URLs com seu domínio (ex: <code>https://social360.anauedesign.com.br</code>).
+        </li>
+        <li>
+          <strong class="step-title">Copiar o Access Token:</strong>
+          Na tela do app criado, você verá o seu <strong>Access Token</strong> permanente. Copie e cole no campo <em>Access Token do Buffer</em> no Social360.
+        </li>
+        <li>
+          <strong class="step-title">Localizar os IDs dos Perfis (Profile IDs):</strong>
+          No painel normal do Buffer, clique no ícone da rede social desejada na barra lateral esquerda. Observe a URL do seu navegador:
+          <span class="code-snippet">https://publish.buffer.com/profile/64b8a123456789abcdef/tab/queue</span>
+          O código após <code>/profile/</code> (ex: <code>64b8a123456789abcdef</code>) é o <strong>Profile ID</strong>.<br>
+          Se tiver mais de um perfil, copie os códigos de cada um e separe por vírgula no formulário:
+          <span class="code-snippet">64b8a123456789abcdef, 64c9f987654321fedcba</span>
+        </li>
+      </ol>
+
+      <div class="alert-tip">
+        <span>💡</span>
+        <div><strong>Dica de Ouro:</strong> Com o Buffer, você não precisa solicitar aprovações empresariais na Meta ou no LinkedIn. O Buffer gerencia todos os limites de postagem de forma transparente.</div>
+      </div>
+    </article>
+
+    <!-- 2. TELEGRAM -->
+    <article class="guide-card" id="telegram">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">✈️</div>
+          <div>
+            <h2 class="card-title">Telegram (Canal ou Grupo)</h2>
+            <p class="card-subtitle">Disparo direto com notificações ricas e formatação HTML. Leva menos de 2 minutos para configurar.</p>
+          </div>
+        </div>
+        <span class="badge-recommended">Mais Simples & Rápido</span>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>Bot Token (do @BotFather)</li>
+          <li>Chat ID ou @username_canal</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Criar o Bot com o @BotFather:</strong>
+          No Telegram, pesquise pelo bot oficial <code>@BotFather</code> (com o selo de verificado). Envie a mensagem:
+          <span class="code-snippet">/newbot</span>
+          Siga as instruções, escolha um nome (ex: <em>Social360 Notícias</em>) e um username terminando em <code>bot</code> (ex: <code>social360_noticias_bot</code>).
+        </li>
+        <li>
+          <strong class="step-title">Copiar o HTTP API Token:</strong>
+          O BotFather responderá com o Token de acesso:
+          <span class="code-snippet">7123456789:AAFlKj9823hjasd89123-kasd98123</span>
+          Copie e cole no campo <em>Bot Token</em> no Social360.
+        </li>
+        <li>
+          <strong class="step-title">Adicionar o Bot como Administrador:</strong>
+          Vá no canal ou grupo onde as notícias serão enviadas ➔ <em>Gerenciar Canal ➔ Administradores ➔ Adicionar Administrador</em>. Busque pelo username do seu bot e conceda permissão de <strong>Postar Mensagens</strong>.
+        </li>
+        <li>
+          <strong class="step-title">Definir o Chat ID:</strong>
+          • Se o canal for <strong>Público</strong>: Use o @ do canal. Exemplo: <code>@meucanal</code> ou <code>@anauedesign</code>.<br>
+          • Se o canal for <strong>Privado ou Grupo</strong>: Adicione o bot <code>@RawDataBot</code> no canal por 1 minuto. Ele revelará o ID numérico (ex: <code>-1001928374650</code>). Copie o número completo com o sinal de menos.
+        </li>
+      </ol>
+    </article>
+
+    <!-- 3. WEBHOOK -->
+    <article class="guide-card" id="webhook">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">⚡</div>
+          <div>
+            <h2 class="card-title">Webhook (n8n, Make, Zapier, Metricool)</h2>
+            <p class="card-subtitle">Ideal para automações avançadas via fluxos low-code (WhatsApp, disparos customizados, CRM).</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>URL do Webhook</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">No n8n:</strong>
+          Crie um novo workflow, adicione um nó inicial <strong>Webhook</strong>, configure o método como <strong>POST</strong> e copie a <strong>Production URL</strong> (ex: <code>https://n8n.seu-dominio.com.br/webhook/social360</code>).
+        </li>
+        <li>
+          <strong class="step-title">No Make (Integromat):</strong>
+          Crie um cenário, adicione o módulo <strong>Custom Webhook</strong>, clique em <em>Create a Webhook</em> e copie o link gerado.
+        </li>
+        <li>
+          <strong class="step-title">Colar no Social360:</strong>
+          Cole a URL no campo correspondente e clique no botão <strong>"Testar"</strong>. O Social360 enviará um ping de handshake para validar a recepção.
+        </li>
+      </ol>
+    </article>
+
+    <!-- 4. LINKEDIN DIRECT API -->
+    <article class="guide-card" id="linkedin">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">💼</div>
+          <div>
+            <h2 class="card-title">LinkedIn Direct API (v2)</h2>
+            <p class="card-subtitle">Publicação direta em Company Pages ou perfis pessoais, com suporte a Carrosséis PDF.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>Access Token (OAuth 2.0)</li>
+          <li>Author URN (ex: urn:li:organization:12345678)</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Acessar o LinkedIn Developers:</strong>
+          Acesse <a href="https://www.linkedin.com/developers/apps" target="_blank" class="external-link">linkedin.com/developers/apps</a> e clique em <strong>"Create App"</strong>.
+        </li>
+        <li>
+          <strong class="step-title">Associar a Página da Empresa:</strong>
+          Preencha o nome do app, associe a sua Company Page do LinkedIn e envie uma solicitação de verificação para a página.
+        </li>
+        <li>
+          <strong class="step-title">Adicionar Produtos:</strong>
+          Na aba <em>Products</em>, solicite acesso aos produtos <strong>Share on LinkedIn</strong> e <strong>Sign In with LinkedIn using OpenID Connect</strong>.
+        </li>
+        <li>
+          <strong class="step-title">Gerar o Access Token:</strong>
+          Na aba <em>Auth ➔ OAuth 2.0 Tools</em>, selecione o app, marque os escopos <code>w_member_social</code> (ou <code>w_organization_social</code>) e clique em <strong>Request Token</strong>. Copie o token de acesso.
+        </li>
+        <li>
+          <strong class="step-title">Obter o Author URN da Empresa:</strong>
+          Abra sua Company Page no LinkedIn. Olhe a URL no navegador:
+          <span class="code-snippet">https://www.linkedin.com/company/12345678/admin/</span>
+          O número <code>12345678</code> é o ID da empresa. Seu Author URN será:
+          <span class="code-snippet">urn:li:organization:12345678</span>
+        </li>
+      </ol>
+    </article>
+
+    <!-- 5. META GRAPH API -->
+    <article class="guide-card" id="meta">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">📸</div>
+          <div>
+            <h2 class="card-title">Meta Graph API (Facebook & Instagram)</h2>
+            <p class="card-subtitle">Publicação oficial no Feed do Facebook e perfil comercial do Instagram.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>Page Access Token</li>
+          <li>Page ID</li>
+          <li>Instagram Account ID</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Pré-requisito:</strong>
+          A sua Página do Facebook e sua Conta Profissional do Instagram precisam estar vinculadas no Meta Business Suite.
+        </li>
+        <li>
+          <strong class="step-title">Criar App no Meta for Developers:</strong>
+          Acesse <a href="https://developers.facebook.com/apps" target="_blank" class="external-link">developers.facebook.com/apps</a> ➔ <em>Criar aplicativo ➔ Outro ➔ Empresa</em>.
+        </li>
+        <li>
+          <strong class="step-title">Gerar o Token no Graph API Explorer:</strong>
+          Acesse <a href="https://developers.facebook.com/tools/explorer/" target="_blank" class="external-link">developers.facebook.com/tools/explorer/</a>.<br>
+          Selecione a sua Página em <em>User or Page</em> e adicione as permissões:
+          <code>pages_show_list</code>, <code>pages_manage_posts</code>, <code>instagram_basic</code>, <code>instagram_content_publish</code>.
+        </li>
+        <li>
+          <strong class="step-title">Obter o Page ID e Instagram Account ID:</strong>
+          Faça uma requisição GET no Graph API Explorer para:
+          <span class="code-snippet">me?fields=id,name,instagram_business_account</span>
+          O retorno trará o <code>id</code> da Página do Facebook e o <code>instagram_business_account.id</code>.
+        </li>
+        <li>
+          <strong class="step-title">Estender Token para Longa Duração:</strong>
+          No <a href="https://developers.facebook.com/tools/debug/accesstoken/" target="_blank" class="external-link">Token Debugger</a>, cole o token gerado e clique em <strong>"Estender Token de Acesso"</strong> para obter o token de 60 dias ou permanente.
+        </li>
+      </ol>
+    </article>
+
+    <!-- 6. X (TWITTER) -->
+    <article class="guide-card" id="twitter">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">🐦</div>
+          <div>
+            <h2 class="card-title">X / Twitter API (v2)</h2>
+            <p class="card-subtitle">Publicação de tweets isolados e threads completas encadeadas automaticamente.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>Bearer Token ou User Access Token</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Acessar o X Developer Portal:</strong>
+          Acesse <a href="https://developer.x.com/en/portal/dashboard" target="_blank" class="external-link">developer.x.com/en/portal/dashboard</a> e faça login.
+        </li>
+        <li>
+          <strong class="step-title">Criar o App:</strong>
+          Em <em>Projects & Apps</em>, crie um novo aplicativo (ex: <code>Social360 Studio</code>).
+        </li>
+        <li>
+          <strong class="step-title">Configurar Permissão de Escrita:</strong>
+          Em <em>Settings ➔ User authentication settings</em>, defina a permissão como <strong>Read and Write</strong> (obrigatório para postar).
+        </li>
+        <li>
+          <strong class="step-title">Copiar o Token:</strong>
+          Na aba <em>Keys and Tokens</em>, gere o <strong>Bearer Token</strong> ou <strong>OAuth 2.0 User Token</strong> e cole no Social360.
+        </li>
+      </ol>
+    </article>
+
+    <!-- 7. CHAVES DE IA -->
+    <article class="guide-card" id="ai-keys">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">🧠</div>
+          <div>
+            <h2 class="card-title">Chaves de Inteligência Artificial (Opcional por Cliente)</h2>
+            <p class="card-subtitle">Permite que cada cliente utilize sua própria cota ou modelo dedicado de IA na redação de copies.</p>
+          </div>
+        </div>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Google Gemini (Recomendado pela velocidade e contexto):</strong>
+          Gere gratuitamente em: <a href="https://aistudio.google.com/app/apikey" target="_blank" class="external-link">aistudio.google.com/app/apikey</a>
+        </li>
+        <li>
+          <strong class="step-title">OpenAI (ChatGPT / GPT-4o):</strong>
+          Gere em: <a href="https://platform.openai.com/api-keys" target="_blank" class="external-link">platform.openai.com/api-keys</a>
+        </li>
+        <li>
+          <strong class="step-title">Anthropic Claude (Melhor redação editorial humana):</strong>
+          Gere em: <a href="https://console.anthropic.com/settings/keys" target="_blank" class="external-link">console.anthropic.com/settings/keys</a>
+        </li>
+        <li>
+          <strong class="step-title">Groq (Gerações instantâneas com Llama 3.3):</strong>
+          Gere gratuitamente em: <a href="https://console.groq.com/keys" target="_blank" class="external-link">console.groq.com/keys</a>
+        </li>
+      </ol>
+    </article>
+
+    <!-- Banner Testes -->
+    <div class="testing-banner">
+      <div class="testing-icon">🔌</div>
+      <div>
+        <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.25rem; margin-bottom: 0.35rem;">Validação em Tempo Real no Studio</h3>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+          Após preencher os dados de qualquer rede, clique no botão <strong>"Testar"</strong> correspondente no painel do cliente. O Social360 fará uma chamada oficial à API e confirmará se as credenciais estão 100% operacionais antes de qualquer publicação real.
+        </p>
+      </div>
+    </div>
+
+  </main>
+
+</body>
+</html>

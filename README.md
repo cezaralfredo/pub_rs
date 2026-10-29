@@ -175,9 +175,8 @@ Os limites são controlados e reiniciados automaticamente mês a mês:
 | **Pro Creator** | 200 gerações/mês | Até 10 marcas | Consultores, social media managers e PMEs |
 | **Agency Enterprise** | 1.000 gerações/mês | Até 50 marcas | Agências de publicidade e times de marketing de grande escala |
 
-### 3. Credenciais Padrão do Administrador (Demo)
-- **E-mail:** `admin@pubrs.com`
-- **Senha:** `admin123`
-- *Dica:* Na tela de login, há um botão de 1 clique **"⚡ Preencher Acesso"** para testes rápidos de avaliação.
+### 3. Conexão de Redes Sociais & APIs
+Para aprender passo a passo como obter as chaves de API, tokens e IDs de cada rede social suportada (LinkedIn, Meta Facebook/Instagram, X/Twitter, Telegram, Buffer e Webhooks), consulte nosso guia dedicado:
+👉 **[Guia Completo de Conexão de Redes Sociais](COMO_OBTER_DADOS_REDES_SOCIAIS.md)**
 
 
