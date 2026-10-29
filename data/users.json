@@ -1,10 +1,10 @@
 [
   {
     "id": "usr_admin_master",
-    "name": "Administrador SaaS",
-    "email": "admin@pubrs.com",
-    "company": "pub_rs Enterprise",
-    "passwordHash": "$2b$10$clA4OVqNaj5g1W.0aO0rq.OaxxFXbq.exFMFQun2rBbrYztMi2z0y",
+    "name": "Administrador Social360",
+    "email": "gerandoparceria@gmail.com",
+    "company": "Social360 / Anauê Design",
+    "passwordHash": "$2b$10$Qs4rG9fA5wjD/.SdExIM2OBDLOoy7i9uR7kYQmJ5SkL3a35/oYama",
     "role": "admin",
     "plan": "agency",
     "usage": {

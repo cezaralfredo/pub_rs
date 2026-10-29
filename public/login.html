@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login & Acesso — pub_rs Studio SaaS</title>
-  <meta name="description" content="Acesse o pub_rs Studio, a plataforma SaaS de automação multicanal de conteúdo e redes sociais com IA.">
+  <title>Login & Acesso — Social360 Studio SaaS</title>
+  <meta name="description" content="Acesse o Social360 Studio, a plataforma SaaS de automação omnichannel de conteúdo e redes sociais com IA.">
   
   <!-- Google Fonts: Outfit, Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -211,46 +211,6 @@
       box-shadow: 0 4px 12px rgba(0, 82, 255, 0.3);
     }
 
-    .auth-demo-banner {
-      background: rgba(30, 41, 59, 0.7);
-      border: 1px dashed rgba(56, 189, 248, 0.4);
-      border-radius: 12px;
-      padding: 0.85rem 1rem;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-    }
-
-    .auth-demo-text {
-      font-size: 0.82rem;
-      color: #cbd5e1;
-      line-height: 1.35;
-    }
-
-    .auth-demo-text strong {
-      color: #38bdf8;
-    }
-
-    .btn-fill-demo {
-      padding: 0.4rem 0.85rem;
-      font-size: 0.78rem;
-      background: rgba(56, 189, 248, 0.15);
-      border: 1px solid rgba(56, 189, 248, 0.35);
-      color: #38bdf8;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      white-space: nowrap;
-      transition: all 0.2s;
-    }
-
-    .btn-fill-demo:hover {
-      background: rgba(56, 189, 248, 0.3);
-      color: #fff;
-    }
-
     .auth-form-group {
       margin-bottom: 1.25rem;
     }
@@ -446,7 +406,7 @@
             </svg>
           </div>
           <div style="display: flex; align-items: center;">
-            <span class="hero-brand-title">pub_rs</span>
+            <span class="hero-brand-title">Social360</span>
             <span class="hero-brand-pill">ENTERPRISE SAAS</span>
           </div>
         </div>
@@ -502,16 +462,6 @@
         </button>
         <button type="button" class="auth-tab-btn" id="tab-register" onclick="switchAuthTab('register')">
           Criar Conta SaaS
-        </button>
-      </div>
-
-      <!-- Banner de Demonstração / Preenchimento Rápido -->
-      <div class="auth-demo-banner" id="demo-banner">
-        <div class="auth-demo-text">
-          <strong>Acesso Administrador:</strong> admin@pubrs.com / admin123
-        </div>
-        <button type="button" class="btn-fill-demo" onclick="fillDemoCredentials()">
-          ⚡ Preencher Acesso
         </button>
       </div>
 
@@ -654,7 +604,6 @@
       const tabRegister = document.getElementById('tab-register');
       const formLogin = document.getElementById('form-login');
       const formRegister = document.getElementById('form-register');
-      const demoBanner = document.getElementById('demo-banner');
       hideAlert();
 
       if (tab === 'login') {
@@ -662,21 +611,12 @@
         tabRegister.classList.remove('active');
         formLogin.style.display = 'block';
         formRegister.style.display = 'none';
-        demoBanner.style.display = 'flex';
       } else {
         tabLogin.classList.remove('active');
         tabRegister.classList.add('active');
         formLogin.style.display = 'none';
         formRegister.style.display = 'block';
-        demoBanner.style.display = 'none';
       }
-    }
-
-    // Preencher dados padrão de Administrador
-    function fillDemoCredentials() {
-      document.getElementById('login-email').value = 'admin@pubrs.com';
-      document.getElementById('login-password').value = 'admin123';
-      showAlert('Credenciais padrão de administrador preenchidas. Clique em "Acessar Plataforma"!', 'success');
     }
 
     // Seleção de Plano no Cadastro
@@ -782,7 +722,7 @@
         localStorage.setItem('pub_rs_token', data.token);
         localStorage.setItem('pub_rs_user', JSON.stringify(data.user));
 
-        showAlert('Conta criada com sucesso! Bem-vindo ao pub_rs Studio.', 'success');
+        showAlert('Conta criada com sucesso! Bem-vindo ao Social360 Studio.', 'success');
         setTimeout(() => {
           window.location.href = '/index.html';
         }, 700);

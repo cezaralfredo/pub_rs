@@ -35,6 +35,9 @@ const SAAS_PLANS = {
   }
 };
 
+const ADMIN_DEFAULT_EMAIL = 'gerandoparceria@gmail.com';
+const ADMIN_DEFAULT_PASSWORD_HASH = '$2b$10$Qs4rG9fA5wjD/.SdExIM2OBDLOoy7i9uR7kYQmJ5SkL3a35/oYama'; // Mkt*111069
+
 /**
  * Garante que o diretório de dados e o arquivo de usuários existam com o admin padrão.
  */
@@ -44,17 +47,14 @@ function initUserStore() {
   }
 
   if (!fs.existsSync(USERS_FILE)) {
-    // Cria usuário administrador inicial padrão (admin@pubrs.com / admin123)
-    const salt = bcrypt.genSaltSync(10);
-    const defaultPasswordHash = bcrypt.hashSync('admin123', salt);
-
+    // Cria usuário administrador inicial oficial
     const initialUsers = [
       {
         id: 'usr_admin_master',
-        name: 'Administrador SaaS',
-        email: 'admin@pubrs.com',
-        company: 'pub_rs Enterprise',
-        passwordHash: defaultPasswordHash,
+        name: 'Administrador Social360',
+        email: ADMIN_DEFAULT_EMAIL,
+        company: 'Social360 / Anauê Design',
+        passwordHash: ADMIN_DEFAULT_PASSWORD_HASH,
         role: 'admin',
         plan: 'agency',
         usage: {
@@ -67,7 +67,31 @@ function initUserStore() {
     ];
 
     fs.writeFileSync(USERS_FILE, JSON.stringify(initialUsers, null, 2), 'utf8');
-    console.log('🔒 [SaaS Auth] Usuário administrador padrão inicializado (admin@pubrs.com / admin123).');
+    console.log(`🔒 [SaaS Auth] Usuário administrador inicializado (${ADMIN_DEFAULT_EMAIL}).`);
+  } else {
+    // Se o arquivo já existe (ex: volume persistente do Docker na VPS), atualiza a conta master para as novas credenciais
+    try {
+      const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+      let modified = false;
+
+      const adminUser = users.find(u => u.id === 'usr_admin_master' || u.role === 'admin' || u.email === 'admin@pubrs.com');
+      if (adminUser) {
+        if (adminUser.email !== ADMIN_DEFAULT_EMAIL || adminUser.passwordHash !== ADMIN_DEFAULT_PASSWORD_HASH) {
+          adminUser.email = ADMIN_DEFAULT_EMAIL;
+          adminUser.passwordHash = ADMIN_DEFAULT_PASSWORD_HASH;
+          adminUser.name = 'Administrador Social360';
+          adminUser.company = 'Social360 / Anauê Design';
+          modified = true;
+        }
+      }
+
+      if (modified) {
+        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+        console.log(`🔒 [SaaS Auth] Credenciais do administrador atualizadas com sucesso (${ADMIN_DEFAULT_EMAIL}).`);
+      }
+    } catch (err) {
+      console.error('[SaaS Auth] Erro ao verificar credenciais do administrador:', err.message);
+    }
   }
 }
 
