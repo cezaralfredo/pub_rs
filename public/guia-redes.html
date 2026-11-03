@@ -482,7 +482,7 @@
           <div class="card-icon">📅</div>
           <div>
             <h2 class="card-title">Buffer API (Agendamento Multicanal Unificado)</h2>
-            <p class="card-subtitle">Publicação e agendamento para Instagram, Facebook, LinkedIn, X, TikTok e Pinterest em um só lugar.</p>
+            <p class="card-subtitle">Publicação e agendamento para Instagram, Facebook, LinkedIn, X (Twitter), TikTok e Pinterest em um só lugar.</p>
           </div>
         </div>
         <span class="badge-recommended">Altamente Recomendado</span>
@@ -496,40 +496,45 @@
         </ul>
       </div>
 
-      <div class="alert-warning" style="margin-bottom: 1.5rem;">
-        <span>⚠️</span>
+      <div class="alert-tip" style="margin-bottom: 1.5rem; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.4);">
+        <span>✅</span>
         <div>
-          <strong>Atenção ao Erro 401 no Buffer:</strong> O código 401 significa <em>Não Autorizado</em>. Isso ocorre quando o token copiado contém espaços extras, está incompleto ou expirou. Obtenha sua API Key oficial diretamente em <a href="https://publish.buffer.com/settings/api" target="_blank" class="external-link" style="color: #fff;">publish.buffer.com/settings/api</a>.
+          <strong>Método Oficial & Sem Erro 401:</strong> Não é necessário criar aplicativo no portal de desenvolvedores nem usar <em>Client Secret</em> (que causa erro 401). O Buffer disponibiliza a geração de <strong>API Key pessoal</strong> direta pelo menu oficial: <a href="https://publish.buffer.com/settings/api" target="_blank" class="external-link" style="color: #fff; font-weight: 700;">publish.buffer.com/settings/api</a>.
         </div>
       </div>
 
       <ol class="steps-list">
         <li>
           <strong class="step-title">Conectar suas redes no Buffer:</strong>
-          Acesse <a href="https://buffer.com" target="_blank" class="external-link">buffer.com</a> e adicione os canais sociais da sua empresa/cliente normalmente no painel.
+          Acesse <a href="https://buffer.com" target="_blank" class="external-link">buffer.com</a> e adicione os canais sociais da sua empresa/cliente normalmente no painel (Instagram, LinkedIn, X, etc.).
         </li>
         <li>
           <strong class="step-title">Gerar a API Key Oficial (publish.buffer.com):</strong>
-          Acesse o menu de API do Buffer: <a href="https://publish.buffer.com/settings/api" target="_blank" class="external-link">publish.buffer.com/settings/api</a> (ou clique no seu perfil ➔ <strong>Settings</strong> ➔ <strong>API</strong>).<br>
-          Clique em <strong>"Create a new API Key"</strong> (ou <em>Generate API Key</em>).
+          Acesse a página direta de API: <a href="https://publish.buffer.com/settings/api" target="_blank" class="external-link">publish.buffer.com/settings/api</a><br>
+          <em>(Ou no painel web, clique na sua foto de perfil / menu superior ➔ <strong>Settings</strong> ➔ aba <strong>API</strong>).</em><br>
+          Clique no botão azul <strong>"Generate API Key"</strong> (ou <em>Create a new API Key</em>), dê um nome (ex: <code>Social360 Studio</code>) e gere a chave.
         </li>
         <li>
-          <strong class="step-title">Copiar a Chave:</strong>
-          Copie a chave gerada e cole no campo <em>Access Token do Buffer</em> no Social360.
+          <strong class="step-title">Copiar a Chave Gerada:</strong>
+          Copie a API Key completa exibida pelo Buffer e cole no campo <em>Access Token do Buffer</em> no Social360.
         </li>
         <li>
           <strong class="step-title">Localizar os IDs dos Perfis (Profile IDs):</strong>
           No painel normal do Buffer (<a href="https://publish.buffer.com" target="_blank" class="external-link">publish.buffer.com</a>), clique no ícone da rede social desejada na barra lateral esquerda. Observe a URL do seu navegador:
-          <span class="code-snippet">https://publish.buffer.com/profile/64b8a123456789abcdef/tab/queue</span>
-          O código após <code>/profile/</code> (ex: <code>64b8a123456789abcdef</code>) é o <strong>Profile ID</strong>.<br>
-          Se tiver mais de um perfil, copie os códigos de cada um e separe por vírgula no formulário:
-          <span class="code-snippet">64b8a123456789abcdef, 64c9f987654321fedcba</span>
+          <span class="code-snippet">https://publish.buffer.com/profile/6aea24c9e29c69a1714e65c7/tab/queue</span>
+          O código hexadecimal de 24 caracteres após <code>/profile/</code> (ex: <code>6aea24c9e29c69a1714e65c7</code>) é o <strong>Profile ID</strong>.<br>
+          Se tiver mais de um perfil conectado, copie os códigos de cada canal e separe por vírgula no formulário:
+          <span class="code-snippet">6aea24c9e29c69a1714e65c7, 6aea23fbe29c69a1714e56d9</span>
+        </li>
+        <li>
+          <strong class="step-title">Testar a Conexão no Social360:</strong>
+          Clique no botão <strong>"Testar Buffer"</strong> no modal do cliente. O Social360 validará sua conta imediatamente na API GraphQL oficial e exibirá: <code>Buffer conectado com sucesso (Conta: seu_email@dominio.com)</code>!
         </li>
       </ol>
 
       <div class="alert-tip">
         <span>💡</span>
-        <div><strong>Dica de Ouro:</strong> Com o Buffer, você não precisa solicitar aprovações empresariais na Meta ou no LinkedIn. O Buffer gerencia todos os limites de postagem de forma transparente.</div>
+        <div><strong>Dica de Ouro:</strong> Com o Buffer integrado, você publica em todas as redes ao mesmo tempo sem precisar de aprovações burocráticas da Meta ou do LinkedIn, e sem limitações do plano gratuito do X.</div>
       </div>
     </article>
 

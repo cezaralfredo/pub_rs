@@ -77,10 +77,10 @@ O **Erro 401 (Unauthorized)** significa que a autenticação falhou. Isso aconte
 3. **Obter os IDs dos Perfis (Profile IDs / Channel IDs):**
    - No painel web do Buffer ([publish.buffer.com](https://publish.buffer.com)), clique em um dos seus canais conectados na barra lateral esquerda (ex: Instagram, LinkedIn ou X).
    - Olhe a URL no navegador:
-     `https://publish.buffer.com/profile/64b8a123456789abcdef/tab/queue`
-   - O código após `/profile/` (ex: `64b8a123456789abcdef`) é o **Profile ID**.
+     `https://publish.buffer.com/profile/6aea24c9e29c69a1714e65c7/tab/queue`
+   - O código hexadecimal de 24 caracteres após `/profile/` (ex: `6aea24c9e29c69a1714e65c7`) é o **Profile ID**.
    - Se for publicar em mais de um canal, pegue os códigos de cada um e separe por vírgula no Social360:
-     `64b8a123456789abcdef, 64c9f987654321fedcba`
+     `6aea24c9e29c69a1714e65c7, 6aea23fbe29c69a1714e56d9`
 4. **Testar no Social360:**
    - Clique no botão **"Testar Buffer"** no modal do cliente.
    - O Social360 validará sua conta e responderá com: `Buffer conectado com sucesso (Conta: seu_email@dominio.com)`.
