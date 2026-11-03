@@ -71,7 +71,11 @@
     "buffer": {
       "enabled": false,
       "accessToken": "",
-      "profileIds": []
+      "profileIds": [
+        "6aea5dcde29c69a17152234c",
+        "6aea23fbe29c69a1714e56d9",
+        "6aea4b65e29c69a17150d1a2"
+      ]
     }
   }
 }

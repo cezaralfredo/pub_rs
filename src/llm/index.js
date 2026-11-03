@@ -316,6 +316,9 @@ async function generateWithLlm(article, client, options = {}) {
       recommendedFormat: '9:16 (Vertical)'
     },
     twitter: {
+      post: Array.isArray(parsed.twitter?.thread) && parsed.twitter.thread.length > 0
+        ? replaceUrls(parsed.twitter.thread[0], 'twitter')
+        : replaceUrls(parsed.twitter?.post || parsed.twitter, 'twitter'),
       thread: Array.isArray(parsed.twitter?.thread)
         ? parsed.twitter.thread.map(t => replaceUrls(t, 'twitter'))
         : [replaceUrls(parsed.twitter?.post || parsed.twitter, 'twitter')].filter(Boolean),

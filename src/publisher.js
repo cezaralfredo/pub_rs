@@ -44,6 +44,35 @@ async function publishToWebhook(url, payload) {
 }
 
 /**
+ * Consulta todos os canais da organização no Buffer via GraphQL
+ */
+async function getBufferOrganizationChannels(token) {
+  try {
+    const r1 = await fetch('https://api.buffer.com', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'query { account { organizations { id } } }' })
+    });
+    const d1 = await r1.json();
+    const orgId = d1?.data?.account?.organizations?.[0]?.id;
+    if (!orgId) return [];
+
+    const r2 = await fetch('https://api.buffer.com', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: 'query GetChannels($input: ChannelsInput!) { channels(input: $input) { id name service type } }',
+        variables: { input: { organizationId: orgId } }
+      })
+    });
+    const d2 = await r2.json();
+    return d2?.data?.channels || [];
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
  * Consulta informações do canal no Buffer via GraphQL
  */
 async function getBufferChannel(channelId, token) {
@@ -80,16 +109,59 @@ async function getBufferChannel(channelId, token) {
  * Publicação via Buffer API (Agendamento / Publicação direta multicanal)
  * Suporta a API GraphQL Moderna Oficial (https://api.buffer.com)
  */
-async function publishToBuffer(config, copies, packageId) {
+async function publishToBuffer(config, copies, packageId, options = {}) {
   const { accessToken, profileIds, now = true } = config;
+  const { images = [], article = {}, outputDir } = options;
   const token = (accessToken || '').trim();
 
-  const idList = Array.isArray(profileIds)
+  let idList = Array.isArray(profileIds)
     ? profileIds
     : (typeof profileIds === 'string' ? profileIds.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-  if (!token || idList.length === 0) {
-    return { status: 'skipped', message: 'Credenciais do Buffer incompletas (accessToken ou profileIds ausentes).' };
+  if (!token) {
+    return { status: 'skipped', message: 'Access Token do Buffer ausente.' };
+  }
+
+  // Se nenhum profileId foi informado, busca dinamicamente todos os canais ativos da conta
+  let activeOrgChannels = null;
+  if (idList.length === 0) {
+    activeOrgChannels = await getBufferOrganizationChannels(token);
+    idList = activeOrgChannels.map(c => c.id);
+  }
+
+  if (idList.length === 0) {
+    return { status: 'skipped', message: 'Nenhum canal ativo foi informado ou encontrado no Buffer.' };
+  }
+
+  // Tenta localizar imagens do pacote para canais visuais (Instagram, LinkedIn, Twitter)
+  const baseUrl = process.env.BASE_URL || 'https://social360.anauedesign.com.br';
+  let instagramImageUrl = null;
+  let genericImageUrl = null;
+
+  if (packageId) {
+    const imagesDir = outputDir && fs.existsSync(path.join(outputDir, 'images'))
+      ? path.join(outputDir, 'images')
+      : (outputDir && fs.existsSync(outputDir) ? outputDir : null);
+
+    if (imagesDir && fs.existsSync(imagesDir)) {
+      if (fs.existsSync(path.join(imagesDir, 'instagram_feed_portrait_4x5.jpg'))) {
+        instagramImageUrl = `${baseUrl}/api/media/${packageId}/instagram_feed_portrait_4x5.jpg`;
+      } else if (fs.existsSync(path.join(imagesDir, 'instagram_threads_square_1x1.jpg'))) {
+        instagramImageUrl = `${baseUrl}/api/media/${packageId}/instagram_threads_square_1x1.jpg`;
+      }
+
+      if (fs.existsSync(path.join(imagesDir, 'linkedin_twitter_facebook_16x9.jpg'))) {
+        genericImageUrl = `${baseUrl}/api/media/${packageId}/linkedin_twitter_facebook_16x9.jpg`;
+      }
+    }
+  }
+
+  if (!instagramImageUrl && !genericImageUrl && Array.isArray(images) && images.length > 0) {
+    const imgObj = images.find(img => img.url || img.src);
+    if (imgObj) {
+      genericImageUrl = imgObj.url || imgObj.src;
+      instagramImageUrl = imgObj.url || imgObj.src;
+    }
   }
 
   const results = [];
@@ -107,19 +179,59 @@ async function publishToBuffer(config, copies, packageId) {
   for (const profileId of idList) {
     // 1. Identifica os metadados do canal (twitter, googlebusiness, linkedin, instagram, facebook, etc.)
     const channelInfo = await getBufferChannel(profileId, token);
-    const service = (channelInfo?.service || '').toLowerCase();
-    const channelName = channelInfo?.name || profileId;
 
-    // 2. Seleciona a copy mais contextualizada para a rede do canal
+    // Se o canal não existe no Buffer (ex: ID antigo removido/desconectado)
+    if (!channelInfo) {
+      if (!activeOrgChannels) {
+        activeOrgChannels = await getBufferOrganizationChannels(token);
+      }
+      const activeSummary = activeOrgChannels.length > 0
+        ? `Canais ativos encontrados na sua conta: ${activeOrgChannels.map(c => `${c.name} (${c.service}): ${c.id}`).join(', ')}`
+        : 'Nenhum canal ativo encontrado nesta conta.';
+
+      results.push({
+        profileId,
+        channelName: profileId,
+        service: 'desconhecido',
+        status: 'error',
+        api: 'graphql',
+        error: `Canal ${profileId} não foi encontrado no Buffer (pode ter sido desconectado ou substituído). ${activeSummary}`
+      });
+      continue;
+    }
+
+    const service = (channelInfo.service || '').toLowerCase();
+    const channelName = channelInfo.name || profileId;
+
+    // 2. Proteção Especial para Instagram: Instagram NÃO aceita publicações de texto puro
+    const postImage = (service === 'instagram') ? (instagramImageUrl || genericImageUrl) : genericImageUrl;
+    if (service === 'instagram' && !postImage) {
+      console.warn(`[Buffer] Canal Instagram ${channelName} ignorado: pacote sem imagem anexada.`);
+      results.push({
+        profileId,
+        channelName,
+        service,
+        status: 'skipped',
+        api: 'graphql',
+        error: 'O Instagram exige imagem ou vídeo obrigatório. Como este pacote não possui imagem anexada, a publicação no Instagram foi ignorada.'
+      });
+      continue;
+    }
+
+    // 3. Seleciona e formata a copy mais contextualizada para a rede social do canal
     let postText = '';
     if (service === 'twitter') {
-      postText = copies.twitter?.post || copies.linkedin?.post || copies.threads?.post;
+      postText = copies.twitter?.post || (Array.isArray(copies.twitter?.thread) ? copies.twitter.thread[0] : null) || copies.threads?.post || copies.linkedin?.post;
+      // Twitter / X limita tweets estritamente a 280 caracteres
+      if (postText && postText.length > 280) {
+        postText = postText.slice(0, 277) + '...';
+      }
     } else if (service === 'instagram') {
       postText = copies.instagram?.post || copies.facebook?.post || copies.linkedin?.post;
     } else if (service === 'googlebusiness') {
       postText = copies.facebook?.post || copies.linkedin?.post || copies.twitter?.post;
     } else if (service === 'linkedin') {
-      postText = copies.linkedin?.post || copies.facebook?.post;
+      postText = copies.linkedin?.post || copies.facebook?.post || copies.twitter?.post;
     }
 
     if (!postText || typeof postText !== 'string' || !postText.trim()) {
@@ -127,7 +239,7 @@ async function publishToBuffer(config, copies, packageId) {
     }
     postText = postText.trim();
 
-    // 3. Monta o input GraphQL em estrita conformidade com o schema do Buffer (needsApproval é obrigatório)
+    // 4. Monta o input GraphQL em estrita conformidade com o schema do Buffer
     const input = {
       channelId: profileId,
       text: postText,
@@ -136,9 +248,30 @@ async function publishToBuffer(config, copies, packageId) {
       needsApproval: false
     };
 
-    // Google Business Profile exige a especificação do tipo de post no metadata
+    // Anexa imagem se houver
+    if (postImage) {
+      input.assets = [
+        {
+          image: {
+            url: postImage
+          }
+        }
+      ];
+    }
+
+    // Google Business Profile exige a especificação do tipo no metadata
     if (service === 'googlebusiness') {
       input.metadata = { google: { type: 'whats_new' } };
+    }
+
+    // Instagram exige metadata com type e shouldShareToFeed
+    if (service === 'instagram') {
+      input.metadata = {
+        instagram: {
+          type: 'post',
+          shouldShareToFeed: true
+        }
+      };
     }
 
     let success = false;
@@ -180,7 +313,7 @@ async function publishToBuffer(config, copies, packageId) {
         postResult = gqlData?.data?.createPost;
       }
 
-      // Fallback 2: Se falhar por tipo do Google Business (caso channelInfo não tenha sido detectado a tempo)
+      // Fallback 2: Se falhar por tipo do Google Business
       if (postResult?.message && postResult.message.includes('Google Business Profiles posts require a type')) {
         console.warn(`[Buffer GraphQL] Injetando metadata whats_new para Google Business (${channelName})...`);
         input.metadata = { google: { type: 'whats_new' } };
@@ -234,13 +367,22 @@ async function publishToBuffer(config, copies, packageId) {
 
   const successCount = results.filter(r => r.status === 'success').length;
   const failCount = results.filter(r => r.status === 'error').length;
+  const skippedCount = results.filter(r => r.status === 'skipped').length;
 
-  if (successCount === 0) {
-    const combinedErrors = results.map(r => `${r.channelName}: ${r.error}`).join(' | ');
+  if (successCount === 0 && failCount > 0) {
+    const combinedErrors = results.filter(r => r.status === 'error').map(r => `${r.channelName}: ${r.error}`).join(' | ');
     return {
       status: 'error',
       message: `Falha ao publicar no Buffer: ${combinedErrors}`,
       error: combinedErrors,
+      results
+    };
+  }
+
+  if (successCount === 0 && failCount === 0 && skippedCount > 0) {
+    return {
+      status: 'skipped',
+      message: 'Todos os canais do Buffer foram ignorados (ex: Instagram sem imagem anexada).',
       results
     };
   }
@@ -562,7 +704,7 @@ async function testChannelConnection(channelName, channelConfig) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            query: 'query { account { id email } }'
+            query: 'query { account { id email organizations { id name channelCount } } }'
           })
         });
 
@@ -570,9 +712,38 @@ async function testChannelConnection(channelName, channelConfig) {
 
         if (resGql.ok && dataGql?.data?.account) {
           const email = dataGql.data.account.email || dataGql.data.account.id;
+          const orgId = dataGql.data.account.organizations?.[0]?.id;
+          let channelsList = [];
+
+          if (orgId) {
+            try {
+              const resCh = await fetch('https://api.buffer.com', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  query: 'query GetChannels($input: ChannelsInput!) { channels(input: $input) { id name service type } }',
+                  variables: { input: { organizationId: orgId } }
+                })
+              });
+              if (resCh.ok) {
+                const dataCh = await resCh.json();
+                channelsList = dataCh?.data?.channels || [];
+              }
+            } catch {}
+          }
+
+          let msg = `Buffer conectado com sucesso (Conta: ${email})!`;
+          if (channelsList.length > 0) {
+            msg += ` Canais ativos encontrados (${channelsList.length}): ${channelsList.map(c => `${c.name} (${c.service}): ${c.id}`).join(' | ')}`;
+          }
+
           return {
             ok: true,
-            message: `Buffer conectado com sucesso (Conta: ${email}).`
+            message: msg,
+            channels: channelsList
           };
         }
 
@@ -770,7 +941,7 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
   // 2. Buffer API
   if (isChannelAllowed('buffer') && channels.buffer?.enabled && channels.buffer?.accessToken) {
     console.log(`🚀 [DISPATCH] Agendando via Buffer API...`);
-    dispatchResults.channels.buffer = await publishToBuffer(channels.buffer, copies, packageId);
+    dispatchResults.channels.buffer = await publishToBuffer(channels.buffer, copies, packageId, { images, article, outputDir });
   }
 
   // 3. LinkedIn Direto

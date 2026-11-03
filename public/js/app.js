@@ -2154,6 +2154,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (data.ok) {
         showToast(`✓ [${channel.toUpperCase()}]: ${data.message}`, 'success');
+        if (channel === 'buffer' && data.channels && data.channels.length > 0) {
+          const profilesInput = document.getElementById('ch-buffer-profiles');
+          if (profilesInput) {
+            profilesInput.value = data.channels.map(c => c.id).join(', ');
+            showToast(`✓ IDs dos ${data.channels.length} canais ativos do Buffer preenchidos automaticamente no formulário!`, 'info');
+          }
+        }
       } else {
         showToast(`✕ [${channel.toUpperCase()}]: ${data.error}`, 'error');
       }
