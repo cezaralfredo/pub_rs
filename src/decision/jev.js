@@ -92,7 +92,98 @@ function runHeuristicDecisionEngine({ title = '', text = '', client = {} }) {
 }
 
 /**
- * Avalia um conteúdo (artigo ou pauta) utilizando o modelo Jev da TypeSafe AI.
+ * Avalia um conteúdo via OpenRouter com saída estritamente estruturada (System One Decision)
+ */
+async function evaluateWithOpenRouter({ title = '', text = '', client = {}, apiKey = '' }) {
+  const model = process.env.JEV_OPENROUTER_MODEL || 'openai/gpt-4o-mini';
+  const documentSnippet = `${title}\n\n${(text || '').slice(0, 3000)}`.trim();
+
+  const brandName = client.brandName || client.name || 'Marca';
+  const niche = client.niche || 'Geral';
+  const pillars = (client.contentPillars || []).join(', ') || 'Geral';
+  const negatives = (client.negativeKeywords || []).join(', ') || 'Nenhum';
+
+  const systemPrompt = `Você é o motor de decisão Jev System One para a marca "${brandName}" (Nicho: ${niche}).
+Sua função é fazer triagem rápida e tipada do conteúdo, verificando brand safety, pontuação de aderência editorial e roteamento.
+Retorne EXCLUSIVAMENTE um objeto JSON válido (sem tags markdown de código, sem formatação extra) no formato:
+{
+  "brandSafety": "safe" | "warning" | "rejected",
+  "brandSafetyConfidence": 0.95,
+  "fitScore": 85,
+  "recommendedChannels": "omnichannel" | "linkedin_b2b" | "instagram_visual" | "twitter_quick" | "threads_community",
+  "viralPotential": 4.2,
+  "recommendedArchetype": "opiniao" | "estudo_de_caso" | "tutorial" | "noticia_analitica" | "dados_estatisticas"
+}`;
+
+  const userPrompt = `Pilares editoriais da marca: ${pillars}
+Palavras negativas/proibidas: ${negatives}
+
+Conteúdo a ser avaliado:
+${documentSnippet}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://social360.anauedesign.com.br',
+      'X-Title': 'Social360 Jev Engine'
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+      max_tokens: 300
+    }),
+    signal: controller.signal
+  });
+
+  clearTimeout(timeout);
+
+  if (!res.ok) {
+    console.warn(`[JEV OpenRouter] Status HTTP ${res.status}. Usando fallback heurístico.`);
+    return runHeuristicDecisionEngine({ title, text, client });
+  }
+
+  const json = await res.json();
+  const content = json.choices?.[0]?.message?.content || '{}';
+  const cleanJson = content.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+  const parsed = JSON.parse(cleanJson);
+
+  const fitScore = Math.min(100, Math.max(0, Math.round(Number(parsed.fitScore) || 85)));
+  const brandSafety = ['safe', 'warning', 'rejected'].includes(parsed.brandSafety) ? parsed.brandSafety : 'safe';
+  const recommendedChannels = parsed.recommendedChannels || 'omnichannel';
+  const viralPotential = Number((Number(parsed.viralPotential) || 4.2).toFixed(1));
+  const recommendedArchetype = parsed.recommendedArchetype || 'noticia_analitica';
+
+  return {
+    source: 'openrouter_jev',
+    model: `openrouter/${model}`,
+    status: 'evaluated',
+    brandSafety,
+    brandSafetyConfidence: parsed.brandSafetyConfidence || 0.95,
+    fitScore,
+    recommendedChannels,
+    viralPotential,
+    recommendedArchetype,
+    insights: [
+      `Decisão Jev (via OpenRouter): Aderência de ${fitScore}% ao perfil da marca.`,
+      `Roteamento otimizado para ${recommendedChannels.replace('_', ' ').toUpperCase()}.`,
+      `Brand Safety: ${brandSafety.toUpperCase()} (Processado via ${model}).`
+    ],
+    evaluatedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Avalia um conteúdo (artigo ou pauta) utilizando o motor Jev (TypeSafe AI, OpenRouter ou Heurístico Nativo).
  */
 async function evaluateContentWithJev({ title = '', text = '', client = {}, apiKey = '' }) {
   const key = apiKey || getJevApiKey(client);
@@ -100,6 +191,16 @@ async function evaluateContentWithJev({ title = '', text = '', client = {}, apiK
   // Se não houver chave, recorre ao motor heurístico nativo sem interromper o pipeline
   if (!key) {
     return runHeuristicDecisionEngine({ title, text, client });
+  }
+
+  // Se for chave da OpenRouter, avalia via OpenRouter
+  if (key.startsWith('sk-or-')) {
+    try {
+      return await evaluateWithOpenRouter({ title, text, client, apiKey: key });
+    } catch (err) {
+      console.warn(`[JEV OpenRouter] Falha (${err.message}). Usando fallback heurístico.`);
+      return runHeuristicDecisionEngine({ title, text, client });
+    }
   }
 
   try {
@@ -230,7 +331,46 @@ async function testJevConnection(apiKey) {
     }
   }
 
-  // 2. Se uma chave foi informada, valida o handshake com a API oficial da TypeSafe AI
+  // 2. Se for chave do OpenRouter (iniciada com sk-or-)
+  if (key.startsWith('sk-or-')) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
+
+      const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        headers: {
+          'Authorization': `Bearer ${key}`
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        const label = data.data?.label || 'Chave Ativa';
+        const usage = typeof data.data?.usage === 'number' ? ` | Consumo: $${data.data.usage.toFixed(2)}` : '';
+        return {
+          ok: true,
+          mode: 'openrouter',
+          message: `Jev conectado com sucesso via OpenRouter (${label}${usage})! O motor de decisão System One utilizará sua cota OpenRouter.`
+        };
+      }
+
+      if (res.status === 401 || res.status === 403) {
+        return {
+          ok: false,
+          error: 'Erro 401: Chave de API da OpenRouter inválida ou não autorizada. Verifique se copiou a chave completa em openrouter.ai/keys.'
+        };
+      }
+
+      return { ok: false, error: `OpenRouter retornou status HTTP ${res.status}.` };
+    } catch (err) {
+      return { ok: false, error: `Falha ao conectar à OpenRouter: ${err.message}` };
+    }
+  }
+
+  // 3. Se uma chave foi informada (TypeSafe AI), valida o handshake com a API oficial da TypeSafe AI
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7000);

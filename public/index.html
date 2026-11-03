@@ -1137,12 +1137,12 @@
                 </p>
                 <div class="form-row-channel">
                   <div class="form-field flex-grow">
-                    <label for="cl-jev-key" class="field-label">TypeSafe / Jev API Key (Opcional)</label>
+                    <label for="cl-jev-key" class="field-label">Chave de API do Jev (TypeSafe AI ou OpenRouter - Opcional)</label>
                     <div class="input-password-wrap">
-                      <input type="password" id="cl-jev-key" class="field-input" placeholder="TYPESAFE_API_KEY (ou deixe em branco para o motor heurístico nativo)">
+                      <input type="password" id="cl-jev-key" class="field-input" placeholder="TYPESAFE_API_KEY ou sk-or-v1-... (ou deixe vazio para motor nativo)">
                       <button type="button" class="btn-toggle-eye" id="btn-toggle-jev-key-eye" title="Mostrar/Ocultar chave">👁️</button>
                     </div>
-                    <small class="field-hint">Caso deixe vazio, o sistema utiliza o motor heurístico nativo de fallback ou a chave global do .env.</small>
+                    <small class="field-hint">Suporta chaves TypeSafe AI, OpenRouter (sk-or-...) ou deixe vazio para o motor heurístico nativo sem custos.</small>
                   </div>
                   <button type="button" class="btn-ghost-sm" id="btn-test-jev-direct" style="align-self: flex-end; margin-bottom: 6px;">
                     Testar Jev
@@ -1594,6 +1594,6 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="js/app.js?v=3.1.2"></script>
+  <script src="js/app.js?v=3.1.3"></script>
 </body>
 </html>
