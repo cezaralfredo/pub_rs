@@ -293,6 +293,7 @@ Para publicar e testar a conexão no X, você deve usar o conjunto oficial **OAu
 | **OpenAI** | [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys) | `gpt-4o-mini` ou `gpt-4o` |
 | **Anthropic Claude** | [https://console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) | `claude-3-5-sonnet-20241022` |
 | **Groq (Ultrarrápido)**| [https://console.groq.com/keys](https://console.groq.com/keys) | `llama-3.3-70b-versatile` |
+| **OpenRouter** | [https://openrouter.ai/keys](https://openrouter.ai/keys) | `openai/gpt-4o-mini` ou `meta-llama/llama-3.3-70b-instruct` |
 | **Ollama (Local)** | *(Executado localmente na máquina ou VPS)* | `llama3` ou `mistral` |
 | **Jev (TypeSafe AI)** | [https://typesafe.ai](https://typesafe.ai) | `jev-system-one` (Decisões, Brand Safety e Fit Score) |
 

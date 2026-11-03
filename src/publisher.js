@@ -151,7 +151,7 @@ async function publishToBuffer(config, copies, packageId) {
  * Publicação direta no LinkedIn via REST API v2
  * Endpoint: POST https://api.linkedin.com/v2/ugcPosts
  */
-async function publishToLinkedIn(config, copies) {
+async function publishToLinkedIn(config, copies, article = {}) {
   const { accessToken, authorUrn } = config;
 
   if (!accessToken || !authorUrn) {
@@ -159,7 +159,26 @@ async function publishToLinkedIn(config, copies) {
   }
 
   try {
-    const postText = copies.linkedin?.post;
+    let postText = (typeof copies?.linkedin === 'string' ? copies.linkedin : copies?.linkedin?.post) || '';
+
+    // Fallbacks resilientes se a copy específica do LinkedIn estiver vazia
+    if (!postText.trim()) {
+      postText = (typeof copies?.facebook === 'string' ? copies.facebook : copies?.facebook?.post) || '';
+    }
+    if (!postText.trim()) {
+      postText = (typeof copies?.threads === 'string' ? copies.threads : copies?.threads?.post) || '';
+    }
+    if (!postText.trim()) {
+      postText = (typeof copies?.instagram === 'string' ? copies.instagram : copies?.instagram?.post) || '';
+    }
+    if (!postText.trim() && article) {
+      const title = article.title || 'Artigo Estratégico';
+      const desc = article.description || article.content || 'Confira a análise completa e as principais diretrizes.';
+      const url = article.canonicalUrl || article.url || '';
+      postText = `${title}\n\n${desc}${url ? `\n\n👉 Acesse a matéria completa: ${url}` : ''}`;
+    }
+
+    postText = postText.trim();
     if (!postText) throw new Error('Copy do LinkedIn não encontrada no pacote.');
 
     const payload = {
@@ -618,7 +637,7 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
   // 3. LinkedIn Direto
   if (isChannelAllowed('linkedin') && channels.linkedin?.enabled && channels.linkedin?.accessToken) {
     console.log(`🚀 [DISPATCH] Publicando diretamente no LinkedIn...`);
-    dispatchResults.channels.linkedin = await publishToLinkedIn(channels.linkedin, copies);
+    dispatchResults.channels.linkedin = await publishToLinkedIn(channels.linkedin, copies, article);
   }
 
   // 4. X (Twitter) Direto

@@ -265,6 +265,21 @@ async function generateWithLlm(article, client, options = {}) {
 
   const parsed = parseLlmJson(result.text);
 
+  // Normalização e extração flexível caso a LLM retorne string direta ou objeto com .post
+  const linkedinPostRaw = (typeof parsed.linkedin === 'string' ? parsed.linkedin : parsed.linkedin?.post) || '';
+  const linkedinCommentRaw = (typeof parsed.linkedin === 'object' ? parsed.linkedin?.firstComment : '') || '';
+
+  const instagramPostRaw = (typeof parsed.instagram === 'string' ? parsed.instagram : parsed.instagram?.post) || '';
+  const instagramCommentRaw = (typeof parsed.instagram === 'object' ? parsed.instagram?.firstComment : '') || '';
+
+  const facebookPostRaw = (typeof parsed.facebook === 'string' ? parsed.facebook : parsed.facebook?.post) || '';
+  const facebookCommentRaw = (typeof parsed.facebook === 'object' ? parsed.facebook?.firstComment : '') || '';
+
+  // Validação de qualidade: se a LLM não gerou conteúdo de texto para os canais principais, aciona o fallback dinâmico
+  if (linkedinPostRaw.trim().length < 25 && instagramPostRaw.trim().length < 25 && facebookPostRaw.trim().length < 25) {
+    throw new Error(`O modelo de IA ${result.provider} (${result.model}) retornou campos de texto vazios.`);
+  }
+
   // Injeção de URLs com parâmetros UTM oficiais
   const targetUrl = article.canonicalUrl || article.url;
   const slug = article.slug;
@@ -287,35 +302,35 @@ async function generateWithLlm(article, client, options = {}) {
     },
     carousel: parsed.carousel || null,
     linkedin: {
-      post: replaceUrls(parsed.linkedin?.post, 'linkedin'),
-      firstComment: replaceUrls(parsed.linkedin?.firstComment, 'linkedin'),
+      post: replaceUrls(linkedinPostRaw, 'linkedin'),
+      firstComment: replaceUrls(linkedinCommentRaw, 'linkedin'),
       recommendedFormat: '16:9 ou 1:1'
     },
     instagram: {
-      post: replaceUrls(parsed.instagram?.post, 'instagram'),
-      firstComment: replaceUrls(parsed.instagram?.firstComment, 'instagram'),
+      post: replaceUrls(instagramPostRaw, 'instagram'),
+      firstComment: replaceUrls(instagramCommentRaw, 'instagram'),
       recommendedFormat: '4:5 (Feed) e 9:16 (Stories)'
     },
     stories: {
-      post: replaceUrls(parsed.stories?.post, 'stories'),
+      post: replaceUrls(parsed.stories?.post || parsed.stories, 'stories'),
       recommendedFormat: '9:16 (Vertical)'
     },
     twitter: {
       thread: Array.isArray(parsed.twitter?.thread)
         ? parsed.twitter.thread.map(t => replaceUrls(t, 'twitter'))
-        : [replaceUrls(parsed.twitter?.post, 'twitter')],
+        : [replaceUrls(parsed.twitter?.post || parsed.twitter, 'twitter')].filter(Boolean),
       recommendedFormat: '16:9 (Horizontal)'
     },
     threads: {
-      post: replaceUrls(parsed.threads?.post, 'threads'),
+      post: replaceUrls(parsed.threads?.post || parsed.threads, 'threads'),
       thread: Array.isArray(parsed.threads?.thread)
         ? parsed.threads.thread.map(t => replaceUrls(t, 'threads'))
         : null,
       recommendedFormat: '1:1 ou 16:9'
     },
     facebook: {
-      post: replaceUrls(parsed.facebook?.post, 'facebook'),
-      firstComment: replaceUrls(parsed.facebook?.firstComment, 'facebook'),
+      post: replaceUrls(facebookPostRaw, 'facebook'),
+      firstComment: replaceUrls(facebookCommentRaw, 'facebook'),
       recommendedFormat: '16:9 (Horizontal)'
     }
   };

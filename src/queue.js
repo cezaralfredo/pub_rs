@@ -173,9 +173,20 @@ async function processQueue() {
         const payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
         const client = loadClientConfig(job.clientId || payload.client || 'default');
 
+        // Auto-reparo de copies se estiverem vazias
+        let copies = payload.copies;
+        if (!copies || !copies.linkedin?.post || copies.linkedin.post.trim().length === 0) {
+          const { generateAlgorithmicCopies } = require('./copywriter');
+          copies = generateAlgorithmicCopies(payload.article || { title: job.packageId }, client);
+          payload.copies = copies;
+          try {
+            fs.writeFileSync(payloadPath, JSON.stringify(payload, null, 2), 'utf8');
+          } catch {}
+        }
+
         const dispatchResult = await dispatchToClientChannels({
           client,
-          copies: payload.copies,
+          copies,
           images: payload.images,
           article: payload.article,
           packageId: job.packageId,

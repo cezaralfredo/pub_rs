@@ -843,11 +843,23 @@ app.post('/api/packages/:packageId/publish', requireAuth, rateLimiter, async (re
     const clientId = payload.client || 'default';
     const client = loadClientConfig(clientId);
 
+    // Auto-reparo: se porventura o pacote foi salvo com copies vazias, regenera dinamicamente antes de despachar
+    let copies = payload.copies;
+    if (!copies || !copies.linkedin?.post || copies.linkedin.post.trim().length === 0) {
+      console.warn(`[PUBLISH API] Copies ausentes ou vazias no pacote ${safePackageId}. Gerando cópias de contingência...`);
+      const { generateAlgorithmicCopies } = require('./src/copywriter');
+      copies = generateAlgorithmicCopies(payload.article || { title: safePackageId }, client);
+      payload.copies = copies;
+      try {
+        fs.writeFileSync(payloadPath, JSON.stringify(payload, null, 2), 'utf8');
+      } catch {}
+    }
+
     console.log(`\n🚀 [PUBLISH API] Disparando pacote ${safePackageId} para os canais de "${client.brandName}"...`);
 
     const dispatchResult = await dispatchToClientChannels({
       client,
-      copies: payload.copies,
+      copies,
       images: payload.images,
       article: payload.article,
       packageId: safePackageId,
