@@ -144,9 +144,15 @@ async function checkClientFeeds({ force = false, clientId = null } = {}) {
             clientId: client.id
           });
 
-          // Se autoPublish estiver ligado, agenda automaticamente no próximo slot ideal
+          // Checagem de Brand Safety via Jev Decision Engine
+          const jevBrandSafety = pipelineResult.jev?.brandSafety || 'safe';
+          if (jevBrandSafety === 'rejected') {
+            console.warn(`         ⚠️ [JEV BRAND SAFETY] Conteúdo rejeitado para auto-agendamento (${client.brandName}). Salvo apenas como rascunho.`);
+          }
+
+          // Se autoPublish estiver ligado e o conteúdo for seguro, agenda automaticamente no próximo slot ideal
           let scheduledJob = null;
-          if (rssConfig.autoPublish) {
+          if (rssConfig.autoPublish && jevBrandSafety !== 'rejected') {
             const nextSlot = getNextAvailableSlot(client.id);
             scheduledJob = enqueueJob({
               packageId: pipelineResult.packageId,

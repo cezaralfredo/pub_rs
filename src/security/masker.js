@@ -40,6 +40,14 @@ function maskClientSecrets(client) {
     safeClient.llm.hasCustomKey = false;
   }
 
+  // Mascara chave do Jev (TypeSafe AI) se houver
+  if (safeClient.jev?.apiKey) {
+    safeClient.jev.hasCustomKey = true;
+    safeClient.jev.apiKey = maskSecret(safeClient.jev.apiKey);
+  } else if (safeClient.jev) {
+    safeClient.jev.hasCustomKey = false;
+  }
+
   // Mascara tokens de canais
   if (safeClient.channels) {
     if (safeClient.channels.linkedin?.accessToken) {
@@ -93,6 +101,11 @@ function mergeClientSecrets(newData, existingData = {}) {
   // Preserva chave de LLM se foi enviada mascarada
   if (merged.llm && isMaskedValue(merged.llm.apiKey)) {
     merged.llm.apiKey = existingData.llm?.apiKey || '';
+  }
+
+  // Preserva chave do Jev se foi enviada mascarada
+  if (merged.jev && isMaskedValue(merged.jev.apiKey)) {
+    merged.jev.apiKey = existingData.jev?.apiKey || '';
   }
 
   // Preserva credenciais dos canais se foram enviadas mascaradas

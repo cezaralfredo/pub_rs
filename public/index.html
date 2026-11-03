@@ -429,6 +429,17 @@
             <span class="meta-item" id="res-date-tag">📅 2026-10-15</span>
             <a href="#" target="_blank" rel="noopener noreferrer" class="meta-link" id="res-article-link">Ver link original ↗</a>
           </div>
+          <!-- Jev System One Decision Badges -->
+          <div id="res-jev-container" class="jev-decision-strip hidden">
+            <span class="jev-label" style="font-size: 0.72rem; font-weight: 700; color: #38bdf8; letter-spacing: 0.05em; text-transform: uppercase;">
+              ⚡ Jev Engine:
+            </span>
+            <span id="res-jev-fit" class="jev-badge jev-badge-fit" title="Pontuação de aderência aos pilares da marca">🎯 Fit: --</span>
+            <span id="res-jev-safety" class="jev-badge jev-badge-safety" title="Avaliação de Brand Safety">🛡️ Seguro</span>
+            <span id="res-jev-channel" class="jev-badge jev-badge-channel" title="Roteamento prioritário recomendado">📢 Canal: --</span>
+            <span id="res-jev-viral" class="jev-badge jev-badge-viral" title="Potencial de engajamento e compartilhamento">🔥 Viral: --</span>
+            <span id="res-jev-archetype" class="jev-badge jev-badge-archetype" title="Arquétipo editorial recomendado">📐 Arquétipo: --</span>
+          </div>
         </div>
         <div class="article-actions">
           <button id="btn-publish-channels" class="btn-publish-cta" title="Publicar diretamente nos canais e redes conectadas do cliente">
@@ -1105,6 +1116,36 @@
                   <span>⚡ Testar Conexão com a IA Selecionada</span>
                 </button>
                 <div id="llm-test-feedback" class="test-feedback-box hidden"></div>
+              </div>
+
+              <!-- Seção Motor de Decisão Jev (TypeSafe AI) -->
+              <div class="channel-box" style="margin-top: 1.5rem; border-color: rgba(56, 189, 248, 0.3); background: rgba(15, 23, 42, 0.4);">
+                <div class="channel-header">
+                  <span class="channel-name" style="color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    Jev Decision Engine (TypeSafe AI)
+                  </span>
+                  <label class="toggle-switch-sm">
+                    <input type="checkbox" id="cl-jev-enabled" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.85rem; line-height: 1.45;">
+                  Modelo System One de decisões rápidas, tipadas e sem alucinações: triagem preditiva de pautas, pontuação de aderência editorial (Fit Score), verificação de Brand Safety e roteamento de canais.
+                </p>
+                <div class="form-row-channel">
+                  <div class="form-field flex-grow">
+                    <label for="cl-jev-key" class="field-label">TypeSafe / Jev API Key (Opcional)</label>
+                    <input type="password" id="cl-jev-key" class="field-input" placeholder="TYPESAFE_API_KEY (ou deixe em branco para o motor heurístico nativo)">
+                    <small class="field-hint">Caso deixe vazio, o sistema utiliza o motor heurístico nativo de fallback ou a chave global do .env.</small>
+                  </div>
+                  <button type="button" class="btn-ghost-sm" id="btn-test-jev-direct" style="align-self: flex-end; margin-bottom: 6px;">
+                    Testar Jev
+                  </button>
+                </div>
+                <div id="jev-test-feedback" class="test-feedback-box hidden" style="margin-top: 0.5rem;"></div>
               </div>
             </div>
 

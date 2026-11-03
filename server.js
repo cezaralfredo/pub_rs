@@ -9,6 +9,7 @@ const { STYLE_DESCRIPTIONS } = require('./src/imageGen');
 const { validatePublicUrl, sanitizeIdentifier, safePathResolve } = require('./src/security/validator');
 const { maskClientSecrets, mergeClientSecrets } = require('./src/security/masker');
 const { dispatchToClientChannels, publishToWebhook, testChannelConnection } = require('./src/publisher');
+const { evaluateContentWithJev, testJevConnection } = require('./src/decision/jev');
 const {
   enqueueJob,
   getJobs,
@@ -294,6 +295,10 @@ app.post('/api/clients', requireAuth, (req, res) => {
         apiKey: merged.llm?.apiKey || '',
         baseUrl: merged.llm?.baseUrl || ''
       },
+      jev: {
+        enabled: Boolean(merged.jev?.enabled !== false),
+        apiKey: merged.jev?.apiKey || ''
+      },
       channels: {
         webhook: {
           enabled: Boolean(merged.channels?.webhook?.enabled !== false),
@@ -470,6 +475,77 @@ app.post('/api/clients/test-channel-direct', requireAuth, async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 1.5. MOTOR DE DECISÃO INTELIGENTE: JEV (TYPESAFE AI)
+// ---------------------------------------------------------------------------
+
+// Status do motor Jev
+app.get('/api/jev/status', requireAuth, (req, res) => {
+  const hasEnvKey = Boolean(process.env.TYPESAFE_API_KEY || process.env.JEV_API_KEY);
+  res.json({
+    active: true,
+    model: 'jev-system-one',
+    provider: 'TypeSafe AI',
+    hasGlobalKey: hasEnvKey,
+    mode: hasEnvKey ? 'typesafe_cloud' : 'hybrid_heuristic',
+    description: 'Motor de decisão inteligente para triagem, brand safety, pontuação de aderência e roteamento multicanal.'
+  });
+});
+
+// Testar conexão/chave do Jev (TypeSafe AI)
+app.post('/api/jev/test', requireAuth, async (req, res) => {
+  try {
+    const { apiKey, clientId } = req.body || {};
+    let keyToTest = apiKey;
+
+    if (clientId && (!keyToTest || keyToTest.includes('...') || keyToTest.includes('••••'))) {
+      const safeId = sanitizeIdentifier(clientId);
+      const clientsDir = path.join(__dirname, 'config', 'clients');
+      const filePath = safePathResolve(clientsDir, `${safeId}.json`);
+      if (fs.existsSync(filePath)) {
+        try {
+          const client = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          keyToTest = client.jev?.apiKey || process.env.TYPESAFE_API_KEY || process.env.JEV_API_KEY || '';
+        } catch {}
+      }
+    }
+
+    const result = await testJevConnection(keyToTest);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Avaliar conteúdo pontual via Jev
+app.post('/api/jev/evaluate', requireAuth, async (req, res) => {
+  try {
+    const { title, text, clientId } = req.body || {};
+    let clientConfig = {};
+
+    if (clientId) {
+      const safeId = sanitizeIdentifier(clientId);
+      const clientsDir = path.join(__dirname, 'config', 'clients');
+      const filePath = safePathResolve(clientsDir, `${safeId}.json`);
+      if (fs.existsSync(filePath)) {
+        try {
+          clientConfig = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        } catch {}
+      }
+    }
+
+    const evaluation = await evaluateContentWithJev({
+      title: title || 'Conteúdo de Análise',
+      text: text || '',
+      client: clientConfig
+    });
+
+    res.json({ success: true, evaluation });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

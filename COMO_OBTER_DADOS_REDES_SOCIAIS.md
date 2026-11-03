@@ -294,6 +294,13 @@ Para publicar e testar a conexão no X, você deve usar o conjunto oficial **OAu
 | **Anthropic Claude** | [https://console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) | `claude-3-5-sonnet-20241022` |
 | **Groq (Ultrarrápido)**| [https://console.groq.com/keys](https://console.groq.com/keys) | `llama-3.3-70b-versatile` |
 | **Ollama (Local)** | *(Executado localmente na máquina ou VPS)* | `llama3` ou `mistral` |
+| **Jev (TypeSafe AI)** | [https://typesafe.ai](https://typesafe.ai) | `jev-system-one` (Decisões, Brand Safety e Fit Score) |
+
+### ⚡ Sobre o Motor Jev (TypeSafe AI)
+O **Jev** não é um modelo generativo tradicional, e sim um motor de decisão **System One**:
+- Executa em sub-500ms de forma determinística e tipada.
+- Avalia **Brand Safety**, pontua **Aderência (Fit Score 0-100%)**, identifica o **Canal Prioritário** e o **Arquétipo Editorial**.
+- Se você não informar uma chave dedicada da TypeSafe AI, o Social360 ativa automaticamente o **motor heurístico nativo**, garantindo total funcionamento sem qualquer custo adicional!
 
 ---
 

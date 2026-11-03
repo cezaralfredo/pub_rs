@@ -133,6 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
     resEngineTag: document.getElementById('res-engine-tag'),
     resDateTag: document.getElementById('res-date-tag'),
     resArticleLink: document.getElementById('res-article-link'),
+    resJevContainer: document.getElementById('res-jev-container'),
+    resJevFit: document.getElementById('res-jev-fit'),
+    resJevSafety: document.getElementById('res-jev-safety'),
+    resJevChannel: document.getElementById('res-jev-channel'),
+    resJevViral: document.getElementById('res-jev-viral'),
+    resJevArchetype: document.getElementById('res-jev-archetype'),
     btnPublishChannels: document.getElementById('btn-publish-channels'),
     btnDownloadJson: document.getElementById('btn-download-json'),
     btnCopyAll: document.getElementById('btn-copy-all'),
@@ -243,6 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnToggleKeyEye: document.getElementById('btn-toggle-key-eye'),
     btnTestLlmDirect: document.getElementById('btn-test-llm-direct'),
     llmTestFeedback: document.getElementById('llm-test-feedback'),
+    btnTestJevDirect: document.getElementById('btn-test-jev-direct'),
+    jevTestFeedback: document.getElementById('jev-test-feedback'),
     btnTestAllChannels: document.getElementById('btn-test-all-channels'),
     channelsTestFeedback: document.getElementById('channels-test-feedback'),
     btnRefreshQueue: document.getElementById('btn-refresh-queue'),
@@ -721,6 +729,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Testar Jev (TypeSafe AI) diretamente
+    if (elements.btnTestJevDirect) {
+      elements.btnTestJevDirect.addEventListener('click', async () => {
+        await testJevDirect();
+      });
+    }
+
     // Testar canais individuais
     document.querySelectorAll('.btn-test-channel').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -804,6 +819,10 @@ document.addEventListener('DOMContentLoaded', () => {
           model: document.getElementById('cl-llm-model').value.trim(),
           apiKey: document.getElementById('cl-llm-key').value.trim(),
           baseUrl: document.getElementById('cl-llm-baseurl').value.trim()
+        },
+        jev: {
+          enabled: Boolean(document.getElementById('cl-jev-enabled')?.checked !== false),
+          apiKey: (document.getElementById('cl-jev-key')?.value || '').trim()
         },
         channels: {
           webhook: {
@@ -1390,6 +1409,44 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.resDateTag.textContent = new Date().toLocaleTimeString('pt-BR');
     elements.resArticleLink.href = data.article?.url || '#';
 
+    // 0.5 Badges do Motor de Decisão Jev (TypeSafe AI)
+    const jev = data.jev || data.article?.jev;
+    if (jev && elements.resJevContainer) {
+      elements.resJevContainer.classList.remove('hidden');
+
+      if (elements.resJevFit) {
+        elements.resJevFit.textContent = `🎯 Fit: ${jev.fitScore ?? 85}%`;
+      }
+
+      if (elements.resJevSafety) {
+        const safety = (jev.brandSafety || 'safe').toLowerCase();
+        elements.resJevSafety.className = `jev-badge jev-badge-safety ${safety}`;
+        if (safety === 'safe') {
+          elements.resJevSafety.textContent = '🛡️ Seguro';
+        } else if (safety === 'warning') {
+          elements.resJevSafety.textContent = '⚠️ Alerta de Tom';
+        } else {
+          elements.resJevSafety.textContent = '🚫 Não Recomendado';
+        }
+      }
+
+      if (elements.resJevChannel) {
+        const ch = (jev.recommendedChannels || 'omnichannel').replace('_', ' ').toUpperCase();
+        elements.resJevChannel.textContent = `📢 Canal: ${ch}`;
+      }
+
+      if (elements.resJevViral) {
+        elements.resJevViral.textContent = `🔥 Viral: ${jev.viralPotential ?? 4.2}/5`;
+      }
+
+      if (elements.resJevArchetype) {
+        const arch = (jev.recommendedArchetype || 'editorial').replace(/_/g, ' ');
+        elements.resJevArchetype.textContent = `📐 ${arch.charAt(0).toUpperCase() + arch.slice(1)}`;
+      }
+    } else if (elements.resJevContainer) {
+      elements.resJevContainer.classList.add('hidden');
+    }
+
     // Reset A/B Hook pill selection to 'original'
     state.currentHook = 'original';
     if (elements.btnHookPills) {
@@ -1829,6 +1886,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cl-llm-baseurl').value = '';
     document.getElementById('cl-llm-key').value = '';
 
+    if (document.getElementById('cl-jev-enabled')) document.getElementById('cl-jev-enabled').checked = true;
+    if (document.getElementById('cl-jev-key')) document.getElementById('cl-jev-key').value = '';
+
     document.getElementById('ch-webhook-enabled').checked = true;
     document.getElementById('ch-webhook-url').value = '';
     document.getElementById('ch-telegram-enabled').checked = false;
@@ -1851,6 +1911,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ch-meta-igid').value = '';
 
     elements.llmTestFeedback.classList.add('hidden');
+    if (elements.jevTestFeedback) elements.jevTestFeedback.classList.add('hidden');
     elements.channelsTestFeedback.classList.add('hidden');
 
     showToast('Formulário limpo para cadastrar novo cliente.', 'info');
@@ -1884,6 +1945,14 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('cl-llm-model').value = client.llm?.model || '';
       document.getElementById('cl-llm-baseurl').value = client.llm?.baseUrl || '';
       document.getElementById('cl-llm-key').value = client.llm?.apiKey || '';
+
+      // Jev Decision Engine
+      if (document.getElementById('cl-jev-enabled')) {
+        document.getElementById('cl-jev-enabled').checked = Boolean(client.jev?.enabled !== false);
+      }
+      if (document.getElementById('cl-jev-key')) {
+        document.getElementById('cl-jev-key').value = client.jev?.apiKey || '';
+      }
 
       // Canais
       const ch = client.channels || {};
@@ -1959,6 +2028,40 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.llmTestFeedback.classList.remove('test-feedback-loading');
       elements.llmTestFeedback.classList.add('test-feedback-error');
       elements.llmTestFeedback.innerHTML = `✕ Erro de conexão: ${escapeHtml(err.message)}`;
+    }
+  }
+
+  async function testJevDirect() {
+    const apiKey = (document.getElementById('cl-jev-key')?.value || '').trim();
+    const clientId = (document.getElementById('cl-id')?.value || '').trim();
+
+    if (!elements.jevTestFeedback) return;
+
+    elements.jevTestFeedback.classList.remove('hidden', 'test-feedback-success', 'test-feedback-error');
+    elements.jevTestFeedback.classList.add('test-feedback-loading');
+    elements.jevTestFeedback.textContent = 'Verificando motor Jev (TypeSafe AI System One)...';
+
+    try {
+      const res = await authFetch('/api/jev/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, clientId })
+      });
+
+      const data = await res.json();
+      elements.jevTestFeedback.classList.remove('test-feedback-loading');
+
+      if (data.ok) {
+        elements.jevTestFeedback.classList.add('test-feedback-success');
+        elements.jevTestFeedback.innerHTML = `✓ ${escapeHtml(data.message)}`;
+      } else {
+        elements.jevTestFeedback.classList.add('test-feedback-error');
+        elements.jevTestFeedback.innerHTML = `✕ Falha no teste Jev: ${escapeHtml(data.error || 'Erro desconhecido')}`;
+      }
+    } catch (err) {
+      elements.jevTestFeedback.classList.remove('test-feedback-loading');
+      elements.jevTestFeedback.classList.add('test-feedback-error');
+      elements.jevTestFeedback.innerHTML = `✕ Erro de conexão com o motor Jev: ${escapeHtml(err.message)}`;
     }
   }
 

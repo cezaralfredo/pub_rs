@@ -6,6 +6,7 @@ const { generateSocialCopies } = require('./copywriter');
 const { generateCarousel } = require('./carouselGenerator');
 const { exportAndDispatch } = require('./dispatcher');
 const { synthesizeTopicContent } = require('./topicSynthesizer');
+const { evaluateContentWithJev } = require('./decision/jev');
 const { validatePublicUrl, sanitizeIdentifier } = require('./security/validator');
 
 /**
@@ -128,6 +129,28 @@ async function runPipeline({
     });
   }
 
+  // 1.5. Tomada de Decisão Estratégica via Jev (TypeSafe AI)
+  onProgress({
+    step: 2,
+    status: 'decision_engine',
+    message: 'Executando motor de decisão Jev (TypeSafe AI) para triagem, brand safety e roteamento...'
+  });
+
+  const jevDecision = await evaluateContentWithJev({
+    title: article.title,
+    text: article.description || article.content || '',
+    client: clientConfig
+  });
+
+  article.jev = jevDecision;
+
+  onProgress({
+    step: 2,
+    status: 'decision_done',
+    message: `Decisão Jev concluída: Aderência ${jevDecision.fitScore}%, Brand Safety: ${jevDecision.brandSafety.toUpperCase()}.`,
+    data: jevDecision
+  });
+
   // Diretório de saída
   const dateStr = new Date().toISOString().slice(0, 10);
   const outputDir = path.join(__dirname, '..', 'output', `${dateStr}_${article.slug}`);
@@ -238,6 +261,7 @@ async function runPipeline({
     copies,
     images,
     carousel,
+    jev: article.jev || null,
     dispatchResult
   };
 }
