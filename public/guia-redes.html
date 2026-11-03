@@ -635,8 +635,18 @@
         <div class="fields-title">Campos necessários no Social360:</div>
         <ul class="fields-list">
           <li>Access Token (OAuth 2.0)</li>
-          <li>Author URN (ex: urn:li:organization:12345678)</li>
+          <li>Author URN (ex: urn:li:organization:12345678 ou urn:li:person:abcdef)</li>
         </ul>
+      </div>
+
+      <div class="alert-warning" style="margin-bottom: 1.5rem;">
+        <span>⚠️</span>
+        <div>
+          <strong>Atenção Crucial: Company Page vs. Perfil Pessoal no LinkedIn Direct:</strong><br>
+          Se você tentar postar com Author URN de empresa (<code>urn:li:organization:...</code>) usando um token padrão, a API do LinkedIn retornará o erro <code>Field Value validation failed in REQUEST_BODY: Data Processing Exception while processing fields [/author]</code>.<br>
+          Isso acontece porque a API direta do LinkedIn exige que o aplicativo seja formalmente aprovado no produto <strong>"Community Management API"</strong> (que concede o escopo <code>w_organization_social</code>).<br>
+          👉 <strong>Solução Muito Mais Fácil:</strong> Conecte sua Company Page diretamente no <strong>Buffer</strong>! O Buffer já possui homologação corporativa com o LinkedIn e publica na sua Company Page instantaneamente, sem burocracia nem risco de rejeição.
+        </div>
       </div>
 
       <ol class="steps-list">
@@ -646,24 +656,33 @@
         </li>
         <li>
           <strong class="step-title">Associar a Página da Empresa:</strong>
-          Preencha o nome do app, associe a sua Company Page do LinkedIn e envie uma solicitação de verificação para a página.
+          Preencha o nome do app, associe a sua Company Page do LinkedIn e conclua a verificação solicitada pela página.
         </li>
         <li>
-          <strong class="step-title">Adicionar Produtos:</strong>
-          Na aba <em>Products</em>, solicite acesso aos produtos <strong>Share on LinkedIn</strong> e <strong>Sign In with LinkedIn using OpenID Connect</strong>.
+          <strong class="step-title">Adicionar Produtos e Permissões:</strong>
+          Na aba <em>Products</em>:
+          <ul style="margin: 0.5rem 0 0.5rem 1.25rem;">
+            <li>Para postar em <strong>Perfil Pessoal</strong>: adicione <strong>Share on LinkedIn</strong> (escopo <code>w_member_social</code>).</li>
+            <li>Para postar em <strong>Company Page</strong> direta: solicite acesso ao produto <strong>Community Management API</strong> (escopo <code>w_organization_social</code>).</li>
+          </ul>
         </li>
         <li>
           <strong class="step-title">Gerar o Access Token:</strong>
-          Na aba <em>Auth ➔ OAuth 2.0 Tools</em>, selecione o app, marque os escopos <code>w_member_social</code> (ou <code>w_organization_social</code>) e clique em <strong>Request Token</strong>. Copie o token de acesso.
+          Na aba <em>Auth ➔ OAuth 2.0 Tools</em>, selecione o app, marque os escopos concedidos e clique em <strong>Request Token</strong>. Copie o token de acesso.
         </li>
         <li>
-          <strong class="step-title">Obter o Author URN da Empresa:</strong>
-          Abra sua Company Page no LinkedIn. Olhe a URL no navegador:
-          <span class="code-snippet">https://www.linkedin.com/company/12345678/admin/</span>
-          O número <code>12345678</code> é o ID da empresa. Seu Author URN será:
-          <span class="code-snippet">urn:li:organization:12345678</span>
+          <strong class="step-title">Definir o Author URN Adequado:</strong>
+          <ul style="margin: 0.5rem 0 0 1.25rem;">
+            <li>Para <strong>Company Page</strong> (se tiver Community Management API): <code>urn:li:organization:ID_DA_EMPRESA</code> (obtido na URL da administração da página).</li>
+            <li>Para <strong>Perfil Pessoal</strong>: <code>urn:li:person:SEU_ID_PESSOAL</code>.</li>
+          </ul>
         </li>
       </ol>
+
+      <div class="alert-tip">
+        <span>💡</span>
+        <div><strong>Dica Recomendada:</strong> Para evitar o longo processo de aprovação do LinkedIn Developers para Company Pages, utilize o <strong>Buffer</strong> (topo deste guia) para gerenciar o LinkedIn da sua marca!</div>
+      </div>
     </article>
 
     <!-- 5. META GRAPH API -->

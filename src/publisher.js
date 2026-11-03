@@ -44,107 +44,219 @@ async function publishToWebhook(url, payload) {
 }
 
 /**
- * Publicação via Buffer API (Agendamento / Publicação em lote multicanal)
- * Suporta a API GraphQL Moderna Oficial (https://api.buffer.com) e a API REST legada
+ * Consulta informações do canal no Buffer via GraphQL
+ */
+async function getBufferChannel(channelId, token) {
+  try {
+    const res = await fetch('https://api.buffer.com', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query: `query GetChannel($input: ChannelInput!) {
+          channel(input: $input) {
+            id
+            service
+            name
+            type
+          }
+        }`,
+        variables: { input: { id: channelId } }
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data?.data?.channel || null;
+    }
+  } catch (err) {
+    console.warn(`[Buffer GraphQL] Não foi possível obter dados do canal ${channelId}:`, err.message);
+  }
+  return null;
+}
+
+/**
+ * Publicação via Buffer API (Agendamento / Publicação direta multicanal)
+ * Suporta a API GraphQL Moderna Oficial (https://api.buffer.com)
  */
 async function publishToBuffer(config, copies, packageId) {
   const { accessToken, profileIds, now = true } = config;
   const token = (accessToken || '').trim();
 
-  if (!token || !profileIds || profileIds.length === 0) {
+  const idList = Array.isArray(profileIds)
+    ? profileIds
+    : (typeof profileIds === 'string' ? profileIds.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+  if (!token || idList.length === 0) {
     return { status: 'skipped', message: 'Credenciais do Buffer incompletas (accessToken ou profileIds ausentes).' };
   }
 
   const results = [];
-  const postText = copies.linkedin?.post || copies.twitter?.post || copies.threads?.post || 'Novo artigo publicado';
+  const mutation = `mutation CreatePost($input: CreatePostInput!) {
+    createPost(input: $input) {
+      ... on PostActionSuccess {
+        post { id status text }
+      }
+      ... on MutationError {
+        message
+      }
+    }
+  }`;
 
-  for (const profileId of profileIds) {
+  for (const profileId of idList) {
+    // 1. Identifica os metadados do canal (twitter, googlebusiness, linkedin, instagram, facebook, etc.)
+    const channelInfo = await getBufferChannel(profileId, token);
+    const service = (channelInfo?.service || '').toLowerCase();
+    const channelName = channelInfo?.name || profileId;
+
+    // 2. Seleciona a copy mais contextualizada para a rede do canal
+    let postText = '';
+    if (service === 'twitter') {
+      postText = copies.twitter?.post || copies.linkedin?.post || copies.threads?.post;
+    } else if (service === 'instagram') {
+      postText = copies.instagram?.post || copies.facebook?.post || copies.linkedin?.post;
+    } else if (service === 'googlebusiness') {
+      postText = copies.facebook?.post || copies.linkedin?.post || copies.twitter?.post;
+    } else if (service === 'linkedin') {
+      postText = copies.linkedin?.post || copies.facebook?.post;
+    }
+
+    if (!postText || typeof postText !== 'string' || !postText.trim()) {
+      postText = copies.linkedin?.post || copies.twitter?.post || copies.threads?.post || 'Novo artigo publicado';
+    }
+    postText = postText.trim();
+
+    // 3. Monta o input GraphQL em estrita conformidade com o schema do Buffer (needsApproval é obrigatório)
+    const input = {
+      channelId: profileId,
+      text: postText,
+      schedulingType: 'automatic',
+      mode: now ? 'shareNow' : 'addToQueue',
+      needsApproval: false
+    };
+
+    // Google Business Profile exige a especificação do tipo de post no metadata
+    if (service === 'googlebusiness') {
+      input.metadata = { google: { type: 'whats_new' } };
+    }
+
     let success = false;
+    let postData = null;
+    let errorMessage = null;
 
-    // 1. Tenta via nova API GraphQL Oficial do Buffer (api.buffer.com)
     try {
-      const gqlBody = JSON.stringify({
-        query: `mutation CreatePost($input: CreatePostInput!) {
-          createPost(input: $input) {
-            ... on PostActionSuccess {
-              post { id status text }
-            }
-            ... on MutationError {
-              message
-            }
-          }
-        }`,
-        variables: {
-          input: {
-            channelId: profileId,
-            text: postText,
-            schedulingType: 'automatic',
-            mode: now ? 'shareNow' : 'addToQueue'
-          }
-        }
-      });
-
-      const resGql = await fetch('https://api.buffer.com', {
+      let resGql = await fetch('https://api.buffer.com', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: gqlBody
+        body: JSON.stringify({
+          query: mutation,
+          variables: { input }
+        })
       });
 
-      if (resGql.ok) {
-        const gqlData = await resGql.json();
-        const postResult = gqlData?.data?.createPost;
-        if (postResult?.post?.id) {
-          results.push({
-            profileId,
-            status: 'success',
-            api: 'graphql',
-            data: postResult.post
-          });
-          success = true;
-        } else if (postResult?.message) {
-          console.warn(`[Buffer GraphQL] Alerta para canal ${profileId}:`, postResult.message);
-        }
+      let gqlData = await resGql.json().catch(() => null);
+      let postResult = gqlData?.data?.createPost;
+
+      // Fallback 1: Se falhar por ausência de horário configurado na fila com 'addToQueue', tenta via 'shareNow'
+      if (postResult?.message && postResult.message.includes('No posting schedule configured')) {
+        console.warn(`[Buffer GraphQL] Canal ${channelName} sem horário agendado. Retentando via shareNow...`);
+        input.mode = 'shareNow';
+        resGql = await fetch('https://api.buffer.com', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            query: mutation,
+            variables: { input }
+          })
+        });
+        gqlData = await resGql.json().catch(() => null);
+        postResult = gqlData?.data?.createPost;
+      }
+
+      // Fallback 2: Se falhar por tipo do Google Business (caso channelInfo não tenha sido detectado a tempo)
+      if (postResult?.message && postResult.message.includes('Google Business Profiles posts require a type')) {
+        console.warn(`[Buffer GraphQL] Injetando metadata whats_new para Google Business (${channelName})...`);
+        input.metadata = { google: { type: 'whats_new' } };
+        resGql = await fetch('https://api.buffer.com', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            query: mutation,
+            variables: { input }
+          })
+        });
+        gqlData = await resGql.json().catch(() => null);
+        postResult = gqlData?.data?.createPost;
+      }
+
+      if (postResult?.post?.id) {
+        success = true;
+        postData = postResult.post;
+      } else {
+        errorMessage = postResult?.message || gqlData?.errors?.[0]?.message || 'Resposta não reconhecida do Buffer GraphQL';
       }
     } catch (errGql) {
-      console.warn(`[Buffer GraphQL] Falha na rota moderna:`, errGql.message);
+      errorMessage = errGql.message;
     }
 
-    if (success) continue;
-
-    // 2. Fallback para API REST Legada (api.bufferapp.com/1/updates/create.json)
-    try {
-      const params = new URLSearchParams();
-      params.append('access_token', token);
-      params.append('profile_ids[]', profileId);
-      params.append('text', postText);
-      if (now) params.append('now', 'true');
-
-      const res = await fetch('https://api.bufferapp.com/1/updates/create.json', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Bearer ${token}`
-        },
-        body: params
-      });
-
-      const data = await res.json();
+    if (success) {
       results.push({
         profileId,
-        status: res.ok ? 'success' : 'error',
-        statusCode: res.status,
-        api: 'rest_legacy',
-        data
+        channelName,
+        service: service || 'buffer',
+        status: 'success',
+        api: 'graphql',
+        data: postData,
+        postId: postData.id,
+        postStatus: postData.status
       });
-    } catch (err) {
-      results.push({ profileId, status: 'error', error: err.message });
+    } else {
+      results.push({
+        profileId,
+        channelName,
+        service: service || 'buffer',
+        status: 'error',
+        api: 'graphql',
+        error: errorMessage
+      });
     }
   }
 
-  return { status: 'completed', results };
+  const successCount = results.filter(r => r.status === 'success').length;
+  const failCount = results.filter(r => r.status === 'error').length;
+
+  if (successCount === 0) {
+    const combinedErrors = results.map(r => `${r.channelName}: ${r.error}`).join(' | ');
+    return {
+      status: 'error',
+      message: `Falha ao publicar no Buffer: ${combinedErrors}`,
+      error: combinedErrors,
+      results
+    };
+  }
+
+  const isPartial = failCount > 0;
+  const summaryMsg = isPartial
+    ? `${successCount} canal(is) publicado(s) com sucesso, mas ${failCount} com falha: ${results.filter(r => r.status === 'error').map(r => `${r.channelName}: ${r.error}`).join(', ')}`
+    : `${successCount} canal(is) publicado(s) com sucesso via Buffer API.`;
+
+  return {
+    status: 'success',
+    message: summaryMsg,
+    successCount,
+    failCount,
+    results
+  };
 }
 
 /**
@@ -206,12 +318,24 @@ async function publishToLinkedIn(config, copies, article = {}) {
     });
 
     const data = await res.json();
+
+    let errorDetail = res.ok ? null : (data.message || `LinkedIn retornou HTTP ${res.status}`);
+
+    // Tratamento especializado e explicativo para erro 403 / Access Denied no campo /author
+    if (!res.ok && res.status === 403 && (errorDetail.includes('/author') || errorDetail.includes('Data Processing Exception') || errorDetail.includes('ACCESS_DENIED'))) {
+      if (authorUrn.includes(':organization:')) {
+        errorDetail = 'Permissão Insuficiente (403 no /author): O token do LinkedIn não tem autorização para publicar em nome da Company Page (empresa). O LinkedIn exige formalmente a aprovação do produto "Community Management API" (escopo w_organization_social) para publicação direta em páginas empresariais. Alternativa recomendada: conecte sua Company Page do LinkedIn via Buffer API (onde a publicação é imediata e sem burocracia de desenvolvedor) ou utilize um URN de perfil pessoal (urn:li:person:...).';
+      } else {
+        errorDetail = 'Permissão Insuficiente (403 no /author): O URN de autor informado não corresponde ao usuário autenticado por este token do LinkedIn.';
+      }
+    }
+
     return {
       status: res.ok ? 'success' : 'error',
       statusCode: res.status,
       postId: data.id,
       postUrl: data.id ? `https://www.linkedin.com/feed/update/${data.id}` : null,
-      error: res.ok ? null : (data.message || `LinkedIn retornou HTTP ${res.status}`),
+      error: errorDetail,
       response: data
     };
   } catch (err) {
@@ -503,9 +627,23 @@ async function testChannelConnection(channelName, channelConfig) {
           const data = await res.json();
           return { ok: true, message: `LinkedIn conectado: ${data.name || urn}` };
         }
-        // Se der 403 por escopo, mas token foi aceito:
-        if (res.status === 403 || res.status === 200) {
-          return { ok: true, message: `Token do LinkedIn aceito pelo servidor (Status ${res.status}).` };
+        if (res.status === 403) {
+          if (urn.includes(':organization:')) {
+            return {
+              ok: false,
+              error: 'Atenção LinkedIn (HTTP 403): O token não possui permissão para publicar em Company Page. A API direta do LinkedIn exige o produto "Community Management API" (escopo w_organization_social) aprovado. Para Company Pages, recomendamos publicar através da integração com o Buffer (sem burocracia) ou utilizar um URN de perfil pessoal (urn:li:person:...).'
+            };
+          }
+          return {
+            ok: false,
+            error: 'LinkedIn retornou HTTP 403: O token não possui os escopos necessários (ex: w_member_social ou openid/profile).'
+          };
+        }
+        if (res.status === 401) {
+          return {
+            ok: false,
+            error: 'Erro 401 (Não Autorizado): Token do LinkedIn expirado ou inválido. Gere um novo token no LinkedIn Developers.'
+          };
         }
         return { ok: false, error: `LinkedIn retornou HTTP ${res.status}.` };
       } catch (err) {

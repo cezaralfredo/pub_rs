@@ -1851,14 +1851,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeLabel = isSuccess ? 'Enviado ✓' : isSkipped ? 'Não configurado' : 'Falha';
 
       let detailHtml = '';
-      if (ch.postUrl) {
+      if (ch.results && Array.isArray(ch.results) && ch.results.length > 0) {
+        detailHtml = `
+          <div class="dispatch-subresults" style="margin-top:0.4rem;">
+            ${ch.message ? `<p class="dispatch-detail-msg" style="margin-bottom:0.45rem;font-weight:600;">${escapeHtml(ch.message)}</p>` : ''}
+            <div style="display:flex;flex-direction:column;gap:0.35rem;">
+              ${ch.results.map(r => `
+                <div style="font-size:0.83rem;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:0.35rem 0.6rem;border-radius:6px;">
+                  <span><strong>${escapeHtml(r.channelName || r.service || r.profileId)}</strong>: ${r.status === 'success' ? 'Publicado com sucesso ✓' : escapeHtml(r.error || 'Falha')}</span>
+                  <span class="dispatch-badge ${r.status === 'success' ? 'success' : 'error'}" style="font-size:0.7rem;padding:0.15rem 0.4rem;">${r.status === 'success' ? 'Enviado ✓' : 'Falha'}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (ch.postUrl) {
         detailHtml = `<a href="${ch.postUrl}" target="_blank" class="dispatch-url">Ver publicação no LinkedIn ↗</a>`;
       } else if (ch.firstTweetUrl) {
         detailHtml = `<a href="${ch.firstTweetUrl}" target="_blank" class="dispatch-url">Ver fio no X/Twitter ↗</a>`;
       } else if (ch.messageId) {
         detailHtml = `<span class="dispatch-detail-msg">Mensagem enviada com ID #${ch.messageId}</span>`;
       } else if (ch.message) {
-        detailHtml = `<span class="dispatch-detail-msg">${ch.message}</span>`;
+        detailHtml = `<span class="dispatch-detail-msg">${escapeHtml(ch.message)}</span>`;
       } else if (ch.error) {
         detailHtml = `<span class="dispatch-detail-msg">${escapeHtml(ch.error)}</span>`;
       } else if (ch.response?.message) {

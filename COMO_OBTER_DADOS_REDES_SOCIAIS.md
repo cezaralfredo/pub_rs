@@ -90,6 +90,11 @@ O **Erro 401 (Unauthorized)** significa que a autenticação falhou. Isso aconte
 ## 2. LinkedIn Direct API (v2)
 > Permite publicação direta no perfil pessoal ou na Company Page da empresa, incluindo upload nativo de copies, carrosséis em PDF e imagens.
 
+> ⚠️ **Atenção ao Erro no campo `/author` (Data Processing Exception):**
+> Se tentar publicar em uma Company Page (`urn:li:organization:...`) com um token que possui apenas o escopo `w_member_social`, o LinkedIn retornará erro 403 `Field Value validation failed in REQUEST_BODY: Data Processing Exception while processing fields [/author]`. A API direta do LinkedIn exige obrigatoriamente a aprovação formal do produto corporativo **Community Management API** (escopo `w_organization_social`) para Company Pages.
+> 
+> 💡 **Solução Recomendada:** Conecte sua Company Page do LinkedIn via **Buffer**! O Buffer já possui homologação empresarial com o LinkedIn e permite postar no feed da empresa sem passar por aprovações de desenvolvedor.
+
 ### Campos Solicitados no Social360:
 - **Access Token (OAuth 2.0)**
 - **Author URN** (Identificador único do autor)
