@@ -1860,7 +1860,9 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (ch.message) {
         detailHtml = `<span class="dispatch-detail-msg">${ch.message}</span>`;
       } else if (ch.error) {
-        detailHtml = `<span class="dispatch-detail-msg">${ch.error}</span>`;
+        detailHtml = `<span class="dispatch-detail-msg">${escapeHtml(ch.error)}</span>`;
+      } else if (ch.response?.message) {
+        detailHtml = `<span class="dispatch-detail-msg">${escapeHtml(ch.response.message)}</span>`;
       }
 
       return `

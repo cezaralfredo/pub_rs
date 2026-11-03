@@ -211,6 +211,7 @@ async function publishToLinkedIn(config, copies, article = {}) {
       statusCode: res.status,
       postId: data.id,
       postUrl: data.id ? `https://www.linkedin.com/feed/update/${data.id}` : null,
+      error: res.ok ? null : (data.message || `LinkedIn retornou HTTP ${res.status}`),
       response: data
     };
   } catch (err) {
