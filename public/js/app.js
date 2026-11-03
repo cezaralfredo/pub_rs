@@ -827,6 +827,10 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           twitter: {
             enabled: document.getElementById('ch-twitter-enabled').checked,
+            apiKey: (document.getElementById('ch-twitter-apikey')?.value || '').trim(),
+            apiSecret: (document.getElementById('ch-twitter-apisecret')?.value || '').trim(),
+            accessToken: document.getElementById('ch-twitter-token').value.trim(),
+            accessTokenSecret: (document.getElementById('ch-twitter-tokensecret')?.value || '').trim(),
             bearerToken: document.getElementById('ch-twitter-token').value.trim()
           },
           meta: {
@@ -1837,7 +1841,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ch-linkedin-token').value = '';
     document.getElementById('ch-linkedin-urn').value = '';
     document.getElementById('ch-twitter-enabled').checked = false;
+    if (document.getElementById('ch-twitter-apikey')) document.getElementById('ch-twitter-apikey').value = '';
+    if (document.getElementById('ch-twitter-apisecret')) document.getElementById('ch-twitter-apisecret').value = '';
     document.getElementById('ch-twitter-token').value = '';
+    if (document.getElementById('ch-twitter-tokensecret')) document.getElementById('ch-twitter-tokensecret').value = '';
     document.getElementById('ch-meta-enabled').checked = false;
     document.getElementById('ch-meta-token').value = '';
     document.getElementById('ch-meta-pageid').value = '';
@@ -1896,7 +1903,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('ch-linkedin-urn').value = ch.linkedin?.authorUrn || '';
 
       document.getElementById('ch-twitter-enabled').checked = Boolean(ch.twitter?.enabled);
-      document.getElementById('ch-twitter-token').value = ch.twitter?.bearerToken || ch.twitter?.accessToken || '';
+      if (document.getElementById('ch-twitter-apikey')) document.getElementById('ch-twitter-apikey').value = ch.twitter?.apiKey || '';
+      if (document.getElementById('ch-twitter-apisecret')) document.getElementById('ch-twitter-apisecret').value = ch.twitter?.apiSecret || '';
+      document.getElementById('ch-twitter-token').value = ch.twitter?.accessToken || ch.twitter?.bearerToken || '';
+      if (document.getElementById('ch-twitter-tokensecret')) document.getElementById('ch-twitter-tokensecret').value = ch.twitter?.accessTokenSecret || ch.twitter?.accessSecret || '';
 
       document.getElementById('ch-meta-enabled').checked = Boolean(ch.meta?.enabled);
       document.getElementById('ch-meta-token').value = ch.meta?.pageAccessToken || '';
@@ -1973,6 +1983,10 @@ document.addEventListener('DOMContentLoaded', () => {
       config.authorUrn = document.getElementById('ch-linkedin-urn').value.trim();
     }
     if (channel === 'twitter') {
+      config.apiKey = (document.getElementById('ch-twitter-apikey')?.value || '').trim();
+      config.apiSecret = (document.getElementById('ch-twitter-apisecret')?.value || '').trim();
+      config.accessToken = document.getElementById('ch-twitter-token').value.trim();
+      config.accessTokenSecret = (document.getElementById('ch-twitter-tokensecret')?.value || '').trim();
       config.bearerToken = document.getElementById('ch-twitter-token').value.trim();
     }
     if (channel === 'meta') {

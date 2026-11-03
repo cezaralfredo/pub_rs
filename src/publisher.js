@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { buildOAuth1Header } = require('./security/oauth1');
 
 /**
  * Módulo de Disparo e Publicação Multicanal Direta
@@ -138,14 +139,17 @@ async function publishToLinkedIn(config, copies) {
 
 /**
  * Publicação direta no X (Twitter) via API v2
+ * Suporta OAuth 1.0a User Context (API Key + Secret e Access Token + Secret) ou OAuth 2.0 User Token
  * Endpoint: POST https://api.twitter.com/2/tweets
  */
 async function publishToTwitter(config, copies) {
-  const { bearerToken, accessToken } = config;
+  const { bearerToken, accessToken, apiKey, apiSecret, accessTokenSecret } = config;
+  const tokenSecret = accessTokenSecret || config.accessSecret;
+  const hasOAuth1 = Boolean(apiKey && apiSecret && accessToken && tokenSecret);
   const token = bearerToken || accessToken;
 
-  if (!token) {
-    return { status: 'skipped', message: 'Token do X/Twitter não configurado.' };
+  if (!hasOAuth1 && !token) {
+    return { status: 'skipped', message: 'Credenciais do X/Twitter não configuradas (informe as 4 chaves OAuth 1.0a ou Bearer Token).' };
   }
 
   try {
@@ -163,10 +167,24 @@ async function publishToTwitter(config, copies) {
         payload.reply = { in_reply_to_tweet_id: previousTweetId };
       }
 
+      let authHeader;
+      if (hasOAuth1) {
+        authHeader = buildOAuth1Header({
+          method: 'POST',
+          url: 'https://api.twitter.com/2/tweets',
+          apiKey,
+          apiSecret,
+          accessToken,
+          accessTokenSecret: tokenSecret
+        });
+      } else {
+        authHeader = `Bearer ${token}`;
+      }
+
       const res = await fetch('https://api.twitter.com/2/tweets', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': authHeader,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
@@ -368,17 +386,69 @@ async function testChannelConnection(channelName, channelConfig) {
     }
 
     case 'twitter': {
-      const token = channelConfig?.bearerToken || channelConfig?.accessToken;
-      if (!token) return { ok: false, error: 'Token do X/Twitter ausente.' };
+      const { apiKey, apiSecret, accessToken, accessTokenSecret, bearerToken } = channelConfig || {};
+      const tokenSecret = accessTokenSecret || channelConfig?.accessSecret;
+      const hasOAuth1 = Boolean(apiKey && apiSecret && accessToken && tokenSecret);
+      const token = bearerToken || accessToken;
+
+      if (!hasOAuth1 && !token) {
+        return {
+          ok: false,
+          error: 'Credenciais do X/Twitter ausentes. Informe as chaves OAuth 1.0a (API Key + Secret e Access Token + Secret) ou um OAuth 2.0 User Token.'
+        };
+      }
+
       try {
+        let authHeader;
+        if (hasOAuth1) {
+          authHeader = buildOAuth1Header({
+            method: 'GET',
+            url: 'https://api.twitter.com/2/users/me',
+            apiKey,
+            apiSecret,
+            accessToken,
+            accessTokenSecret: tokenSecret
+          });
+        } else {
+          authHeader = `Bearer ${token}`;
+        }
+
         const res = await fetch('https://api.twitter.com/2/users/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': authHeader }
         });
+
+        const data = await res.json().catch(() => null);
+
         if (res.ok) {
-          const data = await res.json();
           return { ok: true, message: `X (Twitter) conectado: @${data?.data?.username || 'OK'}` };
         }
-        return { ok: false, error: `X (Twitter) API retornou HTTP ${res.status}.` };
+
+        if (res.status === 403) {
+          const detail = (data?.detail || data?.title || '');
+          const detailLower = detail.toLowerCase();
+          if (detailLower.includes('application-only') || detailLower.includes('unsupported authentication') || detailLower.includes('oauth 2.0 application-only')) {
+            return {
+              ok: false,
+              error: 'Erro 403 (Unsupported Authentication): O Bearer Token informado é de Aplicação (App-Only). O X não permite consultar perfil nem postar tweets com token de aplicativo. Você precisa preencher as 4 chaves OAuth 1.0a (API Key + Secret e Access Token + Secret) com permissão "Read and write" no portal do X, ou conectar via Buffer.'
+            };
+          }
+          return {
+            ok: false,
+            error: `X (Twitter) retornou HTTP 403: ${detail || 'Permissão insuficiente. Certifique-se de que o App possui permissão "Read and Write" em Settings e suas chaves foram regeneradas.'}`
+          };
+        }
+
+        if (res.status === 401) {
+          return {
+            ok: false,
+            error: 'Erro 401 (Não Autorizado): Chaves ou tokens inválidos do X. Verifique se foram copiados corretamente.'
+          };
+        }
+
+        return {
+          ok: false,
+          error: `X (Twitter) API retornou HTTP ${res.status}: ${data?.detail || data?.title || 'Falha na autenticação'}`
+        };
       } catch (err) {
         return { ok: false, error: err.message };
       }

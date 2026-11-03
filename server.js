@@ -306,8 +306,11 @@ app.post('/api/clients', requireAuth, (req, res) => {
         },
         twitter: {
           enabled: Boolean(merged.channels?.twitter?.enabled),
-          bearerToken: merged.channels?.twitter?.bearerToken || '',
-          accessToken: merged.channels?.twitter?.accessToken || ''
+          apiKey: merged.channels?.twitter?.apiKey || '',
+          apiSecret: merged.channels?.twitter?.apiSecret || '',
+          accessToken: merged.channels?.twitter?.accessToken || '',
+          accessTokenSecret: merged.channels?.twitter?.accessTokenSecret || merged.channels?.twitter?.accessSecret || '',
+          bearerToken: merged.channels?.twitter?.bearerToken || ''
         },
         telegram: {
           enabled: Boolean(merged.channels?.telegram?.enabled),

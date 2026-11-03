@@ -710,36 +710,63 @@
           <div class="card-icon">🐦</div>
           <div>
             <h2 class="card-title">X / Twitter API (v2)</h2>
-            <p class="card-subtitle">Publicação de tweets isolados e threads completas encadeadas automaticamente.</p>
+            <p class="card-subtitle">Publicação direta de tweets e threads completas encadeadas automaticamente com sua conta.</p>
           </div>
+        </div>
+      </div>
+
+      <div class="alert-warning" style="margin-bottom: 1.5rem;">
+        <span>⚠️</span>
+        <div>
+          <strong>Por que o X retorna Erro 403 com "Bearer Token"?</strong><br>
+          O botão <em>"Bearer Token"</em> no portal do X gera uma credencial <strong>App-Only</strong> (do aplicativo). O X proíbe tokens de aplicação de consultar perfis e postar tweets (retorna HTTP 403). Para publicar na sua conta, utilize o conjunto <strong>OAuth 1.0a (4 chaves)</strong> ou conecte via <strong>Buffer</strong>.
         </div>
       </div>
 
       <div class="fields-box">
         <div class="fields-title">Campos necessários no Social360:</div>
         <ul class="fields-list">
-          <li>Bearer Token ou User Access Token</li>
+          <li>API Key (Consumer Key)</li>
+          <li>API Key Secret (Consumer Secret)</li>
+          <li>Access Token (User Context)</li>
+          <li>Access Token Secret</li>
         </ul>
       </div>
 
       <ol class="steps-list">
         <li>
           <strong class="step-title">Acessar o X Developer Portal:</strong>
-          Acesse <a href="https://developer.x.com/en/portal/dashboard" target="_blank" class="external-link">developer.x.com/en/portal/dashboard</a> e faça login.
+          Acesse <a href="https://developer.x.com/en/portal/dashboard" target="_blank" class="external-link">developer.x.com/en/portal/dashboard</a> e faça login com a conta do X que irá publicar.
         </li>
         <li>
-          <strong class="step-title">Criar o App:</strong>
-          Em <em>Projects & Apps</em>, crie um novo aplicativo (ex: <code>Social360 Studio</code>).
+          <strong class="step-title">Selecionar ou Criar o App:</strong>
+          Em <em>Projects & Apps</em>, clique no seu aplicativo (ex: <code>Social360 Studio</code>). Verifique se ele está dentro de um Projeto com nível <strong>Free</strong> ativo.
         </li>
         <li>
-          <strong class="step-title">Configurar Permissão de Escrita:</strong>
-          Em <em>Settings ➔ User authentication settings</em>, defina a permissão como <strong>Read and Write</strong> (obrigatório para postar).
+          <strong class="step-title">Configurar Permissão "Read and write" (Obrigatório):</strong>
+          Vá na aba <em>Settings ➔ User authentication settings</em> e clique em <strong>Set up</strong> (ou Edit):<br>
+          • Em <strong>App permissions</strong>, marque <strong>Read and write</strong>.<br>
+          • Em <strong>Type of App</strong>, marque <strong>Web App</strong>.<br>
+          • Em <strong>Callback URL</strong> e <strong>Website URL</strong>, insira <code>https://social360.anauedesign.com.br/</code>.<br>
+          • Salve as alterações.
         </li>
         <li>
-          <strong class="step-title">Copiar o Token:</strong>
-          Na aba <em>Keys and Tokens</em>, gere o <strong>Bearer Token</strong> ou <strong>OAuth 2.0 User Token</strong> e cole no Social360.
+          <strong class="step-title">Gerar as 4 Chaves em "Keys and Tokens":</strong>
+          Vá para a aba <em>Keys and Tokens</em>:<br>
+          • Em <strong>Consumer Keys</strong>: clique em <em>Regenerate</em> (ou Generate) ao lado de <em>API Key and Secret</em>. Copie a <strong>API Key</strong> e o <strong>API Key Secret</strong>.<br>
+          • Em <strong>Authentication Tokens</strong>: ao lado de <em>Access Token and Secret</em>, clique em <strong>Generate</strong>. Copie o <strong>Access Token</strong> e o <strong>Access Token Secret</strong>.<br>
+          <em>(Não use o botão "Bearer Token", pois ele não possui contexto da sua conta).</em>
+        </li>
+        <li>
+          <strong class="step-title">Testar a Conexão no Social360:</strong>
+          Cole as 4 chaves nos respectivos campos no painel do cliente e clique em <strong>"Testar Conexão X"</strong>. O sistema confirmará a conexão exibindo seu <code>@usuario</code>!
         </li>
       </ol>
+
+      <div class="alert-tip">
+        <span>💡</span>
+        <div><strong>Alternativa mais fácil:</strong> Você também pode conectar sua conta do X ao <strong>Buffer</strong> e publicar através do Social360 sem precisar gerenciar chaves no portal de desenvolvedores do X.</div>
+      </div>
     </article>
 
     <!-- 7. CHAVES DE IA -->

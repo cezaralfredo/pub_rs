@@ -902,12 +902,31 @@
                       <span class="toggle-slider"></span>
                     </label>
                   </div>
-                  <div class="form-row-channel">
-                    <div class="form-field flex-grow">
-                      <label for="ch-twitter-token" class="field-label">Bearer Token ou User Token</label>
-                      <input type="password" id="ch-twitter-token" class="field-input" placeholder="Twitter v2 Bearer Token">
+                  <div class="form-row">
+                    <div class="form-field">
+                      <label for="ch-twitter-apikey" class="field-label">API Key (Consumer Key)</label>
+                      <input type="password" id="ch-twitter-apikey" class="field-input" placeholder="API Key do App">
                     </div>
-                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="twitter">Testar X</button>
+                    <div class="form-field">
+                      <label for="ch-twitter-apisecret" class="field-label">API Key Secret (Consumer Secret)</label>
+                      <input type="password" id="ch-twitter-apisecret" class="field-input" placeholder="API Secret do App">
+                    </div>
+                  </div>
+                  <div class="form-row" style="margin-top: 0.5rem;">
+                    <div class="form-field">
+                      <label for="ch-twitter-token" class="field-label">Access Token (User Context)</label>
+                      <input type="password" id="ch-twitter-token" class="field-input" placeholder="Access Token da Conta">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-twitter-tokensecret" class="field-label">Access Token Secret</label>
+                      <input type="password" id="ch-twitter-tokensecret" class="field-input" placeholder="Access Token Secret">
+                    </div>
+                  </div>
+                  <small class="field-hint" style="display:block; margin-top:0.4rem; color: #94a3b8; font-size: 0.76rem; line-height: 1.35;">
+                    💡 <strong>Evite o Erro 403:</strong> No X Developer Portal, configure a permissão do App para <em>"Read and write"</em> em <em>User authentication settings</em> e gere as chaves acima em <em>Keys and Tokens</em>. O botão "Bearer Token" isolado é de aplicação (App-Only) e rejeitado pelo X para postagens.
+                  </small>
+                  <div class="channel-test-btn-wrap" style="margin-top: 0.65rem;">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="twitter">Testar Conexão X</button>
                   </div>
                 </div>
 

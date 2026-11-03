@@ -170,32 +170,53 @@ Você pode editar diretamente o arquivo em `config/clients/<id-do-cliente>.json`
 ## 4. X / Twitter API (v2)
 > Permite publicação automática de postagens e threads completas com divisão inteligente de caracteres.
 
-### Campos Solicitados no Social360:
-- **Bearer Token ou User Access Token**
+### ⚠️ Por que o X retorna Erro 403 com "Bearer Token"?
+No portal de desenvolvedores do X ([developer.x.com](https://developer.x.com)), o botão **"Bearer Token"** gera um token do tipo **App-Only** (do aplicativo). O X **não permite** que tokens de aplicação consultem o perfil (`/2/users/me`) nem postem tweets (`POST /2/tweets`) — qualquer requisição com ele retorna **HTTP 403 (Unsupported Authentication)**.
 
-### Passo a Passo:
-1. **Acesse o X Developer Portal:**
-   - Acesse: [https://developer.x.com/en/portal/dashboard](https://developer.x.com/en/portal/dashboard) (ou `developer.twitter.com`).
-   - Faça login com a conta do X que irá publicar.
-2. **Inscrever-se no Plano de Desenvolvedor:**
-   - Se ainda não tiver cadastro de desenvolvedor, clique em **"Sign Up"** e selecione o plano **Free** (Gratuito - permite postagens via API v2) ou **Basic**.
-   - Responda brevemente a finalidade de uso (ex: *Automação e publicação programada de conteúdos corporativos da nossa agência*).
-3. **Criar um Projeto e Aplicativo:**
-   - No menu lateral, vá em **Projects & Apps** ➔ **Overview**.
-   - Clique em **"Add App"** ou crie um novo aplicativo.
-   - Nomeie como `Social360 Studio`.
-4. **Configurar Permissões de Escrita (Importante):**
-   - Na página do seu App, vá na aba **"Settings"**.
-   - Na seção **"User authentication settings"**, clique em **"Set up"**.
+Para publicar e testar a conexão no X, você deve usar o conjunto oficial **OAuth 1.0a (4 chaves)** geradas para sua conta, ou conectar via **Buffer**.
+
+---
+
+### Campos Solicitados no Social360:
+- **API Key (Consumer Key)**
+- **API Key Secret (Consumer Secret)**
+- **Access Token (User Context)**
+- **Access Token Secret**
+
+---
+
+### Passo a Passo no X Developer Portal:
+1. **Acessar o Portal de Desenvolvedores:**
+   - Acesse: [https://developer.x.com/en/portal/dashboard](https://developer.x.com/en/portal/dashboard).
+   - Faça login com a conta do X na qual deseja publicar.
+2. **Plano de Desenvolvedor (Free Tier):**
+   - Se ainda não tiver o cadastro aprovado, selecione o plano **Free** (Gratuito - permite até 500 postagens por mês via API v2).
+3. **Criar ou Acessar seu App:**
+   - Em **Projects & Apps**, clique no seu aplicativo (ex: `Social360 Studio`).
+4. **Configurar Permissões de Escrita (Passo Crítico):**
+   - Na aba **"Settings"** do App:
+   - Role até a seção **"User authentication settings"** e clique em **"Set up"** (ou **"Edit"**).
    - Em **App permissions**, marque obrigatoriamente: **Read and write** (Ler e Escrever).
    - Em **Type of App**, selecione **Web App**.
-   - Em **Callback URI / Redirect URL**, preencha com a URL da sua aplicação (ex: `https://social360.anauedesign.com.br/`).
-   - Salve as configurações.
-5. **Gerar e Copiar o Token:**
-   - Vá para a aba **"Keys and Tokens"**.
-   - Na seção **Authentication Tokens**:
-     - Gere o **Bearer Token** ou **OAuth 2.0 User Access Token**.
-     - Copie a chave exibida e cole no campo **Bearer Token ou User Token** no Social360.
+   - Em **Callback URI / Redirect URL**, insira: `https://social360.anauedesign.com.br/`
+   - Em **Website URL**, insira: `https://social360.anauedesign.com.br/`
+   - Clique em **Save**.
+5. **Gerar e Copiar as 4 Chaves (Keys and Tokens):**
+   - Vá para a aba **"Keys and Tokens"**:
+   - **Seção 1: Consumer Keys:**
+     - Clique em **Regenerate** (ou Generate) ao lado de *API Key and Secret*.
+     - Copie a **API Key** ➔ cole no campo *API Key (Consumer Key)* no Social360.
+     - Copie a **API Key Secret** ➔ cole no campo *API Key Secret (Consumer Secret)* no Social360.
+   - **Seção 2: Authentication Tokens:**
+     - Ao lado de *Access Token and Secret*, clique em **Generate** (ou Regenerate se você alterou as permissões para Read and Write).
+     - Copie o **Access Token** ➔ cole no campo *Access Token* no Social360.
+     - Copie o **Access Token Secret** ➔ cole no campo *Access Token Secret* no Social360.
+   - *(Atenção: Não utilize o campo isolado "Bearer Token", pois ele não possui contexto de usuário).*
+6. **Testar no Painel:**
+   - No Social360 Studio, clique em **Testar Conexão X**.
+   - O sistema validará a assinatura HMAC-SHA1 na API do X e exibirá `@seu_usuario` conectado com sucesso!
+
+> **💡 Alternativa Mais Rápida:** Caso não queira lidar com as 4 chaves do X, basta conectar o X através da integração do **Buffer** no Social360 em apenas 1 clique!
 
 ---
 

@@ -46,12 +46,26 @@ function maskClientSecrets(client) {
       safeClient.channels.linkedin.hasToken = true;
       safeClient.channels.linkedin.accessToken = maskSecret(safeClient.channels.linkedin.accessToken);
     }
-    if (safeClient.channels.twitter?.apiSecret) {
-      safeClient.channels.twitter.hasSecret = true;
-      safeClient.channels.twitter.apiSecret = maskSecret(safeClient.channels.twitter.apiSecret);
-    }
-    if (safeClient.channels.twitter?.accessToken) {
-      safeClient.channels.twitter.accessToken = maskSecret(safeClient.channels.twitter.accessToken);
+    if (safeClient.channels.twitter) {
+      if (safeClient.channels.twitter.apiKey) {
+        safeClient.channels.twitter.apiKey = maskSecret(safeClient.channels.twitter.apiKey);
+      }
+      if (safeClient.channels.twitter.apiSecret) {
+        safeClient.channels.twitter.hasSecret = true;
+        safeClient.channels.twitter.apiSecret = maskSecret(safeClient.channels.twitter.apiSecret);
+      }
+      if (safeClient.channels.twitter.accessToken) {
+        safeClient.channels.twitter.accessToken = maskSecret(safeClient.channels.twitter.accessToken);
+      }
+      if (safeClient.channels.twitter.accessTokenSecret) {
+        safeClient.channels.twitter.accessTokenSecret = maskSecret(safeClient.channels.twitter.accessTokenSecret);
+      }
+      if (safeClient.channels.twitter.accessSecret) {
+        safeClient.channels.twitter.accessSecret = maskSecret(safeClient.channels.twitter.accessSecret);
+      }
+      if (safeClient.channels.twitter.bearerToken) {
+        safeClient.channels.twitter.bearerToken = maskSecret(safeClient.channels.twitter.bearerToken);
+      }
     }
     if (safeClient.channels.meta?.pageAccessToken) {
       safeClient.channels.meta.hasToken = true;
