@@ -722,6 +722,21 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Olhinho para ver/ocultar chave do Jev
+    const btnToggleJevEye = document.getElementById('btn-toggle-jev-key-eye');
+    if (btnToggleJevEye) {
+      btnToggleJevEye.addEventListener('click', () => {
+        const keyInput = document.getElementById('cl-jev-key');
+        if (keyInput.type === 'password') {
+          keyInput.type = 'text';
+          btnToggleJevEye.textContent = '🙈';
+        } else {
+          keyInput.type = 'password';
+          btnToggleJevEye.textContent = '👁️';
+        }
+      });
+    }
+
     // Testar IA Dedicada diretamente
     if (elements.btnTestLlmDirect) {
       elements.btnTestLlmDirect.addEventListener('click', async () => {
@@ -2032,14 +2047,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function testJevDirect() {
+    const btn = document.getElementById('btn-test-jev-direct') || elements.btnTestJevDirect;
+    const feedbackBox = document.getElementById('jev-test-feedback') || elements.jevTestFeedback;
     const apiKey = (document.getElementById('cl-jev-key')?.value || '').trim();
     const clientId = (document.getElementById('cl-id')?.value || '').trim();
 
-    if (!elements.jevTestFeedback) return;
+    if (!feedbackBox) return;
 
-    elements.jevTestFeedback.classList.remove('hidden', 'test-feedback-success', 'test-feedback-error');
-    elements.jevTestFeedback.classList.add('test-feedback-loading');
-    elements.jevTestFeedback.textContent = 'Verificando motor Jev (TypeSafe AI System One)...';
+    const originalText = btn ? btn.textContent : 'Testar Jev';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Testando...';
+    }
+
+    feedbackBox.classList.remove('hidden', 'test-feedback-success', 'test-feedback-error');
+    feedbackBox.classList.add('test-feedback-loading');
+    feedbackBox.style.display = 'block';
+    feedbackBox.textContent = 'Verificando motor Jev (TypeSafe AI System One)...';
 
     try {
       const res = await authFetch('/api/jev/test', {
@@ -2049,19 +2073,27 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const data = await res.json();
-      elements.jevTestFeedback.classList.remove('test-feedback-loading');
+      feedbackBox.classList.remove('test-feedback-loading');
 
       if (data.ok) {
-        elements.jevTestFeedback.classList.add('test-feedback-success');
-        elements.jevTestFeedback.innerHTML = `✓ ${escapeHtml(data.message)}`;
+        feedbackBox.classList.add('test-feedback-success');
+        feedbackBox.innerHTML = `✓ ${escapeHtml(data.message)}`;
+        showToast(data.message, 'success');
       } else {
-        elements.jevTestFeedback.classList.add('test-feedback-error');
-        elements.jevTestFeedback.innerHTML = `✕ Falha no teste Jev: ${escapeHtml(data.error || 'Erro desconhecido')}`;
+        feedbackBox.classList.add('test-feedback-error');
+        feedbackBox.innerHTML = `✕ Falha no teste Jev: ${escapeHtml(data.error || 'Erro desconhecido')}`;
+        showToast(data.error || 'Falha no teste do motor Jev', 'error');
       }
     } catch (err) {
-      elements.jevTestFeedback.classList.remove('test-feedback-loading');
-      elements.jevTestFeedback.classList.add('test-feedback-error');
-      elements.jevTestFeedback.innerHTML = `✕ Erro de conexão com o motor Jev: ${escapeHtml(err.message)}`;
+      feedbackBox.classList.remove('test-feedback-loading');
+      feedbackBox.classList.add('test-feedback-error');
+      feedbackBox.innerHTML = `✕ Erro de conexão com o motor Jev: ${escapeHtml(err.message)}`;
+      showToast('Erro de conexão com o servidor: ' + err.message, 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   }
 

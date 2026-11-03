@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.1.2">
 </head>
 <body class="dark-theme">
 
@@ -1138,7 +1138,10 @@
                 <div class="form-row-channel">
                   <div class="form-field flex-grow">
                     <label for="cl-jev-key" class="field-label">TypeSafe / Jev API Key (Opcional)</label>
-                    <input type="password" id="cl-jev-key" class="field-input" placeholder="TYPESAFE_API_KEY (ou deixe em branco para o motor heurístico nativo)">
+                    <div class="input-password-wrap">
+                      <input type="password" id="cl-jev-key" class="field-input" placeholder="TYPESAFE_API_KEY (ou deixe em branco para o motor heurístico nativo)">
+                      <button type="button" class="btn-toggle-eye" id="btn-toggle-jev-key-eye" title="Mostrar/Ocultar chave">👁️</button>
+                    </div>
                     <small class="field-hint">Caso deixe vazio, o sistema utiliza o motor heurístico nativo de fallback ou a chave global do .env.</small>
                   </div>
                   <button type="button" class="btn-ghost-sm" id="btn-test-jev-direct" style="align-self: flex-end; margin-bottom: 6px;">
@@ -1591,6 +1594,6 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=3.1.2"></script>
 </body>
 </html>

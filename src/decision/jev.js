@@ -201,14 +201,36 @@ async function evaluateContentWithJev({ title = '', text = '', client = {}, apiK
 }
 
 /**
- * Valida a conexão com a API da TypeSafe AI para o modelo Jev.
+ * Valida a conexão com o motor Jev (via API TypeSafe AI na nuvem ou modo heurístico nativo).
  */
 async function testJevConnection(apiKey) {
   const key = (apiKey || '').trim();
+
+  // 1. Se nenhuma chave for informada, valida e atesta a prontidão do Motor Heurístico Nativo
   if (!key) {
-    return { ok: false, error: 'Chave de API do Jev (TypeSafe AI) ausente.' };
+    try {
+      const benchmark = runHeuristicDecisionEngine({
+        title: 'Verificação Operacional do Motor Jev',
+        text: 'Estratégia de conteúdo, análise de relevância, dados analíticos e ROI.',
+        client: { contentPillars: ['Estratégia', 'Inovação'] }
+      });
+
+      return {
+        ok: true,
+        mode: 'heuristic',
+        message: 'Motor Jev (TypeSafe AI) 100% operacional no Modo Heurístico Nativo! Triagem inteligente, Brand Safety e Fit Score prontos para uso (sem custo de API).',
+        details: {
+          brandSafety: benchmark.brandSafety,
+          fitScore: benchmark.fitScore,
+          recommendedChannels: benchmark.recommendedChannels
+        }
+      };
+    } catch (err) {
+      return { ok: false, error: `Falha ao inicializar o motor heurístico nativo: ${err.message}` };
+    }
   }
 
+  // 2. Se uma chave foi informada, valida o handshake com a API oficial da TypeSafe AI
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 7000);
@@ -238,17 +260,24 @@ async function testJevConnection(apiKey) {
     if (res.ok) {
       return {
         ok: true,
-        message: 'Jev (TypeSafe AI) conectado com sucesso! Motor de decisão System One operacional.'
+        mode: 'typesafe_cloud',
+        message: 'Jev (TypeSafe AI) conectado com sucesso via Nuvem! Motor de decisão System One 100% operacional.'
       };
     }
 
-    if (res.status === 401) {
-      return { ok: false, error: 'Erro 401: Chave de API da TypeSafe AI inválida ou revogada.' };
+    if (res.status === 401 || res.status === 403) {
+      return {
+        ok: false,
+        error: `Erro ${res.status}: Chave da TypeSafe AI não autorizada ou inválida. Verifique a chave ou deixe em branco para usar o motor heurístico nativo.`
+      };
     }
 
     return { ok: false, error: `TypeSafe AI retornou status HTTP ${res.status}.` };
   } catch (err) {
-    return { ok: false, error: `Falha ao conectar à TypeSafe AI: ${err.message}` };
+    return {
+      ok: false,
+      error: `Não foi possível conectar ao servidor TypeSafe AI (${err.message}). O sistema utilizará o motor heurístico nativo automaticamente.`
+    };
   }
 }
 

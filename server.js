@@ -513,6 +513,10 @@ app.post('/api/jev/test', requireAuth, async (req, res) => {
       }
     }
 
+    if (!keyToTest) {
+      keyToTest = process.env.TYPESAFE_API_KEY || process.env.JEV_API_KEY || '';
+    }
+
     const result = await testJevConnection(keyToTest);
     res.json(result);
   } catch (err) {
