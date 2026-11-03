@@ -491,9 +491,16 @@
       <div class="fields-box">
         <div class="fields-title">Campos necessários no Social360:</div>
         <ul class="fields-list">
-          <li>Access Token do Buffer</li>
+          <li>Access Token / API Key do Buffer</li>
           <li>IDs dos Perfis (separados por vírgula)</li>
         </ul>
+      </div>
+
+      <div class="alert-warning" style="margin-bottom: 1.5rem;">
+        <span>⚠️</span>
+        <div>
+          <strong>Atenção ao Erro 401 no Buffer:</strong> O código 401 significa <em>Não Autorizado</em>. Isso ocorre quando o token copiado contém espaços extras, está incompleto ou expirou. Obtenha sua API Key oficial diretamente em <a href="https://publish.buffer.com/settings/api" target="_blank" class="external-link" style="color: #fff;">publish.buffer.com/settings/api</a>.
+        </div>
       </div>
 
       <ol class="steps-list">
@@ -502,17 +509,17 @@
           Acesse <a href="https://buffer.com" target="_blank" class="external-link">buffer.com</a> e adicione os canais sociais da sua empresa/cliente normalmente no painel.
         </li>
         <li>
-          <strong class="step-title">Criar o App de Desenvolvedor:</strong>
-          Acesse o portal de desenvolvedores do Buffer: <a href="https://buffer.com/developers/apps" target="_blank" class="external-link">buffer.com/developers/apps</a>.<br>
-          Clique em <strong>"Create an App"</strong>, nomeie como <code>Social360 Studio</code> e preencha as URLs com seu domínio (ex: <code>https://social360.anauedesign.com.br</code>).
+          <strong class="step-title">Gerar a API Key Oficial (publish.buffer.com):</strong>
+          Acesse o menu de API do Buffer: <a href="https://publish.buffer.com/settings/api" target="_blank" class="external-link">publish.buffer.com/settings/api</a> (ou clique no seu perfil ➔ <strong>Settings</strong> ➔ <strong>API</strong>).<br>
+          Clique em <strong>"Create a new API Key"</strong> (ou <em>Generate API Key</em>).
         </li>
         <li>
-          <strong class="step-title">Copiar o Access Token:</strong>
-          Na tela do app criado, você verá o seu <strong>Access Token</strong> permanente. Copie e cole no campo <em>Access Token do Buffer</em> no Social360.
+          <strong class="step-title">Copiar a Chave:</strong>
+          Copie a chave gerada e cole no campo <em>Access Token do Buffer</em> no Social360.
         </li>
         <li>
           <strong class="step-title">Localizar os IDs dos Perfis (Profile IDs):</strong>
-          No painel normal do Buffer, clique no ícone da rede social desejada na barra lateral esquerda. Observe a URL do seu navegador:
+          No painel normal do Buffer (<a href="https://publish.buffer.com" target="_blank" class="external-link">publish.buffer.com</a>), clique no ícone da rede social desejada na barra lateral esquerda. Observe a URL do seu navegador:
           <span class="code-snippet">https://publish.buffer.com/profile/64b8a123456789abcdef/tab/queue</span>
           O código após <code>/profile/</code> (ex: <code>64b8a123456789abcdef</code>) é o <strong>Profile ID</strong>.<br>
           Se tiver mais de um perfil, copie os códigos de cada um e separe por vírgula no formulário:

@@ -49,28 +49,41 @@ Você pode editar diretamente o arquivo em `config/clients/<id-do-cliente>.json`
 ## 1. Buffer API (Agendamento Multicanal Unificado)
 > **💡 Por que usar?** É a forma mais simples e rápida de conectar múltiplas redes (Instagram, Facebook, LinkedIn, X/Twitter, Pinterest, TikTok) usando uma única integração oficial, sem precisar passar por aprovações complexas de desenvolvedores em cada rede.
 
+### ⚠️ O que significa o Erro 401 no Buffer?
+O **Erro 401 (Unauthorized)** significa que a autenticação falhou. Isso acontece quando:
+1. O token copiado possui espaços extras ou caracteres faltando no início/fim.
+2. Foi copiado o *Client Secret* ou *Client ID* em vez do *Access Token / API Key*.
+3. O token expirou ou foi revogado na sua conta do Buffer.
+4. Foi utilizado um token da API legada. O Buffer migrou para a API moderna em `publish.buffer.com/settings/api`.
+
+---
+
 ### Campos Solicitados no Social360:
-- **Access Token do Buffer**
+- **Access Token / API Key do Buffer**
 - **IDs dos Perfis (separados por vírgula)**
 
-### Passo a Passo:
-1. **Criar ou acessar sua conta:** Acesse [https://buffer.com](https://buffer.com) e conecte suas redes sociais normalmente no painel do Buffer.
-2. **Acessar a área de desenvolvedores:**
-   - Acesse: [https://buffer.com/developers/apps](https://buffer.com/developers/apps) (ou [https://login.buffer.com](https://login.buffer.com) se solicitado).
-3. **Criar um App:**
-   - Clique em **"Create an App"**.
+---
+
+### Passo a Passo para Obter a API Key Oficial:
+1. **Conectar suas Redes no Buffer:**
+   - Acesse [https://buffer.com](https://buffer.com) e conecte suas redes sociais normalmente no painel.
+2. **Gerar a API Key Oficial (Método Recomendado):**
+   - Acesse diretamente o painel de API do Buffer:
+     👉 **[https://publish.buffer.com/settings/api](https://publish.buffer.com/settings/api)**
+     *(Ou clique na foto de perfil/engrenagem no Buffer ➔ **Settings** ➔ **API**).*
+   - Clique em **"Create a new API Key"** (ou *Generate API Key*).
    - Dê um nome (ex: `Social360 Studio`).
-   - Preencha os campos de URL com o seu site (ex: `https://social360.anauedesign.com.br`).
-4. **Obter o Access Token:**
-   - Após criar o app, você verá o campo **"Access Token"** permanente gerado para sua conta.
-   - Copie esse token e cole no campo **Access Token do Buffer** no Social360.
-5. **Obter os IDs dos Perfis (Profile IDs):**
-   - No painel do Buffer web, clique em um dos seus canais conectados na barra lateral esquerda.
+   - Copie a chave gerada completa e cole no campo **Access Token do Buffer** no Social360.
+3. **Obter os IDs dos Perfis (Profile IDs / Channel IDs):**
+   - No painel web do Buffer ([publish.buffer.com](https://publish.buffer.com)), clique em um dos seus canais conectados na barra lateral esquerda (ex: Instagram, LinkedIn ou X).
    - Olhe a URL no navegador:
      `https://publish.buffer.com/profile/64b8a123456789abcdef/tab/queue`
-   - O código alfanumérico após `/profile/` (ex: `64b8a123456789abcdef`) é o **Profile ID**.
-   - Se for publicar em mais de uma rede pelo Buffer, pegue os IDs de cada uma e separe por vírgula no Social360:
+   - O código após `/profile/` (ex: `64b8a123456789abcdef`) é o **Profile ID**.
+   - Se for publicar em mais de um canal, pegue os códigos de cada um e separe por vírgula no Social360:
      `64b8a123456789abcdef, 64c9f987654321fedcba`
+4. **Testar no Social360:**
+   - Clique no botão **"Testar Buffer"** no modal do cliente.
+   - O Social360 validará sua conta e responderá com: `Buffer conectado com sucesso (Conta: seu_email@dominio.com)`.
 
 ---
 

@@ -45,28 +45,89 @@ async function publishToWebhook(url, payload) {
 
 /**
  * Publicação via Buffer API (Agendamento / Publicação em lote multicanal)
- * Endpoint oficial: POST https://api.bufferapp.com/1/updates/create.json
+ * Suporta a API GraphQL Moderna Oficial (https://api.buffer.com) e a API REST legada
  */
 async function publishToBuffer(config, copies, packageId) {
   const { accessToken, profileIds, now = true } = config;
+  const token = (accessToken || '').trim();
 
-  if (!accessToken || !profileIds || profileIds.length === 0) {
+  if (!token || !profileIds || profileIds.length === 0) {
     return { status: 'skipped', message: 'Credenciais do Buffer incompletas (accessToken ou profileIds ausentes).' };
   }
 
   const results = [];
+  const postText = copies.linkedin?.post || copies.twitter?.post || copies.threads?.post || 'Novo artigo publicado';
 
   for (const profileId of profileIds) {
+    let success = false;
+
+    // 1. Tenta via nova API GraphQL Oficial do Buffer (api.buffer.com)
+    try {
+      const gqlBody = JSON.stringify({
+        query: `mutation CreatePost($input: CreatePostInput!) {
+          createPost(input: $input) {
+            ... on PostActionSuccess {
+              post { id status text }
+            }
+            ... on MutationError {
+              message
+            }
+          }
+        }`,
+        variables: {
+          input: {
+            channelId: profileId,
+            text: postText,
+            schedulingType: 'automatic',
+            mode: now ? 'shareNow' : 'addToQueue'
+          }
+        }
+      });
+
+      const resGql = await fetch('https://api.buffer.com', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: gqlBody
+      });
+
+      if (resGql.ok) {
+        const gqlData = await resGql.json();
+        const postResult = gqlData?.data?.createPost;
+        if (postResult?.post?.id) {
+          results.push({
+            profileId,
+            status: 'success',
+            api: 'graphql',
+            data: postResult.post
+          });
+          success = true;
+        } else if (postResult?.message) {
+          console.warn(`[Buffer GraphQL] Alerta para canal ${profileId}:`, postResult.message);
+        }
+      }
+    } catch (errGql) {
+      console.warn(`[Buffer GraphQL] Falha na rota moderna:`, errGql.message);
+    }
+
+    if (success) continue;
+
+    // 2. Fallback para API REST Legada (api.bufferapp.com/1/updates/create.json)
     try {
       const params = new URLSearchParams();
-      params.append('access_token', accessToken);
+      params.append('access_token', token);
       params.append('profile_ids[]', profileId);
-      params.append('text', copies.linkedin?.post || copies.twitter?.post || copies.threads?.post || 'Novo artigo publicado');
+      params.append('text', postText);
       if (now) params.append('now', 'true');
 
       const res = await fetch('https://api.bufferapp.com/1/updates/create.json', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Bearer ${token}`
+        },
         body: params
       });
 
@@ -75,6 +136,7 @@ async function publishToBuffer(config, copies, packageId) {
         profileId,
         status: res.ok ? 'success' : 'error',
         statusCode: res.status,
+        api: 'rest_legacy',
         data
       });
     } catch (err) {
@@ -344,17 +406,63 @@ async function testChannelConnection(channelName, channelConfig) {
     }
 
     case 'buffer': {
-      const token = channelConfig?.accessToken;
-      if (!token) return { ok: false, error: 'Access Token do Buffer ausente.' };
+      const token = (channelConfig?.accessToken || '').trim();
+      if (!token) return { ok: false, error: 'Access Token / API Key do Buffer ausente.' };
+
+      // 1. Tenta validar no novo Buffer GraphQL API Oficial (https://api.buffer.com)
       try {
-        const res = await fetch(`https://api.bufferapp.com/1/user.json?access_token=${token}`);
-        const data = await res.json();
+        const resGql = await fetch('https://api.buffer.com', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            query: 'query { account { id email } }'
+          })
+        });
+
+        const dataGql = await resGql.json().catch(() => null);
+
+        if (resGql.ok && dataGql?.data?.account) {
+          const email = dataGql.data.account.email || dataGql.data.account.id;
+          return {
+            ok: true,
+            message: `Buffer conectado com sucesso (Conta: ${email}).`
+          };
+        }
+
+        if (dataGql?.errors && dataGql.errors.length > 0) {
+          const errMsg = dataGql.errors[0]?.message || '';
+          if (errMsg.toLowerCase().includes('token') || errMsg.toLowerCase().includes('not valid')) {
+            // Continua para o fallback antes de retornar erro
+          }
+        }
+      } catch (errGql) {
+        // Ignora erro e tenta rota legada
+      }
+
+      // 2. Fallback para rota REST legada (https://api.bufferapp.com/1/user.json)
+      try {
+        const res = await fetch(`https://api.bufferapp.com/1/user.json?access_token=${token}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json().catch(() => null);
+
         if (res.ok && data) {
           return {
             ok: true,
             message: `Buffer conectado com sucesso (Usuário: ${data.name || data.id || 'OK'}).`
           };
         }
+
+        if (res.status === 401) {
+          return {
+            ok: false,
+            error: 'Erro 401 (Não Autorizado): A chave do Buffer é inválida ou expirou. Gere sua API Key oficial em publish.buffer.com/settings/api (Menu Settings > API) e verifique se copiou o token completo sem espaços.'
+          };
+        }
+
         return { ok: false, error: data?.message || `Buffer retornou HTTP ${res.status}` };
       } catch (err) {
         return { ok: false, error: err.message };
