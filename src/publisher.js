@@ -961,47 +961,106 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
 
   // 1. Webhook Principal (n8n / Make / Metricool)
   const webhookUrl = channels.webhook?.url || client.webhookUrl || process.env.DEFAULT_WEBHOOK_URL;
-  if (isChannelAllowed('webhook') && channels.webhook?.enabled !== false && webhookUrl) {
-    console.log(`\n🚀 [DISPATCH] Enviando para Webhook...`);
-    dispatchResults.channels.webhook = await publishToWebhook(webhookUrl, {
-      client: client.id,
-      brand: client.brandName,
-      article,
-      copies,
-      images,
-      packageId,
-      video
-    });
+  if (isChannelAllowed('webhook')) {
+    if (channels.webhook?.enabled !== false && webhookUrl) {
+      console.log(`\n🚀 [DISPATCH] Enviando para Webhook...`);
+      dispatchResults.channels.webhook = await publishToWebhook(webhookUrl, {
+        client: client.id,
+        brand: client.brandName,
+        article,
+        copies,
+        images,
+        packageId,
+        video
+      });
+    } else if (targetChannels && targetChannels.includes('webhook')) {
+      dispatchResults.channels.webhook = {
+        status: 'skipped',
+        message: 'Webhook desativado ou URL vazia no perfil do cliente.'
+      };
+    }
   }
 
   // 2. Buffer API
-  if (isChannelAllowed('buffer') && channels.buffer?.enabled && channels.buffer?.accessToken) {
-    console.log(`🚀 [DISPATCH] Agendando via Buffer API...`);
-    dispatchResults.channels.buffer = await publishToBuffer(channels.buffer, copies, packageId, { images, article, outputDir, video });
+  if (isChannelAllowed('buffer')) {
+    if (channels.buffer?.enabled && channels.buffer?.accessToken) {
+      console.log(`🚀 [DISPATCH] Agendando via Buffer API...`);
+      dispatchResults.channels.buffer = await publishToBuffer(channels.buffer, copies, packageId, { images, article, outputDir, video });
+    } else if (targetChannels && targetChannels.includes('buffer')) {
+      dispatchResults.channels.buffer = {
+        status: 'skipped',
+        message: !channels.buffer?.enabled
+          ? 'Buffer API desativado nas configurações do cliente.'
+          : 'Access Token do Buffer não configurado nas configurações do cliente.'
+      };
+    }
   }
 
   // 3. LinkedIn Direto
-  if (isChannelAllowed('linkedin') && channels.linkedin?.enabled && channels.linkedin?.accessToken) {
-    console.log(`🚀 [DISPATCH] Publicando diretamente no LinkedIn...`);
-    dispatchResults.channels.linkedin = await publishToLinkedIn(channels.linkedin, copies, article);
+  if (isChannelAllowed('linkedin')) {
+    if (channels.linkedin?.enabled && channels.linkedin?.accessToken) {
+      console.log(`🚀 [DISPATCH] Publicando diretamente no LinkedIn...`);
+      dispatchResults.channels.linkedin = await publishToLinkedIn(channels.linkedin, copies, article);
+    } else if (targetChannels && targetChannels.includes('linkedin')) {
+      dispatchResults.channels.linkedin = {
+        status: 'skipped',
+        message: !channels.linkedin?.enabled
+          ? 'LinkedIn Direto desativado nas configurações do cliente.'
+          : 'Access Token do LinkedIn ausente nas configurações do cliente.'
+      };
+    }
   }
 
   // 4. X (Twitter) Direto
-  if (isChannelAllowed('twitter') && channels.twitter?.enabled && (channels.twitter?.bearerToken || channels.twitter?.accessToken)) {
-    console.log(`🚀 [DISPATCH] Publicando na API do X (Twitter)...`);
-    dispatchResults.channels.twitter = await publishToTwitter(channels.twitter, copies, article);
+  if (isChannelAllowed('twitter')) {
+    if (channels.twitter?.enabled && (channels.twitter?.bearerToken || channels.twitter?.accessToken)) {
+      console.log(`🚀 [DISPATCH] Publicando na API do X (Twitter)...`);
+      dispatchResults.channels.twitter = await publishToTwitter(channels.twitter, copies, article);
+    } else if (targetChannels && targetChannels.includes('twitter')) {
+      dispatchResults.channels.twitter = {
+        status: 'skipped',
+        message: !channels.twitter?.enabled
+          ? 'X (Twitter) Direto desativado nas configurações do cliente.'
+          : 'Credenciais de API / Access Token do X ausentes nas configurações do cliente.'
+      };
+    }
   }
 
   // 5. Telegram
-  if (isChannelAllowed('telegram') && channels.telegram?.enabled && channels.telegram?.botToken) {
-    console.log(`🚀 [DISPATCH] Publicando no Telegram...`);
-    dispatchResults.channels.telegram = await publishToTelegram(channels.telegram, copies, article);
+  if (isChannelAllowed('telegram')) {
+    if (channels.telegram?.enabled && channels.telegram?.botToken) {
+      console.log(`🚀 [DISPATCH] Publicando no Telegram...`);
+      dispatchResults.channels.telegram = await publishToTelegram(channels.telegram, copies, article);
+    } else if (targetChannels && targetChannels.includes('telegram')) {
+      dispatchResults.channels.telegram = {
+        status: 'skipped',
+        message: !channels.telegram?.enabled
+          ? 'Telegram Bot desativado nas configurações do cliente.'
+          : 'Bot Token do Telegram ausente nas configurações do cliente.'
+      };
+    }
   }
 
   // 6. Meta (Facebook / Instagram)
-  if (isChannelAllowed('meta') && channels.meta?.enabled && channels.meta?.pageAccessToken) {
-    console.log(`🚀 [DISPATCH] Publicando na Meta...`);
-    dispatchResults.channels.meta = await publishToMeta(channels.meta, copies, article);
+  if (isChannelAllowed('meta')) {
+    if (channels.meta?.enabled && channels.meta?.pageAccessToken) {
+      console.log(`🚀 [DISPATCH] Publicando na Meta...`);
+      dispatchResults.channels.meta = await publishToMeta(channels.meta, copies, article);
+    } else if (targetChannels && targetChannels.includes('meta')) {
+      dispatchResults.channels.meta = {
+        status: 'skipped',
+        message: !channels.meta?.enabled
+          ? 'Meta Direct desativado nas configurações do cliente.'
+          : 'Page Access Token da Meta ausente nas configurações do cliente.'
+      };
+    }
+  }
+
+  if (Object.keys(dispatchResults.channels).length === 0) {
+    dispatchResults.channels.info = {
+      status: 'skipped',
+      message: 'Nenhum canal de publicação está ativado ou possui credenciais configuradas neste cliente.'
+    };
   }
 
   // Grava o log de despacho na pasta do pacote

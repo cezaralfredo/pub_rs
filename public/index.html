@@ -1550,31 +1550,40 @@
         <!-- Indicador de Vídeo / Imagem -->
         <div id="publish-media-notice" style="margin-bottom: 14px; font-size: 13px; padding: 10px 14px; border-radius: 8px; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: #38bdf8;"></div>
 
+        <!-- Alerta quando canais não estão configurados -->
+        <div id="publish-channels-warning" class="hidden" style="margin-bottom: 14px; font-size: 13px; padding: 12px 14px; border-radius: 8px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24;"></div>
+
         <!-- Seleção de Canais -->
         <div class="publish-channels-select">
-          <label class="channel-check-label">
-            <input type="checkbox" id="pub-check-webhook" checked>
-            <span>⚡ Webhook</span>
+          <label class="channel-check-label" id="label-pub-buffer">
+            <input type="checkbox" id="pub-check-buffer">
+            <span>📅 Buffer API</span>
+            <span class="channel-status-pill" id="badge-pub-buffer"></span>
           </label>
-          <label class="channel-check-label">
-            <input type="checkbox" id="pub-check-telegram" checked>
-            <span>✈️ Telegram</span>
-          </label>
-          <label class="channel-check-label">
-            <input type="checkbox" id="pub-check-linkedin" checked>
+          <label class="channel-check-label" id="label-pub-linkedin">
+            <input type="checkbox" id="pub-check-linkedin">
             <span>💼 LinkedIn</span>
+            <span class="channel-status-pill" id="badge-pub-linkedin"></span>
           </label>
-          <label class="channel-check-label">
-            <input type="checkbox" id="pub-check-twitter" checked>
+          <label class="channel-check-label" id="label-pub-twitter">
+            <input type="checkbox" id="pub-check-twitter">
             <span>🐦 X (Twitter)</span>
+            <span class="channel-status-pill" id="badge-pub-twitter"></span>
           </label>
-          <label class="channel-check-label">
-            <input type="checkbox" id="pub-check-buffer" checked>
-            <span>📅 Buffer</span>
+          <label class="channel-check-label" id="label-pub-meta">
+            <input type="checkbox" id="pub-check-meta">
+            <span>📸 Meta (IG/FB)</span>
+            <span class="channel-status-pill" id="badge-pub-meta"></span>
           </label>
-          <label class="channel-check-label">
-            <input type="checkbox" id="pub-check-meta" checked>
-            <span>📸 Meta</span>
+          <label class="channel-check-label" id="label-pub-telegram">
+            <input type="checkbox" id="pub-check-telegram">
+            <span>✈️ Telegram</span>
+            <span class="channel-status-pill" id="badge-pub-telegram"></span>
+          </label>
+          <label class="channel-check-label" id="label-pub-webhook">
+            <input type="checkbox" id="pub-check-webhook">
+            <span>⚡ Webhook</span>
+            <span class="channel-status-pill" id="badge-pub-webhook"></span>
           </label>
         </div>
 

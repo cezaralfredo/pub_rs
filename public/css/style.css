@@ -2893,6 +2893,32 @@ body.light-theme {
   accent-color: var(--accent-cyan);
 }
 
+.channel-status-pill {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.channel-status-pill.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.channel-status-pill.inactive {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.channel-check-label.disabled-channel {
+  opacity: 0.55;
+}
+
 .publish-mode-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;

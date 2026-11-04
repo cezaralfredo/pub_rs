@@ -71,7 +71,7 @@
       "instagramAccountId": ""
     },
     "buffer": {
-      "enabled": false,
+      "enabled": true,
       "accessToken": "",
       "profileIds": [
         "6aea5dcde29c69a17152234c",

@@ -1977,7 +1977,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===========================================================================
   // 5. MODAL DE PUBLICAÇÃO (IMEDIATO OU AGENDADO EM BACKGROUND)
   // ===========================================================================
-  function openPublishDialog(packageId) {
+  async function openPublishDialog(packageId) {
     elements.publishDialogPkgId.textContent = packageId;
 
     // Define data/hora padrão: 1 hora no futuro
@@ -1998,6 +1998,77 @@ document.addEventListener('DOMContentLoaded', () => {
         noticeEl.style.borderColor = 'rgba(56, 189, 248, 0.25)';
         noticeEl.style.background = 'rgba(56, 189, 248, 0.1)';
         noticeEl.style.color = '#38bdf8';
+      }
+    }
+
+    // Carrega dados atualizados do cliente para checar quais canais estão realmente ativos
+    const clientId = state.currentPackage?.client || elements.topClientSelect?.value || 'anaue-design';
+    let client = state.clients?.find(c => c.id === clientId) || null;
+    try {
+      const res = await authFetch(`/api/clients/${clientId}`);
+      if (res.ok) client = await res.json();
+    } catch {}
+
+    const chConfig = {
+      buffer: Boolean(client?.channels?.buffer?.enabled && (client.channels.buffer.hasToken || client.channels.buffer.accessToken)),
+      linkedin: Boolean(client?.channels?.linkedin?.enabled && (client.channels.linkedin.hasToken || client.channels.linkedin.accessToken)),
+      twitter: Boolean(client?.channels?.twitter?.enabled && (client.channels.twitter.hasToken || client.channels.twitter.accessToken || client.channels.twitter.bearerToken || client.channels.twitter.apiKey)),
+      meta: Boolean(client?.channels?.meta?.enabled && (client.channels.meta.hasToken || client.channels.meta.pageAccessToken)),
+      telegram: Boolean(client?.channels?.telegram?.enabled && (client.channels.telegram.hasToken || client.channels.telegram.botToken)),
+      webhook: Boolean(client?.channels?.webhook?.enabled !== false && (client?.channels?.webhook?.url || client?.webhookUrl))
+    };
+
+    let activeCount = 0;
+    const channelKeys = ['buffer', 'linkedin', 'twitter', 'meta', 'telegram', 'webhook'];
+    channelKeys.forEach(k => {
+      const checkEl = document.getElementById(`pub-check-${k}`);
+      const badgeEl = document.getElementById(`badge-pub-${k}`);
+      const labelEl = document.getElementById(`label-pub-${k}`);
+      const isReady = chConfig[k];
+
+      if (checkEl) checkEl.checked = isReady;
+      if (badgeEl) {
+        badgeEl.className = `channel-status-pill ${isReady ? 'active' : 'inactive'}`;
+        badgeEl.textContent = isReady ? 'Pronto ✓' : 'Não configurado';
+      }
+      if (labelEl) {
+        if (isReady) {
+          labelEl.classList.remove('disabled-channel');
+          activeCount++;
+        } else {
+          labelEl.classList.add('disabled-channel');
+        }
+      }
+    });
+
+    const warningEl = document.getElementById('publish-channels-warning');
+    if (warningEl) {
+      if (activeCount === 0) {
+        warningEl.classList.remove('hidden');
+        warningEl.innerHTML = `
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <span style="font-size:1.3rem;">⚠️</span>
+            <div style="flex:1;">
+              <strong>Nenhum canal ativo com credenciais</strong> para <em>${escapeHtml(client?.brandName || client?.name || clientId)}</em>.<br>
+              <span style="font-size:0.83rem;opacity:0.9;">Para que as redes sociais recebam o artigo e a mídia, conecte ao menos uma rede (ex: Buffer API ou redes diretas).</span>
+              <div style="margin-top:8px;display:flex;gap:8px;">
+                <button type="button" class="btn btn-secondary" style="font-size:0.78rem;padding:4px 10px;" id="btn-quick-config-channels">⚙️ Configurar Redes do Cliente</button>
+                <a href="/guia-redes.html" target="_blank" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;">📖 Ver Guia</a>
+              </div>
+            </div>
+          </div>
+        `;
+        const btnQuick = document.getElementById('btn-quick-config-channels');
+        if (btnQuick) {
+          btnQuick.onclick = () => {
+            elements.modalPublishDialog.classList.add('hidden');
+            switchView('management', 'cl-tab-channels');
+            if (elements.modalClientSelect) elements.modalClientSelect.value = clientId;
+            populateClientModal(clientId);
+          };
+        }
+      } else {
+        warningEl.classList.add('hidden');
       }
     }
 
@@ -2103,12 +2174,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const channels = dispatchResult?.channels || {};
     const channelKeys = Object.keys(channels);
 
-    if (channelKeys.length === 0) {
+    // Se nenhum canal ou só canal info indicando skipped ou todos skipped
+    const isOnlyInfo = channelKeys.length === 1 && channelKeys[0] === 'info';
+    const allSkipped = channelKeys.length > 0 && channelKeys.every(k => channels[k]?.status === 'skipped');
+
+    if (channelKeys.length === 0 || isOnlyInfo || allSkipped) {
+      const infoMsg = channels.info?.message || (allSkipped
+        ? 'Todos os canais selecionados estão desativados ou sem tokens de acesso configurados no perfil deste cliente.'
+        : 'Nenhum canal ativo foi disparado.');
+      
+      const clientId = state.currentPackage?.client || elements.topClientSelect?.value || 'anaue-design';
+
       elements.dispatchResultsList.innerHTML = `
-        <div class="dispatch-item">
-          <p>Nenhum canal ativo foi disparado.</p>
+        <div class="dispatch-item" style="padding:1.5rem 1rem;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:0.6rem;">⚠️</div>
+          <h4 style="font-size:1.05rem;font-weight:700;color:#fbbf24;margin-bottom:0.4rem;">Nenhum Canal Ativo Foi Disparado</h4>
+          <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:1.2rem;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.5;">
+            ${escapeHtml(infoMsg)}<br><br>
+            Para publicar automaticamente no <strong>Instagram, X (Twitter), LinkedIn e Facebook</strong>, ative a integração do <strong>Buffer API</strong> (método recomendado em 1 clique) ou as credenciais das redes diretas nas configurações do cliente.
+          </p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary" id="btn-dispatch-edit-client" style="font-size:0.85rem;">⚙️ Configurar Redes do Cliente</button>
+            <a href="/guia-redes.html" target="_blank" class="btn btn-secondary" style="font-size:0.85rem;">📖 Ver Guia Passo a Passo</a>
+          </div>
         </div>
       `;
+      const btnEdit = document.getElementById('btn-dispatch-edit-client');
+      if (btnEdit) {
+        btnEdit.onclick = () => {
+          elements.modalDispatchResult.classList.add('hidden');
+          switchView('management', 'cl-tab-channels');
+          if (elements.modalClientSelect) elements.modalClientSelect.value = clientId;
+          populateClientModal(clientId);
+        };
+      }
       return;
     }
 
