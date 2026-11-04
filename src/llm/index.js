@@ -285,20 +285,47 @@ async function generateWithLlm(article, client, options = {}) {
   const slug = article.slug;
   const replaceUrls = (txt, src) => (txt || '').replace(/\{[A-Z_]+_URL\}/g, getUtmUrl(targetUrl, src, slug));
 
-  // Conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn (<= 280 caracteres)
-  let unifiedPostRaw = (typeof parsed.unified === 'string' ? parsed.unified : parsed.unified?.post) ||
-                       (typeof parsed.twitter === 'string' ? parsed.twitter : parsed.twitter?.post) ||
-                       linkedinPostRaw ||
-                       instagramPostRaw ||
-                       facebookPostRaw ||
-                       (article.title || '');
-
-  unifiedPostRaw = unifiedPostRaw.trim();
-  if (unifiedPostRaw.length > 280) {
-    unifiedPostRaw = unifiedPostRaw.slice(0, 277) + '...';
+  // 1. Processamento específico para o X (Twitter): Somente ponto fundamental, sem título, máx 280 caracteres
+  let twitterPostRaw = (typeof parsed.twitter === 'string' ? parsed.twitter : parsed.twitter?.post) || '';
+  if (article.title && twitterPostRaw.toLowerCase().startsWith(article.title.toLowerCase().slice(0, 30))) {
+    // Se a IA incluiu o título no início, remove o título e mantém apenas o ponto fundamental
+    twitterPostRaw = twitterPostRaw.slice(article.title.length).replace(/^[:\-\s\n]+/, '').trim();
+  }
+  if (!twitterPostRaw.trim()) {
+    twitterPostRaw = article.description || (article.bulletPoints && article.bulletPoints[0]) || 'Análise estratégica de ponta com insights práticos.';
+  }
+  let finalTwitterPost = replaceUrls(twitterPostRaw.trim(), 'twitter');
+  if (finalTwitterPost.length > 280) {
+    finalTwitterPost = finalTwitterPost.slice(0, 277) + '...';
   }
 
-  const finalUnifiedPost = replaceUrls(unifiedPostRaw, 'social');
+  // 2. Processamento para LinkedIn, Instagram e Facebook: Resumo de até 1700 caracteres com "Matéria completa em (url)"
+  const formatRichSummary = (rawText, network) => {
+    let text = (rawText || '').trim();
+    if (!text) {
+      text = article.description || 'Confira os destaques da análise estratégica.';
+    }
+    const netUrl = getUtmUrl(targetUrl, network, slug);
+    const linkSuffix = `Matéria completa em (${netUrl})`;
+
+    text = replaceUrls(text, network);
+    if (!text.includes('Matéria completa em')) {
+      text = `${text}\n\n${linkSuffix}`;
+    }
+
+    // Limite máximo de até 1700 caracteres preservando o link intacto
+    if (text.length > 1700) {
+      const fixedEnd = `\n\n${linkSuffix}`;
+      const maxBody = 1700 - fixedEnd.length;
+      text = `${text.slice(0, maxBody - 3).replace(/[,;.\s]+$/, '')}...${fixedEnd}`;
+    }
+
+    return text.trim();
+  };
+
+  const finalLinkedinPost = formatRichSummary(linkedinPostRaw, 'linkedin');
+  const finalInstagramPost = formatRichSummary(instagramPostRaw, 'instagram');
+  const finalFacebookPost = formatRichSummary(facebookPostRaw, 'facebook');
 
   const ensureHeading = (rawText, title, prefix = '') => {
     const txt = (rawText || '').trim();
@@ -324,31 +351,39 @@ async function generateWithLlm(article, client, options = {}) {
       storytelling: parsed.hooks?.storytelling || ''
     },
     carousel: parsed.carousel || null,
-    unified: {
-      post: finalUnifiedPost,
-      charCount: finalUnifiedPost.length,
+    twitter: {
+      post: finalTwitterPost,
+      thread: Array.isArray(parsed.twitter?.thread)
+        ? parsed.twitter.thread.map(t => replaceUrls(t, 'twitter'))
+        : [finalTwitterPost].filter(Boolean),
+      recommendedFormat: '16:9 ou 4:5 (Ponto Fundamental - Título na Imagem)',
+      charCount: finalTwitterPost.length,
       maxLimit: 280
     },
     linkedin: {
-      post: finalUnifiedPost,
+      post: finalLinkedinPost,
       firstComment: replaceUrls(linkedinCommentRaw, 'linkedin'),
-      recommendedFormat: '16:9 ou 4:5'
+      recommendedFormat: '16:9 ou 4:5 Retrato',
+      charCount: finalLinkedinPost.length,
+      maxLimit: 1700
     },
     instagram: {
-      post: finalUnifiedPost,
+      post: finalInstagramPost,
       firstComment: replaceUrls(instagramCommentRaw, 'instagram'),
-      recommendedFormat: '4:5 (Retrato Padrão)'
+      recommendedFormat: '4:5 (Retrato Padrão)',
+      charCount: finalInstagramPost.length,
+      maxLimit: 1700
+    },
+    facebook: {
+      post: finalFacebookPost,
+      firstComment: replaceUrls(facebookCommentRaw, 'facebook'),
+      recommendedFormat: '16:9 ou 4:5 Retrato',
+      charCount: finalFacebookPost.length,
+      maxLimit: 1700
     },
     stories: {
       post: replaceUrls(ensureHeading(parsed.stories?.post || parsed.stories, article.title, '🚀'), 'stories'),
       recommendedFormat: '9:16 (Vertical)'
-    },
-    twitter: {
-      post: finalUnifiedPost,
-      thread: Array.isArray(parsed.twitter?.thread)
-        ? parsed.twitter.thread.map(t => replaceUrls(t, 'twitter'))
-        : [finalUnifiedPost].filter(Boolean),
-      recommendedFormat: '16:9 (Horizontal)'
     },
     threads: {
       post: replaceUrls(parsed.threads?.post || parsed.threads, 'threads'),
@@ -356,11 +391,6 @@ async function generateWithLlm(article, client, options = {}) {
         ? parsed.threads.thread.map(t => replaceUrls(t, 'threads'))
         : null,
       recommendedFormat: '1:1 ou 16:9'
-    },
-    facebook: {
-      post: finalUnifiedPost,
-      firstComment: replaceUrls(facebookCommentRaw, 'facebook'),
-      recommendedFormat: '16:9 (Horizontal)'
     }
   };
 }

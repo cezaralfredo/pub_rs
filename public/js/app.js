@@ -1548,23 +1548,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let isThreadMode = false;
     let threadItems = [];
 
-    const isUnifiedNetwork = ['linkedin', 'instagram', 'facebook', 'twitter'].includes(net);
-    const unifiedText = copies.unified?.post || copies.twitter?.post || copies.linkedin?.post || copies.instagram?.post || copies.facebook?.post;
-
     if (net === 'linkedin') {
-      postText = unifiedText || copies.linkedin?.post || '';
+      postText = copies.linkedin?.post || '';
       firstComment = copies.linkedin?.firstComment || '';
-      formatDesc = 'Formato ideal: 16:9 ou 4:5 Retrato';
+      formatDesc = 'Formato ideal: 16:9 ou 4:5 Retrato · Resumo com link';
     } else if (net === 'instagram') {
-      postText = unifiedText || copies.instagram?.post || '';
+      postText = copies.instagram?.post || '';
       firstComment = copies.instagram?.firstComment || '';
-      formatDesc = 'Padrão Oficial: 4:5 Retrato (Feed)';
+      formatDesc = 'Padrão Oficial: 4:5 Retrato (Feed) · Resumo com link';
     } else if (net === 'stories') {
       postText = copies.stories?.post || '';
-      formatDesc = 'Formato ideal: 9:16 Vertical';
+      formatDesc = 'Formato ideal: 9:16 Vertical (Teaser)';
     } else if (net === 'twitter') {
-      postText = unifiedText || copies.twitter?.post || (Array.isArray(copies.twitter?.thread) ? copies.twitter.thread[0] : '');
-      formatDesc = 'Formato ideal: 16:9 Horizontal ou 4:5 Retrato';
+      postText = copies.twitter?.post || (Array.isArray(copies.twitter?.thread) ? copies.twitter.thread[0] : '');
+      formatDesc = 'Padrão X/Twitter: Somente o ponto fundamental (sem título)';
       isThreadMode = false;
     } else if (net === 'threads') {
       if (Array.isArray(copies.threads?.thread) && copies.threads.thread.length > 0) {
@@ -1576,9 +1573,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       formatDesc = 'Formato ideal: 1:1 Quadrado';
     } else if (net === 'facebook') {
-      postText = unifiedText || copies.facebook?.post || '';
+      postText = copies.facebook?.post || '';
       firstComment = copies.facebook?.firstComment || '';
-      formatDesc = 'Formato ideal: 16:9 ou 4:5 Retrato';
+      formatDesc = 'Formato ideal: 16:9 ou 4:5 Retrato · Resumo com link';
     }
 
     // Gerenciador de Ganchos A/B (LinkedIn, Instagram e Facebook)
@@ -1621,8 +1618,10 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.currentPostText.textContent = postText;
     }
 
-    if (isUnifiedNetwork) {
-      elements.currentCharCount.textContent = `${postText.length} / 280 caracteres · Conteúdo unificado para Twitter, Instagram, LinkedIn e Facebook`;
+    if (net === 'twitter') {
+      elements.currentCharCount.textContent = `${postText.length} / 280 caracteres · Formato Padrão do X (Ponto Fundamental, Título na Imagem)`;
+    } else if (['linkedin', 'instagram', 'facebook'].includes(net)) {
+      elements.currentCharCount.textContent = `${postText.length} / 1700 caracteres · Resumo Editorial com Link da Matéria`;
     } else {
       elements.currentCharCount.textContent = `${postText.length} caracteres`;
     }

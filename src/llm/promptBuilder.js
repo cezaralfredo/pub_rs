@@ -26,16 +26,25 @@ function buildCopywriterPrompt(article, client) {
   const systemInstructions = `Você é um estrategista sênior de Marketing de Conteúdo, Copywriting e Social Media Omnichannel de nível internacional.
 Sua missão é transformar ${contextDescription} em um pacote completo de alta conversão, autoridade e engajamento para as redes sociais:
 
-REGRA OBRIGATÓRIA DE CONTEÚDO TEXTUAL UNIFICADO (TWITTER, INSTAGRAM FEED, FACEBOOK E LINKEDIN):
-O conteúdo textual principal DEVE SER EXATAMENTE O MESMO para o Twitter, Instagram Feed, Facebook e LinkedIn.
-O texto vai obedecer rigorosamente à quantidade máxima de caracteres que caiba em todas as redes: MÁXIMO DE 280 CARACTERES NO TOTAL (incluindo título/gancho, texto, emojis e hashtags)!
-NÃO exceda 280 caracteres no texto principal dessas redes. Ele deve ser conciso, magnético e de alto impacto para ser compartilhado idêntico em todas as 4 plataformas.
+DIRETRIZES ESPECÍFICAS POR CANAL:
 
-1. Conteúdo Unificado (mesmo texto <= 280 caracteres para LinkedIn, Instagram Feed, Facebook e Twitter).
-2. Instagram Stories (texto curto, teaser instigante com chamada para figurinha de link/interação).
-3. Threads (post conversacional ou thread opcional).
-4. Ganchos Alternativos (A/B Hooks): Crie 3 variações magnéticas de introdução (Contrariano/Provocativo, Baseado em Dados/Métricas e Storytelling/Desafio Prático).
-5. Carrossel Estruturado (LinkedIn Document / Instagram Slides 4:5): Estruture os slides em sequência lógica (Capa + 3 a 4 Insights Práticos + CTA final).
+1. X (TWITTER) - CONTA PADRÃO (MÁXIMO DE 280 CARACTERES):
+   - Adicione SOMENTE o ponto fundamental / principal aprendizado do artigo.
+   - O título do artigo NÃO DEVE APARECER no texto do tweet (o título ficará exclusivamente sobre a imagem!).
+   - Respeite rigorosamente o limite de 280 caracteres (incluindo hashtags).
+
+2. INSTAGRAM FEED, FACEBOOK E LINKEDIN (RESUMO COM ATÉ 1700 CARACTERES):
+   - Produza um resumo editorial aprofundado, envolvente e escaneável (com até 1700 caracteres).
+   - Destaque o contexto de mercado, os pontos práticos essenciais e lições estratégicas.
+   - AO FINAL DO RESUMO, insira obrigatoriamente a URL da matéria no formato:
+     Matéria completa em ({URL})
+     (onde {URL} é {INSTAGRAM_URL}, {FACEBOOK_URL} ou {LINKEDIN_URL}).
+   - Limite estrito de até 1700 caracteres no total.
+
+3. Instagram Stories (texto curto, teaser instigante com chamada para figurinha de link/interação).
+4. Threads (post conversacional ou thread opcional com pergunta instigante).
+5. Ganchos Alternativos (A/B Hooks): Crie 3 variações magnéticas de introdução (Contrariano/Provocativo, Baseado em Dados/Métricas e Storytelling/Desafio Prático).
+6. Carrossel Estruturado (LinkedIn Document / Instagram Slides 4:5): Estruture os slides em sequência lógica (Capa + 3 a 4 Insights Práticos + CTA final).
 
 IMPORTANTE SOBRE LINKS / UTMS:
 Onde houver indicação de link, use EXATAMENTE os seguintes marcadores para que o sistema injete os parâmetros UTM corretos:
@@ -46,7 +55,7 @@ Onde houver indicação de link, use EXATAMENTE os seguintes marcadores para que
 - {THREADS_URL}
 - {FACEBOOK_URL}
 
-No LinkedIn, Instagram Feed e Facebook, produza também o texto do "primeiro comentário" contendo o link correspondente ({LINKEDIN_URL}, {INSTAGRAM_URL} e {FACEBOOK_URL}) para garantir o alcance orgânico sem penalização algorítmica.
+No LinkedIn, Instagram Feed e Facebook, você pode produzir também o texto de comentário complementar contendo o link correspondente caso desejado.
 
 ${negativeDirective}
 
@@ -82,28 +91,24 @@ Estrutura exigida:
     ],
     "cta": "Salve este carrossel e siga a marca para mais estratégias diárias."
   },
-  "unified": {
-    "post": "Texto magnético e conciso de até 280 caracteres idêntico para Twitter, Instagram Feed, Facebook e LinkedIn..."
+  "twitter": {
+    "post": "Texto contendo SOMENTE o ponto fundamental do artigo (sem título, máx 280 caracteres)...",
+    "thread": [
+      "1/3 Ponto central com dados...",
+      "2/3 Estratégia prática...",
+      "3/3 Conclusão: {TWITTER_URL}"
+    ]
   },
   "linkedin": {
-    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
+    "post": "Resumo analítico completo da matéria (até 1700 caracteres)...\n\nMatéria completa em ({LINKEDIN_URL})",
     "firstComment": "Texto do primeiro comentário com {LINKEDIN_URL}..."
   },
   "instagram": {
-    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
+    "post": "Resumo completo da matéria formatado para o feed (até 1700 caracteres)...\n\nMatéria completa em ({INSTAGRAM_URL})",
     "firstComment": "Texto do primeiro comentário com {INSTAGRAM_URL}..."
   },
   "stories": {
     "post": "Texto curto para os stories com {STORIES_URL}..."
-  },
-  "twitter": {
-    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
-    "thread": [
-      "1/4 🚨 Tweet de abertura com gancho... 🧵 Segue o fio 👇",
-      "2/4 💡 Ponto central 1 com dados...",
-      "3/4 ⚡ Ponto central 2 prático...",
-      "4/4 🔗 Leia a análise completa na íntegra: {TWITTER_URL}"
-    ]
   },
   "threads": {
     "post": "Texto conversacional para o Threads com {THREADS_URL}...",
@@ -114,7 +119,7 @@ Estrutura exigida:
     ]
   },
   "facebook": {
-    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
+    "post": "Resumo editorial completo da matéria (até 1700 caracteres)...\n\nMatéria completa em ({FACEBOOK_URL})",
     "firstComment": "Texto do primeiro comentário com {FACEBOOK_URL}..."
   }
 }`;

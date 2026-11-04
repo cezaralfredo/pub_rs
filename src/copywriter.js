@@ -19,45 +19,120 @@ function getUtmUrl(targetUrl, source, slug) {
 }
 
 /**
- * Gera conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn,
- * obedecendo rigorosamente à quantidade máxima de caracteres que caiba em todas as redes
- * (Limite máximo de 280 caracteres do Twitter/X).
+ * Gera o texto para o X (Twitter) contendo SOMENTE o ponto fundamental do artigo
+ * (o título ficará exclusivamente sobre a imagem), respeitando a conta padrão de máx. 280 caracteres.
  */
-function buildUnifiedSocialPost(article, client) {
-  const title = (article.title || '').trim();
-  const rawLead = (article.description || (article.paragraphs && article.paragraphs[0]) || '').trim();
+function buildTwitterFundamentalPoint(article, client) {
   const hashtags = Array.isArray(client.defaultHashtags) && client.defaultHashtags.length > 0
     ? client.defaultHashtags.slice(0, 3).join(' ')
     : '#Inovacao #Marketing #Tecnologia';
 
-  // Montagem padrão com título, resumo conciso e hashtags
-  let text = '';
-  if (rawLead) {
-    text = `${title}\n\n${rawLead}\n\n${hashtags}`;
-  } else {
-    text = `${title}\n\n${hashtags}`;
+  // 1. Extrai o ponto fundamental do artigo (sem título)
+  const rawCandidate = (article.bulletPoints && article.bulletPoints[0]) ||
+                       (article.headings && article.headings[0]) ||
+                       article.description ||
+                       (article.paragraphs && article.paragraphs[0]) ||
+                       '';
+
+  // Remove prefixos como números, asteriscos ou marcadores
+  let fundamentalPoint = rawCandidate
+    .replace(/^[-*•\d.]+\s*/, '')
+    .replace(/:$/, '')
+    .trim();
+
+  // Se o ponto for excessivamente curto, complementa com a descrição
+  if (fundamentalPoint.length < 50 && article.description && article.description !== fundamentalPoint) {
+    fundamentalPoint = `${fundamentalPoint}: ${article.description}`.trim();
   }
 
-  // Se ultrapassar 280 caracteres, encurta o texto proporcionalmente
-  if (text.length > 280) {
-    const fixedLen = title.length + hashtags.length + 4; // quebras e espaços
-    const availableForLead = 280 - fixedLen;
-    if (availableForLead > 35 && rawLead) {
-      const truncatedLead = rawLead.slice(0, availableForLead - 3).replace(/[,;.\s]+$/, '') + '...';
-      text = `${title}\n\n${truncatedLead}\n\n${hashtags}`;
-    } else {
-      const maxTitle = 280 - (hashtags.length + 4);
-      const cleanTitle = title.length > maxTitle ? title.slice(0, maxTitle - 3) + '...' : title;
-      text = `${cleanTitle}\n\n${hashtags}`;
+  if (!fundamentalPoint) {
+    fundamentalPoint = 'A aplicação prática dessas estratégias de ponta transforma desafios operacionais em vantagens competitivas decisivas para o negócio.';
+  }
+
+  // 2. Monta o tweet com o ponto fundamental + hashtags (SEM o título do artigo)
+  let tweet = `${fundamentalPoint}\n\n${hashtags}`;
+
+  // Se ultrapassar 280 caracteres, encurta o ponto fundamental
+  if (tweet.length > 280) {
+    const maxPointLen = 280 - (hashtags.length + 4);
+    fundamentalPoint = fundamentalPoint.slice(0, maxPointLen - 3).replace(/[,;.\s]+$/, '') + '...';
+    tweet = `${fundamentalPoint}\n\n${hashtags}`;
+  }
+
+  // Trava de segurança absoluta para o limite de 280 caracteres da conta padrão do X
+  if (tweet.length > 280) {
+    tweet = tweet.slice(0, 277) + '...';
+  }
+
+  return tweet.trim();
+}
+
+/**
+ * Gera um resumo editorial completo para Instagram, Facebook e LinkedIn
+ * com até 1700 caracteres, finalizando com a URL no formato: "Matéria completa em (url)"
+ */
+function buildRichSummaryPost(article, client, network = 'linkedin') {
+  const targetUrl = article.canonicalUrl || article.url;
+  const slug = article.slug || 'artigo';
+  const utmUrl = getUtmUrl(targetUrl, network, slug);
+
+  const hashtags = Array.isArray(client.defaultHashtags) && client.defaultHashtags.length > 0
+    ? client.defaultHashtags.join(' ')
+    : '#Inovacao #Estrategia #Tendencias #Mercado';
+
+  // Resumo/Lead envolvente
+  const leadSummary = article.description || 
+    (article.paragraphs && article.paragraphs[0]) || 
+    'Confira uma análise aprofundada com os principais insights, desafios e caminhos práticos para navegar este cenário.';
+
+  // Pontos de análise
+  const rawPoints = (article.bulletPoints && article.bulletPoints.length >= 2)
+    ? article.bulletPoints
+    : (article.headings && article.headings.length >= 2)
+      ? article.headings
+      : (article.paragraphs ? article.paragraphs.slice(1, 4) : []);
+
+  const points = rawPoints.slice(0, 4).map(p => 
+    p.replace(/^[-*•\d.]+\s*/, '').replace(/:$/, '').trim()
+  ).filter(p => p.length > 10);
+
+  const icons = ['🔹', '⚡', '💡', '📊'];
+  const formattedPoints = points.length > 0
+    ? points.map((p, idx) => `${icons[idx % icons.length]} ${p}`).join('\n\n')
+    : `🔹 Principais descobertas e análises aprofundadas\n\n⚡ Estratégias práticas aplicadas ao mercado atual\n\n💡 Lições essenciais para tomadores de decisão`;
+
+  // Formato estrito solicitado: "Matéria completa em (url)"
+  const footerLink = `Matéria completa em (${utmUrl})`;
+
+  let post = `${leadSummary}
+
+Destaques e pontos fundamentais da análise:
+
+${formattedPoints}
+
+${hashtags}
+
+${footerLink}`;
+
+  // Se ultrapassar 1700 caracteres, encurta o corpo preservando o rodapé com o link intacto
+  if (post.length > 1700) {
+    const fixedEnd = `\n\n${hashtags}\n\n${footerLink}`;
+    const availableForBody = 1700 - fixedEnd.length;
+    let body = `${leadSummary}\n\nDestaques da análise:\n\n${formattedPoints}`;
+    if (body.length > availableForBody) {
+      body = body.slice(0, availableForBody - 3).replace(/[,;.\s]+$/, '') + '...';
     }
+    post = `${body}${fixedEnd}`;
   }
 
-  // Trava final de segurança
-  if (text.length > 280) {
-    text = text.slice(0, 277) + '...';
+  // Trava de segurança final para até 1700 caracteres
+  if (post.length > 1700) {
+    const fixedEnd = `\n\n${footerLink}`;
+    const maxBody = 1700 - fixedEnd.length;
+    post = `${post.slice(0, maxBody - 3).replace(/[,;.\s]+$/, '')}...${fixedEnd}`;
   }
 
-  return text.trim();
+  return post.trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -73,8 +148,13 @@ function generateAlgorithmicCopies(article, client) {
   const targetUrl = article.canonicalUrl || article.url;
   const slug = article.slug || 'artigo';
 
-  // Conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn (<= 280 chars)
-  const unifiedCopy = buildUnifiedSocialPost(article, client);
+  // 1. X (Twitter): Somente o ponto fundamental do artigo (sem título, máx 280 chars)
+  const twitterPost = buildTwitterFundamentalPoint(article, client);
+
+  // 2. Instagram, Facebook e LinkedIn: Resumo detalhado com até 1700 caracteres e URL no final
+  const linkedinPost = buildRichSummaryPost(article, client, 'linkedin');
+  const instagramPost = buildRichSummaryPost(article, client, 'instagram');
+  const facebookPost = buildRichSummaryPost(article, client, 'facebook');
 
   // Seleção e higienização dos pontos principais extraídos
   const rawPoints = (article.bulletPoints && article.bulletPoints.length >= 2)
@@ -173,7 +253,7 @@ Como você ou seu time lidam com essa questão hoje?`;
 
   return {
     meta: {
-      generator: 'Algorithmic Dynamic v2 (Unificado)',
+      generator: 'Algorithmic Dynamic v3 (X Padrão 280 + Resumo 1700)',
       provider: 'Engine Nativa (Sem IA)',
       client: client.name || client.id,
       articleTitle: article.title,
@@ -182,39 +262,42 @@ Como você ou seu time lidam com essa questão hoje?`;
     },
     hooks,
     carousel,
-    unified: {
-      post: unifiedCopy,
-      charCount: unifiedCopy.length,
+    twitter: {
+      post: twitterPost,
+      thread: twitterThread,
+      recommendedFormat: '16:9 ou 4:5 (Ponto Fundamental - Título na Imagem)',
+      charCount: twitterPost.length,
       maxLimit: 280
     },
     linkedin: {
-      post: unifiedCopy,
+      post: linkedinPost,
       firstComment: linkedinComment,
-      recommendedFormat: '16:9 ou 4:5'
+      recommendedFormat: '16:9 ou 4:5 Retrato',
+      charCount: linkedinPost.length,
+      maxLimit: 1700
     },
     instagram: {
-      post: unifiedCopy,
+      post: instagramPost,
       firstComment: instagramComment,
-      recommendedFormat: '4:5 (Retrato Padrão)'
+      recommendedFormat: '4:5 (Retrato Padrão)',
+      charCount: instagramPost.length,
+      maxLimit: 1700
+    },
+    facebook: {
+      post: facebookPost,
+      firstComment: facebookComment,
+      recommendedFormat: '16:9 ou 4:5 Retrato',
+      charCount: facebookPost.length,
+      maxLimit: 1700
     },
     stories: {
       post: storiesCopy,
       recommendedFormat: '9:16 (Vertical)'
     },
-    twitter: {
-      post: unifiedCopy,
-      thread: twitterThread,
-      recommendedFormat: '16:9 (Horizontal)'
-    },
     threads: {
       post: threadsCopy,
       thread: threadsThread,
       recommendedFormat: '1:1 ou 16:9'
-    },
-    facebook: {
-      post: unifiedCopy,
-      firstComment: facebookComment,
-      recommendedFormat: '16:9 (Horizontal)'
     }
   };
 }
