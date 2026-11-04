@@ -285,6 +285,14 @@ async function generateWithLlm(article, client, options = {}) {
   const slug = article.slug;
   const replaceUrls = (txt, src) => (txt || '').replace(/\{[A-Z_]+_URL\}/g, getUtmUrl(targetUrl, src, slug));
 
+  const ensureHeading = (rawText, title, prefix = '') => {
+    const txt = (rawText || '').trim();
+    const cleanT = (title || '').trim();
+    if (!cleanT || !txt) return txt;
+    if (txt.toLowerCase().includes(cleanT.toLowerCase().slice(0, 30))) return txt;
+    return `${prefix ? prefix + ' ' : ''}${cleanT}${prefix ? ' ' + prefix : ''}\n\n${txt}`;
+  };
+
   return {
     meta: {
       generator: `LLM (${result.provider} · ${result.model})`,
@@ -302,17 +310,17 @@ async function generateWithLlm(article, client, options = {}) {
     },
     carousel: parsed.carousel || null,
     linkedin: {
-      post: replaceUrls(linkedinPostRaw, 'linkedin'),
+      post: replaceUrls(ensureHeading(linkedinPostRaw, article.title), 'linkedin'),
       firstComment: replaceUrls(linkedinCommentRaw, 'linkedin'),
       recommendedFormat: '16:9 ou 1:1'
     },
     instagram: {
-      post: replaceUrls(instagramPostRaw, 'instagram'),
+      post: replaceUrls(ensureHeading(instagramPostRaw, article.title, '✦'), 'instagram'),
       firstComment: replaceUrls(instagramCommentRaw, 'instagram'),
       recommendedFormat: '4:5 (Feed) e 9:16 (Stories)'
     },
     stories: {
-      post: replaceUrls(parsed.stories?.post || parsed.stories, 'stories'),
+      post: replaceUrls(ensureHeading(parsed.stories?.post || parsed.stories, article.title, '🚀'), 'stories'),
       recommendedFormat: '9:16 (Vertical)'
     },
     twitter: {
@@ -332,7 +340,7 @@ async function generateWithLlm(article, client, options = {}) {
       recommendedFormat: '1:1 ou 16:9'
     },
     facebook: {
-      post: replaceUrls(facebookPostRaw, 'facebook'),
+      post: replaceUrls(ensureHeading(facebookPostRaw, article.title), 'facebook'),
       firstComment: replaceUrls(facebookCommentRaw, 'facebook'),
       recommendedFormat: '16:9 (Horizontal)'
     }

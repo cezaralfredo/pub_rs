@@ -229,10 +229,19 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
       }
     } else if (service === 'instagram') {
       postText = copies.instagram?.post || copies.facebook?.post || copies.linkedin?.post;
+      if (article?.title && postText && !postText.toLowerCase().includes(article.title.toLowerCase().slice(0, 30))) {
+        postText = `✦ ${article.title.toUpperCase()} ✦\n\n${postText}`;
+      }
     } else if (service === 'googlebusiness') {
       postText = copies.facebook?.post || copies.linkedin?.post || copies.twitter?.post;
+      if (article?.title && postText && !postText.toLowerCase().includes(article.title.toLowerCase().slice(0, 30))) {
+        postText = `${article.title}\n\n${postText}`;
+      }
     } else if (service === 'linkedin') {
       postText = copies.linkedin?.post || copies.facebook?.post || copies.twitter?.post;
+      if (article?.title && postText && !postText.toLowerCase().includes(article.title.toLowerCase().slice(0, 30))) {
+        postText = `${article.title}\n\n${postText}`;
+      }
     }
 
     if (!postText || typeof postText !== 'string' || !postText.trim()) {

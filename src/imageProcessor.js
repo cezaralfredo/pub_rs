@@ -105,23 +105,158 @@ async function generateFallbackCard(width, height, title, brandName, brandHandle
 }
 
 /**
- * Cria overlay com badge e rodapé de marca para formatos verticais.
+ * Cria overlay com o título do artigo, badge da marca e rodapé editorial
+ * para sobrepor sobre a imagem nos 4 formatos oficiais das redes sociais.
  */
-function createBrandedOverlaySvg(width, height, brandName, brandHandle) {
+function createTitleOverlaySvg({ width, height, title, brandName, brandHandle, colors = [], format }) {
+  const cleanTitle = escapeXml(title || 'Artigo em Destaque');
   const cleanBrand = escapeXml(brandName || 'Onda Conecta').toUpperCase();
   const cleanHandle = escapeXml(brandHandle || '');
+  const color1 = colors[0] || '#0052FF';
+  const colorAccent = colors[2] || colors[0] || '#00D2FF';
+
+  if (format === 'linkedin_twitter_facebook_16x9') {
+    // 1200 x 675 (Horizontal - LinkedIn, X/Twitter, Facebook)
+    const lines = wrapText(cleanTitle, 34, 3);
+    const lineHeight = 54;
+    const startY = height - 120 - ((lines.length - 1) * lineHeight);
+
+    const tspans = lines.map((l, i) =>
+      `<tspan x="80" dy="${i === 0 ? 0 : lineHeight}">${l}</tspan>`
+    ).join('\n');
+
+    return Buffer.from(`
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="overlayGrad16x9" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#050a14" stop-opacity="0" />
+          <stop offset="25%" stop-color="#050a14" stop-opacity="0.25" />
+          <stop offset="60%" stop-color="#050a14" stop-opacity="0.82" />
+          <stop offset="100%" stop-color="#050a14" stop-opacity="0.96" />
+        </linearGradient>
+      </defs>
+
+      <!-- Gradiente escuro para legibilidade máxima -->
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#overlayGrad16x9)" />
+
+      <!-- Badge de Marca no canto superior -->
+      <g transform="translate(80, 50)">
+        <rect x="0" y="0" width="${cleanBrand.length * 11 + 40}" height="34" rx="17" fill="#000000" fill-opacity="0.6" stroke="${colorAccent}" stroke-width="1.5" />
+        <text x="20" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="${colorAccent}" letter-spacing="1.5">
+          ${cleanBrand}
+        </text>
+      </g>
+
+      <!-- Título do Artigo -->
+      <g filter="drop-shadow(0px 3px 6px rgba(0,0,0,0.85))">
+        <text x="80" y="${startY}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
+          ${tspans}
+        </text>
+      </g>
+
+      <!-- Rodapé / CTA -->
+      <line x1="80" y1="${height - 60}" x2="${width - 80}" y2="${height - 60}" stroke="#334155" stroke-width="1" opacity="0.6" />
+      <text x="80" y="${height - 35}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="#94a3b8" letter-spacing="1">
+        ARTIGO COMPLETO
+      </text>
+      <text x="${width - 80}" y="${height - 35}" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="${colorAccent}">
+        ${cleanHandle ? `${cleanHandle} · Leia agora ➔` : 'Leia na íntegra ➔'}
+      </text>
+    </svg>
+    `);
+  }
+
+  if (format === 'instagram_threads_square_1x1') {
+    // 1080 x 1080 (Quadrado - Instagram, Threads)
+    const lines = wrapText(cleanTitle, 28, 3);
+    const lineHeight = 54;
+    const startY = height - 140 - ((lines.length - 1) * lineHeight);
+
+    const tspans = lines.map((l, i) =>
+      `<tspan x="70" dy="${i === 0 ? 0 : lineHeight}">${l}</tspan>`
+    ).join('\n');
+
+    return Buffer.from(`
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="overlayGrad1x1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#050a14" stop-opacity="0" />
+          <stop offset="30%" stop-color="#050a14" stop-opacity="0.25" />
+          <stop offset="60%" stop-color="#050a14" stop-opacity="0.85" />
+          <stop offset="100%" stop-color="#050a14" stop-opacity="0.96" />
+        </linearGradient>
+      </defs>
+
+      <!-- Gradiente escuro para legibilidade -->
+      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#overlayGrad1x1)" />
+
+      <!-- Badge de Marca -->
+      <g transform="translate(70, 60)">
+        <rect x="0" y="0" width="${cleanBrand.length * 11 + 40}" height="36" rx="18" fill="#000000" fill-opacity="0.6" stroke="${colorAccent}" stroke-width="1.5" />
+        <text x="20" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="${colorAccent}" letter-spacing="1.5">
+          ${cleanBrand}
+        </text>
+      </g>
+
+      <!-- Título do Artigo -->
+      <g filter="drop-shadow(0px 3px 6px rgba(0,0,0,0.85))">
+        <text x="70" y="${startY}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
+          ${tspans}
+        </text>
+      </g>
+
+      <!-- Rodapé -->
+      <line x1="70" y1="${height - 70}" x2="${width - 70}" y2="${height - 70}" stroke="#334155" stroke-width="1" opacity="0.6" />
+      <text x="70" y="${height - 40}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="600" fill="#94a3b8">
+        ANÁLISE &amp; ESTRATÉGIA
+      </text>
+      <text x="${width - 70}" y="${height - 40}" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="600" fill="${colorAccent}">
+        ${cleanHandle ? `${cleanHandle} · Salve este post` : 'Toque para conferir ➔'}
+      </text>
+    </svg>
+    `);
+  }
+
+  // Formatos Verticais (4:5 e 9:16)
+  const is4x5 = format === 'instagram_feed_portrait_4x5';
+  const lines = wrapText(cleanTitle, is4x5 ? 26 : 24, 4);
+  const lineHeight = 56;
+  const cardHeight = lines.length * lineHeight + 100;
+  const cardY = is4x5 ? height - cardHeight - 120 : height - cardHeight - 200;
+
+  const tspans = lines.map((l, i) =>
+    `<tspan x="${width / 2}" dy="${i === 0 ? 0 : lineHeight}">${l}</tspan>`
+  ).join('\n');
 
   return Buffer.from(`
   <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0a0f1d" stop-opacity="0.92" />
+        <stop offset="100%" stop-color="#050a14" stop-opacity="0.98" />
+      </linearGradient>
+    </defs>
+
     <!-- Barra Superior -->
-    <rect x="0" y="0" width="${width}" height="140" fill="black" fill-opacity="0.35" />
-    <text x="${width / 2}" y="85" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="800" fill="#f8fafc" letter-spacing="3">
+    <rect x="0" y="0" width="${width}" height="140" fill="#000000" fill-opacity="0.55" />
+    <text x="${width / 2}" y="85" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="800" fill="#ffffff" letter-spacing="3">
       ${cleanBrand}
     </text>
 
+    <!-- Card Central com o Título sobre a Imagem -->
+    <rect x="50" y="${cardY}" width="${width - 100}" height="${cardHeight}" rx="24" fill="url(#cardGrad)" stroke="${colorAccent}" stroke-width="1.5" stroke-opacity="0.7" />
+    <rect x="${width / 2 - 40}" y="${cardY + 20}" width="80" height="4" rx="2" fill="${colorAccent}" />
+
+    <!-- Título do Artigo Centralizado -->
+    <g filter="drop-shadow(0px 3px 6px rgba(0,0,0,0.85))">
+      <text x="${width / 2}" y="${cardY + 75}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="42" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
+        ${tspans}
+      </text>
+    </g>
+
     <!-- Barra Inferior -->
-    <rect x="0" y="${height - 130}" width="${width}" height="130" fill="black" fill-opacity="0.45" />
-    <text x="${width / 2}" y="${height - 65}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="600" fill="#38bdf8">
+    <rect x="0" y="${height - 130}" width="${width}" height="130" fill="#000000" fill-opacity="0.65" />
+    <text x="${width / 2}" y="${height - 65}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="600" fill="${colorAccent}">
       ${cleanHandle ? `${cleanHandle} · Toque para ler o artigo completo` : '👉 Toque para ler o artigo completo'}
     </text>
   </svg>
@@ -141,8 +276,10 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
     const brandName = options.client?.brandName || options.client?.name || 'Marca';
     const brandHandle = options.client?.brandHandle || '';
     const articleTitle = options.title || options.article?.title || 'Artigo em Destaque';
+    const colors = options.client?.visualIdentity?.preferredColors || ['#0052FF', '#0A0E17', '#00D2FF'];
 
     let inputBuffer = null;
+    let isFallbackCard = false;
 
     if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
       try {
@@ -199,6 +336,7 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
       if (!inputBuffer) {
         console.log(`   🎨 [Mídia] Gerando card gráfico profissional com o título e marca do cliente...`);
         inputBuffer = await generateFallbackCard(1200, 675, articleTitle, brandName, brandHandle, options.client);
+        isFallbackCard = true;
       }
     }
 
@@ -249,7 +387,15 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
           .resize(fmt.width, Math.round(fmt.width * (9 / 16)), { fit: 'contain' })
           .toBuffer();
 
-        const brandedOverlay = createBrandedOverlaySvg(fmt.width, fmt.height, brandName, brandHandle);
+        const brandedOverlay = createTitleOverlaySvg({
+          width: fmt.width,
+          height: fmt.height,
+          title: articleTitle,
+          brandName,
+          brandHandle,
+          colors,
+          format: fmt.name
+        });
 
         const compositeLayers = [
           { input: mainOverlay, gravity: 'center' },
@@ -267,16 +413,37 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
           .toFile(jpgPath);
 
       } else {
-        // Formatos horizontais e quadrados
-        await sharp(inputBuffer)
+        // Formatos horizontais (16:9) e quadrados (1:1)
+        const baseLayer = await sharp(inputBuffer)
           .resize(fmt.width, fmt.height, { fit: 'cover', position: 'center' })
-          .webp({ quality: 90 })
-          .toFile(webpPath);
+          .toBuffer();
 
-        await sharp(inputBuffer)
-          .resize(fmt.width, fmt.height, { fit: 'cover', position: 'center' })
-          .jpeg({ quality: 90 })
-          .toFile(jpgPath);
+        if (isFallbackCard && fmt.name === 'linkedin_twitter_facebook_16x9') {
+          // O fallback SVG já possui título e layout completo em 16:9
+          await sharp(baseLayer).webp({ quality: 90 }).toFile(webpPath);
+          await sharp(baseLayer).jpeg({ quality: 90 }).toFile(jpgPath);
+        } else {
+          // Sobrepõe título, badge e degradê para máxima legibilidade e clareza aos leitores
+          const titleOverlay = createTitleOverlaySvg({
+            width: fmt.width,
+            height: fmt.height,
+            title: articleTitle,
+            brandName,
+            brandHandle,
+            colors,
+            format: fmt.name
+          });
+
+          await sharp(baseLayer)
+            .composite([{ input: titleOverlay, top: 0, left: 0 }])
+            .webp({ quality: 90 })
+            .toFile(webpPath);
+
+          await sharp(baseLayer)
+            .composite([{ input: titleOverlay, top: 0, left: 0 }])
+            .jpeg({ quality: 90 })
+            .toFile(jpgPath);
+        }
       }
 
       results.push({
