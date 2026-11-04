@@ -344,10 +344,10 @@ async function generateAiVideoForPackage(packageDir, packageId, options = {}) {
         .jpeg({ quality: 92 })
         .toFile(sceneJpgPath);
 
-      // 3.3 Renderização do clipe da cena com ffmpeg
+      // 3.3 Renderização do clipe da cena com ffmpeg (30fps, 44.1kHz estéreo padronizado)
       const sceneMp4Path = path.join(tempDir, `scene_${idxStr}.mp4`);
-      execSync(`ffmpeg -y -loop 1 -i "${sceneJpgPath}" -i "${sceneAudioPath}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest -movflags +faststart "${sceneMp4Path}"`, {
-        stdio: 'ignore'
+      execSync(`ffmpeg -y -loop 1 -i "${sceneJpgPath}" -i "${sceneAudioPath}" -c:v libx264 -r 30 -tune stillimage -pix_fmt yuv420p -c:a aac -ar 44100 -ac 2 -b:a 192k -shortest -movflags +faststart "${sceneMp4Path}"`, {
+        stdio: 'pipe'
       });
 
       sceneVideoFiles.push(sceneMp4Path);
@@ -355,15 +355,26 @@ async function generateAiVideoForPackage(packageDir, packageId, options = {}) {
 
     // 4. Concatena todos os clipes no vídeo final
     const concatListPath = path.join(tempDir, 'concat_list.txt');
-    const concatContent = sceneVideoFiles.map(f => `file '${f.replace(/\\/g, '/')}'`).join('\n');
+    // IMPORTANTE: ffmpeg concat demuxer resolve caminhos relativos em relação ao arquivo de lista
+    const concatContent = sceneVideoFiles.map(f => `file '${path.basename(f)}'`).join('\n');
     fs.writeFileSync(concatListPath, concatContent, 'utf8');
+
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+    }
 
     const outputMp4Path = path.join(imagesDir, 'video_post.mp4');
     console.log(`   🎞️ Concatenando ${sceneVideoFiles.length} cenas no arquivo final MP4...`);
 
-    execSync(`ffmpeg -y -f concat -safe 0 -i "${concatListPath}" -c copy -movflags +faststart "${outputMp4Path}"`, {
-      stdio: 'ignore'
-    });
+    try {
+      execSync(`ffmpeg -y -f concat -safe 0 -i "${concatListPath}" -c copy -movflags +faststart "${outputMp4Path}"`, {
+        stdio: 'pipe'
+      });
+    } catch (concatErr) {
+      const stderr = concatErr.stderr ? concatErr.stderr.toString() : concatErr.message;
+      console.error('   ❌ Erro detalhado no ffmpeg concat:', stderr);
+      throw new Error(`Falha na concatenação do vídeo: ${stderr}`);
+    }
 
     const finalSize = fs.statSync(outputMp4Path).size;
     console.log(`   ✓ Vídeo final gerado com sucesso! Tamanho: ${(finalSize / (1024 * 1024)).toFixed(2)} MB`);
