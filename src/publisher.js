@@ -221,9 +221,10 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
     // 3. Seleciona e formata a copy mais contextualizada para a rede social do canal
     let postText = '';
     if (service === 'twitter') {
-      postText = copies.twitter?.post || (Array.isArray(copies.twitter?.thread) ? copies.twitter.thread[0] : null) || copies.threads?.post || copies.linkedin?.post;
+      // Para o Twitter/X: formato padrão direto (mídia + sobre ela o título do artigo, sem carrossel/threads)
+      postText = (article?.title || copies.twitter?.post || 'Novo artigo publicado').trim();
       // Twitter / X limita tweets estritamente a 280 caracteres
-      if (postText && postText.length > 280) {
+      if (postText.length > 280) {
         postText = postText.slice(0, 277) + '...';
       }
     } else if (service === 'instagram') {
@@ -490,7 +491,7 @@ async function publishToLinkedIn(config, copies, article = {}) {
  * Suporta OAuth 1.0a User Context (API Key + Secret e Access Token + Secret) ou OAuth 2.0 User Token
  * Endpoint: POST https://api.twitter.com/2/tweets
  */
-async function publishToTwitter(config, copies) {
+async function publishToTwitter(config, copies, article = {}) {
   const { bearerToken, accessToken, apiKey, apiSecret, accessTokenSecret } = config;
   const tokenSecret = accessTokenSecret || config.accessSecret;
   const hasOAuth1 = Boolean(apiKey && apiSecret && accessToken && tokenSecret);
@@ -501,57 +502,49 @@ async function publishToTwitter(config, copies) {
   }
 
   try {
-    const thread = copies.twitter?.thread;
-    const tweetsToPost = Array.isArray(thread) && thread.length > 0
-      ? thread
-      : [copies.twitter?.post || 'Novo artigo publicado'];
-
-    let previousTweetId = null;
-    const publishedTweets = [];
-
-    for (const text of tweetsToPost) {
-      const payload = { text };
-      if (previousTweetId) {
-        payload.reply = { in_reply_to_tweet_id: previousTweetId };
-      }
-
-      let authHeader;
-      if (hasOAuth1) {
-        authHeader = buildOAuth1Header({
-          method: 'POST',
-          url: 'https://api.twitter.com/2/tweets',
-          apiKey,
-          apiSecret,
-          accessToken,
-          accessTokenSecret: tokenSecret
-        });
-      } else {
-        authHeader = `Bearer ${token}`;
-      }
-
-      const res = await fetch('https://api.twitter.com/2/tweets', {
-        method: 'POST',
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(`Erro Twitter API (${res.status}): ${JSON.stringify(data)}`);
-      }
-
-      previousTweetId = data?.data?.id;
-      publishedTweets.push(data?.data);
+    // Formato padrão simples: somente a mídia e sobre ela o título do artigo (sem carrossel / thread)
+    let postText = (article?.title || copies.twitter?.post || 'Novo artigo publicado').trim();
+    if (postText.length > 280) {
+      postText = postText.slice(0, 277) + '...';
     }
+
+    const payload = { text: postText };
+
+    let authHeader;
+    if (hasOAuth1) {
+      authHeader = buildOAuth1Header({
+        method: 'POST',
+        url: 'https://api.twitter.com/2/tweets',
+        apiKey,
+        apiSecret,
+        accessToken,
+        accessTokenSecret: tokenSecret
+      });
+    } else {
+      authHeader = `Bearer ${token}`;
+    }
+
+    const res = await fetch('https://api.twitter.com/2/tweets', {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(`Erro Twitter API (${res.status}): ${JSON.stringify(data)}`);
+    }
+
+    const tweetId = data?.data?.id;
 
     return {
       status: 'success',
-      tweetsCount: publishedTweets.length,
-      firstTweetUrl: previousTweetId ? `https://twitter.com/i/status/${publishedTweets[0]?.id}` : null,
-      tweets: publishedTweets
+      tweetsCount: 1,
+      firstTweetUrl: tweetId ? `https://twitter.com/i/status/${tweetId}` : null,
+      tweet: data?.data
     };
   } catch (err) {
     return { status: 'error', error: err.message };
@@ -952,8 +945,8 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
 
   // 4. X (Twitter) Direto
   if (isChannelAllowed('twitter') && channels.twitter?.enabled && (channels.twitter?.bearerToken || channels.twitter?.accessToken)) {
-    console.log(`🚀 [DISPATCH] Publicando fio na API do X (Twitter)...`);
-    dispatchResults.channels.twitter = await publishToTwitter(channels.twitter, copies);
+    console.log(`🚀 [DISPATCH] Publicando na API do X (Twitter)...`);
+    dispatchResults.channels.twitter = await publishToTwitter(channels.twitter, copies, article);
   }
 
   // 5. Telegram

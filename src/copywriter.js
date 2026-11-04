@@ -203,7 +203,7 @@ ${hashtagsStr}`;
       recommendedFormat: '9:16 (Vertical)'
     },
     twitter: {
-      post: twitterThread[0],
+      post: (article.title || '').trim() || twitterThread[0],
       thread: twitterThread,
       recommendedFormat: '16:9 (Horizontal)'
     },

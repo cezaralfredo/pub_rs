@@ -1511,7 +1511,7 @@ document.addEventListener('DOMContentLoaded', () => {
       linkedin: 'LinkedIn Post',
       instagram: 'Instagram Feed (Carrossel / Retrato)',
       stories: 'Instagram Stories (Teaser)',
-      twitter: 'X (Twitter) Thread',
+      twitter: 'X (Twitter) Post',
       threads: 'Threads Post',
       facebook: 'Facebook Post'
     };
@@ -1536,12 +1536,9 @@ document.addEventListener('DOMContentLoaded', () => {
       postText = copies.stories?.post || '';
       formatDesc = 'Formato ideal: 9:16 Vertical';
     } else if (net === 'twitter') {
-      threadItems = Array.isArray(copies.twitter?.thread) 
-        ? copies.twitter.thread 
-        : [copies.twitter?.post || ''];
-      postText = threadItems.join('\n\n───────────────\n\n');
-      formatDesc = 'Formato ideal: 16:9 Horizontal (Fio de Tweets)';
-      isThreadMode = true;
+      postText = copies.twitter?.post || (Array.isArray(copies.twitter?.thread) ? copies.twitter.thread[0] : '');
+      formatDesc = 'Formato ideal: 16:9 Horizontal (Mídia com Título)';
+      isThreadMode = false;
     } else if (net === 'threads') {
       if (Array.isArray(copies.threads?.thread) && copies.threads.thread.length > 0) {
         threadItems = copies.threads.thread;
