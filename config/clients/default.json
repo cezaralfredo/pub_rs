@@ -12,10 +12,12 @@
     "Inovação Tecnológica e Produtividade",
     "Crescimento de Negócios e Vendas B2B"
   ],
+  "footerText": "Design - Marketing - IA  |  anauedesign.com.br",
   "visualIdentity": {
     "style": "minimalist-3d",
     "preferredColors": ["#6366F1", "#0F172A", "#A855F7"],
-    "brandBadgePosition": "top-right"
+    "brandBadgePosition": "top-right",
+    "footerText": "Design - Marketing - IA  |  anauedesign.com.br"
   },
   "negativeKeywords": [
     "fórmula mágica",

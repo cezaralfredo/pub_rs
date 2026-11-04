@@ -13,10 +13,12 @@
     "Inteligência Artificial & Automação de Marketing",
     "Branding Digital & Experiência do Usuário (UI/UX)"
   ],
+  "footerText": "Design - Marketing - IA  |  anauedesign.com.br",
   "visualIdentity": {
     "style": "dark-cinematic",
     "preferredColors": ["#0052FF", "#0A0E17", "#00D2FF"],
-    "brandBadgePosition": "top-right"
+    "brandBadgePosition": "top-right",
+    "footerText": "Design - Marketing - IA  |  anauedesign.com.br"
   },
   "negativeKeywords": [
     "grátis",

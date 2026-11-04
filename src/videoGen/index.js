@@ -175,10 +175,11 @@ function buildVideoScript(article, client, copies = {}) {
 /**
  * Renderiza o frame visual SVG para cada cena do vídeo vertical 9:16 (1080x1920).
  */
-function renderSceneSvg({ scene, totalScenes, brandName, brandHandle, colors, width = 1080, height = 1920 }) {
-  const cleanBrand = escapeXml(brandName || 'Onda Conecta').toUpperCase();
+function renderSceneSvg({ scene, totalScenes, brandName, brandHandle, colors, width = 1080, height = 1920, footerText }) {
+  const cleanBrand = escapeXml(brandName || 'Anauê Design').toUpperCase();
   const cleanHandle = escapeXml(brandHandle || '');
   const cleanBadge = escapeXml(scene.badge || 'DESTAQUE').toUpperCase();
+  const cleanFooter = escapeXml(footerText || 'Design - Marketing - IA  |  anauedesign.com.br');
   const color1 = colors[0] || '#0052FF';
   const colorAccent = colors[2] || colors[0] || '#00D2FF';
 
@@ -242,9 +243,10 @@ function renderSceneSvg({ scene, totalScenes, brandName, brandHandle, colors, wi
     <rect x="80" y="${height - 180}" width="${progressWidth}" height="8" rx="4" fill="url(#progGrad)" />
 
     <!-- Barra Inferior de Rodapé -->
-    <rect x="0" y="${height - 150}" width="${width}" height="150" fill="#000000" fill-opacity="0.75" />
-    <text x="${width / 2}" y="${height - 75}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="700" fill="${colorAccent}">
-      ${cleanHandle ? `${cleanHandle} · Toque para ler o artigo completo` : '👉 Toque para ler o artigo completo'}
+    <rect x="0" y="${height - 130}" width="${width}" height="130" fill="#000000" fill-opacity="0.85" />
+    <line x1="0" y1="${height - 130}" x2="${width}" y2="${height - 130}" stroke="#334155" stroke-width="1" opacity="0.6" />
+    <text x="${width / 2}" y="${height - 62}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="600" fill="#94a3b8" letter-spacing="1">
+      ${cleanFooter}
     </text>
   </svg>
   `);
@@ -335,7 +337,8 @@ async function generateAiVideoForPackage(packageDir, packageId, options = {}) {
         totalScenes: script.length,
         brandName,
         brandHandle,
-        colors
+        colors,
+        footerText: client.footerText || options.footerText
       });
 
       const sceneJpgPath = path.join(tempDir, `scene_${idxStr}.jpg`);

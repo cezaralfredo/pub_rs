@@ -1548,20 +1548,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let isThreadMode = false;
     let threadItems = [];
 
+    const isUnifiedNetwork = ['linkedin', 'instagram', 'facebook', 'twitter'].includes(net);
+    const unifiedText = copies.unified?.post || copies.twitter?.post || copies.linkedin?.post || copies.instagram?.post || copies.facebook?.post;
+
     if (net === 'linkedin') {
-      postText = copies.linkedin?.post || '';
+      postText = unifiedText || copies.linkedin?.post || '';
       firstComment = copies.linkedin?.firstComment || '';
-      formatDesc = 'Formato ideal: 16:9 ou 1:1';
+      formatDesc = 'Formato ideal: 16:9 ou 4:5 Retrato';
     } else if (net === 'instagram') {
-      postText = copies.instagram?.post || '';
+      postText = unifiedText || copies.instagram?.post || '';
       firstComment = copies.instagram?.firstComment || '';
-      formatDesc = 'Formato ideal: 4:5 Retrato (Feed)';
+      formatDesc = 'Padrão Oficial: 4:5 Retrato (Feed)';
     } else if (net === 'stories') {
       postText = copies.stories?.post || '';
       formatDesc = 'Formato ideal: 9:16 Vertical';
     } else if (net === 'twitter') {
-      postText = copies.twitter?.post || (Array.isArray(copies.twitter?.thread) ? copies.twitter.thread[0] : '');
-      formatDesc = 'Formato ideal: 16:9 Horizontal (Mídia com Título)';
+      postText = unifiedText || copies.twitter?.post || (Array.isArray(copies.twitter?.thread) ? copies.twitter.thread[0] : '');
+      formatDesc = 'Formato ideal: 16:9 Horizontal ou 4:5 Retrato';
       isThreadMode = false;
     } else if (net === 'threads') {
       if (Array.isArray(copies.threads?.thread) && copies.threads.thread.length > 0) {
@@ -1573,9 +1576,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       formatDesc = 'Formato ideal: 1:1 Quadrado';
     } else if (net === 'facebook') {
-      postText = copies.facebook?.post || '';
+      postText = unifiedText || copies.facebook?.post || '';
       firstComment = copies.facebook?.firstComment || '';
-      formatDesc = 'Formato ideal: 16:9 Horizontal';
+      formatDesc = 'Formato ideal: 16:9 ou 4:5 Retrato';
     }
 
     // Gerenciador de Ganchos A/B (LinkedIn, Instagram e Facebook)
@@ -1618,7 +1621,11 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.currentPostText.textContent = postText;
     }
 
-    elements.currentCharCount.textContent = `${postText.length} caracteres`;
+    if (isUnifiedNetwork) {
+      elements.currentCharCount.textContent = `${postText.length} / 280 caracteres · Conteúdo unificado para Twitter, Instagram, LinkedIn e Facebook`;
+    } else {
+      elements.currentCharCount.textContent = `${postText.length} caracteres`;
+    }
 
     if (firstComment) {
       elements.firstCommentWrap.classList.remove('hidden');

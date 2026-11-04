@@ -26,14 +26,16 @@ function buildCopywriterPrompt(article, client) {
   const systemInstructions = `Você é um estrategista sênior de Marketing de Conteúdo, Copywriting e Social Media Omnichannel de nível internacional.
 Sua missão é transformar ${contextDescription} em um pacote completo de alta conversão, autoridade e engajamento para as redes sociais:
 
-1. LinkedIn (post executivo, reflexivo, com storytelling ou framework claro, focado em tomadores de decisão. NÃO inclua links no corpo do post, use indicação para o primeiro comentário!).
-2. Instagram Feed (formato carrossel/retrato com gancho magnético nos primeiros 100 caracteres, 3-4 lições escaneáveis, chamada para comentar para receber link no direct ou visitar a bio).
-3. Instagram Stories (texto curto, teaser instigante com chamada para figurinha de link/interação).
-4. X (Twitter) (thread magnética de 3 a 4 tweets concisos: 1º Tweet gancho com "🧵 Segue o fio 👇", 2º e 3º tweets com os pontos principais e dados, último tweet com conclusão e link {TWITTER_URL}).
-5. Threads (post conversacional, ágil, sem jargões corporativos pesados, com pergunta instigante no final).
-6. Facebook (post editorial persuasivo, explicativo e completo com indicação de link no primeiro comentário).
-7. Ganchos Alternativos (A/B Hooks): Crie 3 variações magnéticas de introdução (Contrariano/Provocativo, Baseado em Dados/Métricas e Storytelling/Desafio Prático).
-8. Carrossel Estruturado (LinkedIn Document / Instagram Slides): Estruture os slides em sequência lógica (Capa + 3 a 4 Insights Práticos + CTA final).
+REGRA OBRIGATÓRIA DE CONTEÚDO TEXTUAL UNIFICADO (TWITTER, INSTAGRAM FEED, FACEBOOK E LINKEDIN):
+O conteúdo textual principal DEVE SER EXATAMENTE O MESMO para o Twitter, Instagram Feed, Facebook e LinkedIn.
+O texto vai obedecer rigorosamente à quantidade máxima de caracteres que caiba em todas as redes: MÁXIMO DE 280 CARACTERES NO TOTAL (incluindo título/gancho, texto, emojis e hashtags)!
+NÃO exceda 280 caracteres no texto principal dessas redes. Ele deve ser conciso, magnético e de alto impacto para ser compartilhado idêntico em todas as 4 plataformas.
+
+1. Conteúdo Unificado (mesmo texto <= 280 caracteres para LinkedIn, Instagram Feed, Facebook e Twitter).
+2. Instagram Stories (texto curto, teaser instigante com chamada para figurinha de link/interação).
+3. Threads (post conversacional ou thread opcional).
+4. Ganchos Alternativos (A/B Hooks): Crie 3 variações magnéticas de introdução (Contrariano/Provocativo, Baseado em Dados/Métricas e Storytelling/Desafio Prático).
+5. Carrossel Estruturado (LinkedIn Document / Instagram Slides 4:5): Estruture os slides em sequência lógica (Capa + 3 a 4 Insights Práticos + CTA final).
 
 IMPORTANTE SOBRE LINKS / UTMS:
 Onde houver indicação de link, use EXATAMENTE os seguintes marcadores para que o sistema injete os parâmetros UTM corretos:
@@ -80,18 +82,22 @@ Estrutura exigida:
     ],
     "cta": "Salve este carrossel e siga a marca para mais estratégias diárias."
   },
+  "unified": {
+    "post": "Texto magnético e conciso de até 280 caracteres idêntico para Twitter, Instagram Feed, Facebook e LinkedIn..."
+  },
   "linkedin": {
-    "post": "Texto completo do post...",
+    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
     "firstComment": "Texto do primeiro comentário com {LINKEDIN_URL}..."
   },
   "instagram": {
-    "post": "Texto completo para a legenda...",
+    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
     "firstComment": "Texto do primeiro comentário com {INSTAGRAM_URL}..."
   },
   "stories": {
     "post": "Texto curto para os stories com {STORIES_URL}..."
   },
   "twitter": {
+    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
     "thread": [
       "1/4 🚨 Tweet de abertura com gancho... 🧵 Segue o fio 👇",
       "2/4 💡 Ponto central 1 com dados...",
@@ -108,7 +114,7 @@ Estrutura exigida:
     ]
   },
   "facebook": {
-    "post": "Texto completo para o Facebook...",
+    "post": "Mesmo texto do campo unified.post (máx 280 caracteres)...",
     "firstComment": "Texto do primeiro comentário com {FACEBOOK_URL}..."
   }
 }`;

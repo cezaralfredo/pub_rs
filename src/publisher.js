@@ -239,36 +239,23 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
       continue;
     }
 
-    // 3. Seleciona e formata a copy mais contextualizada para a rede social do canal
-    let postText = '';
-    if (service === 'twitter') {
-      // Para o Twitter/X: formato padrão direto (mídia + sobre ela o título do artigo, sem carrossel/threads)
-      postText = (article?.title || copies.twitter?.post || 'Novo artigo publicado').trim();
-      // Twitter / X limita tweets estritamente a 280 caracteres
-      if (postText.length > 280) {
-        postText = postText.slice(0, 277) + '...';
-      }
-    } else if (service === 'instagram') {
-      postText = copies.instagram?.post || copies.facebook?.post || copies.linkedin?.post;
-      if (article?.title && postText && !postText.toLowerCase().includes(article.title.toLowerCase().slice(0, 30))) {
-        postText = `✦ ${article.title.toUpperCase()} ✦\n\n${postText}`;
-      }
-    } else if (service === 'googlebusiness') {
-      postText = copies.facebook?.post || copies.linkedin?.post || copies.twitter?.post;
-      if (article?.title && postText && !postText.toLowerCase().includes(article.title.toLowerCase().slice(0, 30))) {
-        postText = `${article.title}\n\n${postText}`;
-      }
-    } else if (service === 'linkedin') {
-      postText = copies.linkedin?.post || copies.facebook?.post || copies.twitter?.post;
-      if (article?.title && postText && !postText.toLowerCase().includes(article.title.toLowerCase().slice(0, 30))) {
-        postText = `${article.title}\n\n${postText}`;
-      }
-    }
+    // 3. Conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn (máximo de 280 caracteres)
+    let postText = copies.unified?.post ||
+                   (typeof copies.twitter === 'string' ? copies.twitter : copies.twitter?.post) ||
+                   (typeof copies.instagram === 'string' ? copies.instagram : copies.instagram?.post) ||
+                   (typeof copies.linkedin === 'string' ? copies.linkedin : copies.linkedin?.post) ||
+                   (typeof copies.facebook === 'string' ? copies.facebook : copies.facebook?.post) ||
+                   (article?.title || 'Novo artigo publicado');
 
-    if (!postText || typeof postText !== 'string' || !postText.trim()) {
-      postText = copies.linkedin?.post || copies.twitter?.post || copies.threads?.post || 'Novo artigo publicado';
+    if (typeof postText !== 'string' || !postText.trim()) {
+      postText = (article?.title || 'Novo artigo publicado').trim();
     }
     postText = postText.trim();
+
+    // Obedece estritamente à quantidade máxima de caracteres que caiba em todas as redes (280 chars)
+    if (postText.length > 280) {
+      postText = postText.slice(0, 277) + '...';
+    }
 
     // 4. Monta o input GraphQL em estrita conformidade com o schema do Buffer
     const input = {
@@ -452,27 +439,29 @@ async function publishToLinkedIn(config, copies, article = {}) {
   }
 
   try {
-    let postText = (typeof copies?.linkedin === 'string' ? copies.linkedin : copies?.linkedin?.post) || '';
+    let postText = copies?.unified?.post || (typeof copies?.linkedin === 'string' ? copies.linkedin : copies?.linkedin?.post) || '';
 
     // Fallbacks resilientes se a copy específica do LinkedIn estiver vazia
     if (!postText.trim()) {
-      postText = (typeof copies?.facebook === 'string' ? copies.facebook : copies?.facebook?.post) || '';
-    }
-    if (!postText.trim()) {
-      postText = (typeof copies?.threads === 'string' ? copies.threads : copies?.threads?.post) || '';
+      postText = (typeof copies?.twitter === 'string' ? copies.twitter : copies?.twitter?.post) || '';
     }
     if (!postText.trim()) {
       postText = (typeof copies?.instagram === 'string' ? copies.instagram : copies?.instagram?.post) || '';
     }
+    if (!postText.trim()) {
+      postText = (typeof copies?.facebook === 'string' ? copies.facebook : copies?.facebook?.post) || '';
+    }
     if (!postText.trim() && article) {
-      const title = article.title || 'Artigo Estratégico';
-      const desc = article.description || article.content || 'Confira a análise completa e as principais diretrizes.';
-      const url = article.canonicalUrl || article.url || '';
-      postText = `${title}\n\n${desc}${url ? `\n\n👉 Acesse a matéria completa: ${url}` : ''}`;
+      postText = (article.title || 'Novo artigo publicado').trim();
     }
 
     postText = postText.trim();
     if (!postText) throw new Error('Copy do LinkedIn não encontrada no pacote.');
+
+    // Obedece estritamente ao limite unificado de 280 caracteres
+    if (postText.length > 280) {
+      postText = postText.slice(0, 277) + '...';
+    }
 
     const payload = {
       author: authorUrn, // ex: urn:li:organization:123456 ou urn:li:person:abcdef
@@ -540,8 +529,8 @@ async function publishToTwitter(config, copies, article = {}) {
   }
 
   try {
-    // Formato padrão simples: somente a mídia e sobre ela o título do artigo (sem carrossel / thread)
-    let postText = (article?.title || copies.twitter?.post || 'Novo artigo publicado').trim();
+    // Conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn (<= 280 chars)
+    let postText = (copies.unified?.post || copies.twitter?.post || article?.title || 'Novo artigo publicado').trim();
     if (postText.length > 280) {
       postText = postText.slice(0, 277) + '...';
     }

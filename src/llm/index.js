@@ -285,6 +285,21 @@ async function generateWithLlm(article, client, options = {}) {
   const slug = article.slug;
   const replaceUrls = (txt, src) => (txt || '').replace(/\{[A-Z_]+_URL\}/g, getUtmUrl(targetUrl, src, slug));
 
+  // Conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn (<= 280 caracteres)
+  let unifiedPostRaw = (typeof parsed.unified === 'string' ? parsed.unified : parsed.unified?.post) ||
+                       (typeof parsed.twitter === 'string' ? parsed.twitter : parsed.twitter?.post) ||
+                       linkedinPostRaw ||
+                       instagramPostRaw ||
+                       facebookPostRaw ||
+                       (article.title || '');
+
+  unifiedPostRaw = unifiedPostRaw.trim();
+  if (unifiedPostRaw.length > 280) {
+    unifiedPostRaw = unifiedPostRaw.slice(0, 277) + '...';
+  }
+
+  const finalUnifiedPost = replaceUrls(unifiedPostRaw, 'social');
+
   const ensureHeading = (rawText, title, prefix = '') => {
     const txt = (rawText || '').trim();
     const cleanT = (title || '').trim();
@@ -309,27 +324,30 @@ async function generateWithLlm(article, client, options = {}) {
       storytelling: parsed.hooks?.storytelling || ''
     },
     carousel: parsed.carousel || null,
+    unified: {
+      post: finalUnifiedPost,
+      charCount: finalUnifiedPost.length,
+      maxLimit: 280
+    },
     linkedin: {
-      post: replaceUrls(ensureHeading(linkedinPostRaw, article.title), 'linkedin'),
+      post: finalUnifiedPost,
       firstComment: replaceUrls(linkedinCommentRaw, 'linkedin'),
-      recommendedFormat: '16:9 ou 1:1'
+      recommendedFormat: '16:9 ou 4:5'
     },
     instagram: {
-      post: replaceUrls(ensureHeading(instagramPostRaw, article.title, '✦'), 'instagram'),
+      post: finalUnifiedPost,
       firstComment: replaceUrls(instagramCommentRaw, 'instagram'),
-      recommendedFormat: '4:5 (Feed) e 9:16 (Stories)'
+      recommendedFormat: '4:5 (Retrato Padrão)'
     },
     stories: {
       post: replaceUrls(ensureHeading(parsed.stories?.post || parsed.stories, article.title, '🚀'), 'stories'),
       recommendedFormat: '9:16 (Vertical)'
     },
     twitter: {
-      post: (article.title || '').trim() || (Array.isArray(parsed.twitter?.thread) && parsed.twitter.thread.length > 0
-        ? replaceUrls(parsed.twitter.thread[0], 'twitter')
-        : replaceUrls(parsed.twitter?.post || parsed.twitter, 'twitter')),
+      post: finalUnifiedPost,
       thread: Array.isArray(parsed.twitter?.thread)
         ? parsed.twitter.thread.map(t => replaceUrls(t, 'twitter'))
-        : [replaceUrls(parsed.twitter?.post || parsed.twitter, 'twitter')].filter(Boolean),
+        : [finalUnifiedPost].filter(Boolean),
       recommendedFormat: '16:9 (Horizontal)'
     },
     threads: {
@@ -340,7 +358,7 @@ async function generateWithLlm(article, client, options = {}) {
       recommendedFormat: '1:1 ou 16:9'
     },
     facebook: {
-      post: replaceUrls(ensureHeading(facebookPostRaw, article.title), 'facebook'),
+      post: finalUnifiedPost,
       firstComment: replaceUrls(facebookCommentRaw, 'facebook'),
       recommendedFormat: '16:9 (Horizontal)'
     }

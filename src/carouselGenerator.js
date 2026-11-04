@@ -371,8 +371,8 @@ function renderSlideSvg({
       </g>
 
       <!-- Rodapé -->
-      <text x="${width / 2}" y="${height - 70}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="#64748b">
-        pub_rs · Automação Omnichannel de Distribuição
+      <text x="${width / 2}" y="${height - 70}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" fill="#94a3b8">
+        Design - Marketing - IA  |  anauedesign.com.br
       </text>
     </svg>
     `;

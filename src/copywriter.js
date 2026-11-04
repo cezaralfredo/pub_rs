@@ -18,6 +18,48 @@ function getUtmUrl(targetUrl, source, slug) {
   }
 }
 
+/**
+ * Gera conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn,
+ * obedecendo rigorosamente à quantidade máxima de caracteres que caiba em todas as redes
+ * (Limite máximo de 280 caracteres do Twitter/X).
+ */
+function buildUnifiedSocialPost(article, client) {
+  const title = (article.title || '').trim();
+  const rawLead = (article.description || (article.paragraphs && article.paragraphs[0]) || '').trim();
+  const hashtags = Array.isArray(client.defaultHashtags) && client.defaultHashtags.length > 0
+    ? client.defaultHashtags.slice(0, 3).join(' ')
+    : '#Inovacao #Marketing #Tecnologia';
+
+  // Montagem padrão com título, resumo conciso e hashtags
+  let text = '';
+  if (rawLead) {
+    text = `${title}\n\n${rawLead}\n\n${hashtags}`;
+  } else {
+    text = `${title}\n\n${hashtags}`;
+  }
+
+  // Se ultrapassar 280 caracteres, encurta o texto proporcionalmente
+  if (text.length > 280) {
+    const fixedLen = title.length + hashtags.length + 4; // quebras e espaços
+    const availableForLead = 280 - fixedLen;
+    if (availableForLead > 35 && rawLead) {
+      const truncatedLead = rawLead.slice(0, availableForLead - 3).replace(/[,;.\s]+$/, '') + '...';
+      text = `${title}\n\n${truncatedLead}\n\n${hashtags}`;
+    } else {
+      const maxTitle = 280 - (hashtags.length + 4);
+      const cleanTitle = title.length > maxTitle ? title.slice(0, maxTitle - 3) + '...' : title;
+      text = `${cleanTitle}\n\n${hashtags}`;
+    }
+  }
+
+  // Trava final de segurança
+  if (text.length > 280) {
+    text = text.slice(0, 277) + '...';
+  }
+
+  return text.trim();
+}
+
 // ---------------------------------------------------------------------------
 // 1. GERADOR ALGORÍTMICO DINÂMICO (Sem necessidade de chaves de API / Offline)
 // ---------------------------------------------------------------------------
@@ -30,6 +72,9 @@ function generateAlgorithmicCopies(article, client) {
   const hashtagsStr = hashtags.join(' ');
   const targetUrl = article.canonicalUrl || article.url;
   const slug = article.slug || 'artigo';
+
+  // Conteúdo textual unificado para Twitter, Instagram Feed, Facebook e LinkedIn (<= 280 chars)
+  const unifiedCopy = buildUnifiedSocialPost(article, client);
 
   // Seleção e higienização dos pontos principais extraídos
   const rawPoints = (article.bulletPoints && article.bulletPoints.length >= 2)
@@ -52,7 +97,6 @@ function generateAlgorithmicCopies(article, client) {
     (article.paragraphs && article.paragraphs[0]) || 
     'Confira uma análise aprofundada com os principais insights, desafios e caminhos práticos para navegar este cenário.';
 
-  const cta = client.callToAction || 'Qual a sua visão sobre esse tema? Compartilhe nos comentários:';
   const commentTemplate = client.commentTemplate || '👉 Leia o artigo completo com todas as referências aqui: {URL}';
 
   // Ganchos Alternativos (A/B Hook Generator)
@@ -73,44 +117,9 @@ function generateAlgorithmicCopies(article, client) {
     cta: `Salve este carrossel e siga ${handle || brand} para mais estratégias práticas.`
   };
 
-  // 1. LINKEDIN
-  const linkedinCopy = 
-`${article.title}
-
-${leadSummary}
-
-Destaques e pontos-chave abordados na análise:
-
-${formattedPoints}
-
-${cta}
-
-👇 O link com o artigo completo e todos os detalhes está no primeiro comentário deste post.
-
----
-${hashtagsStr}`;
-
   const linkedinComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'linkedin', slug));
-
-  // 2. INSTAGRAM (FEED)
-  const instagramCopy = 
-`✦ ${article.title.toUpperCase()} ✦
-
-${leadSummary}
-
-📌 Principais tópicos para salvar e aplicar:
-
-${formattedPoints}
-
-💬 Quer conferir o conteúdo completo? Comente "LINK" aqui embaixo ou acesse o link disponível na bio ${handle ? `(${handle})` : ''}!
-💾 Salve este post para consultar depois.
-
-.
-.
-.
-${hashtagsStr}`;
-
   const instagramComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'instagram', slug));
+  const facebookComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'facebook', slug));
 
   // 3. INSTAGRAM (STORIES)
   const storiesCopy = 
@@ -162,24 +171,9 @@ Como você ou seu time lidam com essa questão hoje?`;
     `3/3 🔗 Artigo completo com dados: ${getUtmUrl(targetUrl, 'threads', slug)}\n\nO que você achou dessa mudança?`
   ];
 
-  // 6. FACEBOOK (Com estratégia de 1º Comentário)
-  const facebookCopy = 
-`${article.title}
-
-${leadSummary}
-
-Pontos em destaque:
-${formattedPoints}
-
-👇 Acesse o artigo completo com todas as fontes e insights no primeiro comentário:
-
-${hashtagsStr}`;
-
-  const facebookComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'facebook', slug));
-
   return {
     meta: {
-      generator: 'Algorithmic Dynamic v2',
+      generator: 'Algorithmic Dynamic v2 (Unificado)',
       provider: 'Engine Nativa (Sem IA)',
       client: client.name || client.id,
       articleTitle: article.title,
@@ -188,22 +182,27 @@ ${hashtagsStr}`;
     },
     hooks,
     carousel,
+    unified: {
+      post: unifiedCopy,
+      charCount: unifiedCopy.length,
+      maxLimit: 280
+    },
     linkedin: {
-      post: linkedinCopy,
+      post: unifiedCopy,
       firstComment: linkedinComment,
-      recommendedFormat: '16:9 ou 1:1'
+      recommendedFormat: '16:9 ou 4:5'
     },
     instagram: {
-      post: instagramCopy,
+      post: unifiedCopy,
       firstComment: instagramComment,
-      recommendedFormat: '4:5 (Feed) e 9:16 (Stories)'
+      recommendedFormat: '4:5 (Retrato Padrão)'
     },
     stories: {
       post: storiesCopy,
       recommendedFormat: '9:16 (Vertical)'
     },
     twitter: {
-      post: (article.title || '').trim() || twitterThread[0],
+      post: unifiedCopy,
       thread: twitterThread,
       recommendedFormat: '16:9 (Horizontal)'
     },
@@ -213,7 +212,7 @@ ${hashtagsStr}`;
       recommendedFormat: '1:1 ou 16:9'
     },
     facebook: {
-      post: facebookCopy,
+      post: unifiedCopy,
       firstComment: facebookComment,
       recommendedFormat: '16:9 (Horizontal)'
     }
