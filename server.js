@@ -862,6 +862,7 @@ app.post('/api/packages/:packageId/publish', requireAuth, rateLimiter, async (re
       copies,
       images: payload.images,
       article: payload.article,
+      video: payload.video,
       packageId: safePackageId,
       outputDir: packageDir,
       targetChannels: Array.isArray(targetChannels) ? targetChannels : null
@@ -969,17 +970,35 @@ app.get('/api/packages/:packageId', requireAuth, (req, res) => {
     const mediaFiles = fs.existsSync(imagesDir)
       ? fs.readdirSync(imagesDir).map(file => ({
           fileName: file,
-          format: file.replace(/\.(webp|jpg)$/, ''),
+          format: file.replace(/\.(webp|jpg|mp4|mov|webm)$/, ''),
           ext: path.extname(file).replace('.', ''),
           url: `/api/media/${safePackageId}/${file}`
         }))
       : [];
 
+    // Identificar se há vídeo anexado
+    let videoInfo = payload?.video || null;
+    if (!videoInfo && fs.existsSync(imagesDir)) {
+      const videoFiles = ['video_post.mp4', 'video_post.mov', 'video_post.webm'];
+      for (const vf of videoFiles) {
+        const vp = path.join(imagesDir, vf);
+        if (fs.existsSync(vp)) {
+          videoInfo = {
+            filename: vf,
+            size: fs.statSync(vp).size,
+            url: `/api/media/${safePackageId}/${vf}`
+          };
+          break;
+        }
+      }
+    }
+
     res.json({
       packageId: safePackageId,
       payload,
       reportMd,
-      mediaFiles
+      mediaFiles,
+      video: videoInfo
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1004,8 +1023,8 @@ app.delete('/api/packages/:packageId', requireAuth, (req, res) => {
   }
 });
 
-// Servir arquivos de mídia e carrossel PDF gerados com segurança
-function serveMediaFile(res, packageId, subDir, filename) {
+// Servir arquivos de mídia, vídeos e carrossel PDF gerados com segurança
+function serveMediaFile(req, res, packageId, subDir, filename) {
   try {
     const safePackageId = sanitizeIdentifier(packageId);
     const safeFilename = path.basename(filename);
@@ -1025,13 +1044,23 @@ function serveMediaFile(res, packageId, subDir, filename) {
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
       '.png': 'image/png',
-      '.pdf': 'application/pdf'
+      '.pdf': 'application/pdf',
+      '.mp4': 'video/mp4',
+      '.mov': 'video/quicktime',
+      '.webm': 'video/webm'
     };
 
-    res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
     if (ext === '.pdf') {
-      res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath)}"`);
+      res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
     }
+
+    // Suporte nativo a streaming de vídeo com HTTP Range (206 Partial Content) para navegadores e APIs de redes sociais (Buffer/Instagram)
+    if (ext === '.mp4' || ext === '.mov' || ext === '.webm') {
+      return res.sendFile(path.resolve(filePath));
+    }
+
     res.setHeader('Cache-Control', 'public, max-age=86400');
     fs.createReadStream(filePath).pipe(res);
   } catch (err) {
@@ -1040,11 +1069,107 @@ function serveMediaFile(res, packageId, subDir, filename) {
 }
 
 app.get('/api/media/:packageId/carousel/:filename', (req, res) => {
-  serveMediaFile(res, req.params.packageId, 'carousel', req.params.filename);
+  serveMediaFile(req, res, req.params.packageId, 'carousel', req.params.filename);
 });
 
 app.get('/api/media/:packageId/:filename', (req, res) => {
-  serveMediaFile(res, req.params.packageId, null, req.params.filename);
+  serveMediaFile(req, res, req.params.packageId, null, req.params.filename);
+});
+
+// Anexar vídeo pronto (.mp4, .mov, .webm) ao pacote de publicação
+app.post('/api/packages/:packageId/video', requireAuth, express.raw({ type: ['video/*', 'application/octet-stream'], limit: '250mb' }), async (req, res) => {
+  try {
+    const safePackageId = sanitizeIdentifier(req.params.packageId);
+    const outputBase = path.join(__dirname, 'output');
+    const packageDir = safePathResolve(outputBase, safePackageId);
+    const imagesDir = path.join(packageDir, 'images');
+
+    if (!fs.existsSync(packageDir)) {
+      return res.status(404).json({ error: 'Pacote não encontrado.' });
+    }
+
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+    }
+
+    if (!req.body || !Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ error: 'Nenhum dado de vídeo foi enviado no corpo da requisição.' });
+    }
+
+    const originalName = req.query.filename ? path.basename(req.query.filename) : 'video_post.mp4';
+    const ext = path.extname(originalName).toLowerCase() || '.mp4';
+    if (!['.mp4', '.mov', '.webm'].includes(ext)) {
+      return res.status(400).json({ error: 'Formato inválido. Envie um vídeo .mp4, .mov ou .webm.' });
+    }
+
+    const videoFilename = `video_post${ext}`;
+    const videoPath = path.join(imagesDir, videoFilename);
+    fs.writeFileSync(videoPath, req.body);
+
+    // Registra o vídeo anexado no payload.json do pacote
+    const payloadPath = path.join(packageDir, 'payload.json');
+    if (fs.existsSync(payloadPath)) {
+      try {
+        const payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
+        payload.video = {
+          filename: videoFilename,
+          originalName,
+          size: req.body.length,
+          uploadedAt: new Date().toISOString(),
+          url: `/api/media/${safePackageId}/${videoFilename}`
+        };
+        fs.writeFileSync(payloadPath, JSON.stringify(payload, null, 2), 'utf8');
+      } catch {}
+    }
+
+    const baseUrl = process.env.BASE_URL || 'https://social360.anauedesign.com.br';
+    console.log(`🎬 [VÍDEO] Novo vídeo anexado ao pacote ${safePackageId}: ${videoFilename} (${(req.body.length / (1024 * 1024)).toFixed(2)} MB)`);
+
+    res.json({
+      success: true,
+      message: 'Vídeo anexado com sucesso ao pacote!',
+      video: {
+        filename: videoFilename,
+        size: req.body.length,
+        url: `/api/media/${safePackageId}/${videoFilename}`,
+        publicUrl: `${baseUrl}/api/media/${safePackageId}/${videoFilename}`
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: `Erro ao processar upload de vídeo: ${err.message}` });
+  }
+});
+
+// Remover vídeo anexado do pacote
+app.delete('/api/packages/:packageId/video', requireAuth, (req, res) => {
+  try {
+    const safePackageId = sanitizeIdentifier(req.params.packageId);
+    const outputBase = path.join(__dirname, 'output');
+    const packageDir = safePathResolve(outputBase, safePackageId);
+    const imagesDir = path.join(packageDir, 'images');
+
+    const videoFiles = ['video_post.mp4', 'video_post.mov', 'video_post.webm'];
+    for (const vf of videoFiles) {
+      const p = path.join(imagesDir, vf);
+      if (fs.existsSync(p)) {
+        try { fs.unlinkSync(p); } catch {}
+      }
+    }
+
+    const payloadPath = path.join(packageDir, 'payload.json');
+    if (fs.existsSync(payloadPath)) {
+      try {
+        const payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
+        delete payload.video;
+        fs.writeFileSync(payloadPath, JSON.stringify(payload, null, 2), 'utf8');
+      } catch {}
+    }
+
+    console.log(`🗑 [VÍDEO] Vídeo removido do pacote ${safePackageId}.`);
+    res.json({ success: true, message: 'Vídeo removido com sucesso.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ---------------------------------------------------------------------------

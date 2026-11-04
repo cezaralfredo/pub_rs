@@ -180,6 +180,19 @@ document.addEventListener('DOMContentLoaded', () => {
     linkWebp9x16: document.getElementById('link-webp-9x16'),
     linkJpg9x16: document.getElementById('link-jpg-9x16'),
 
+    // Gestão de Vídeo (Opção A)
+    videoPlayerContainer: document.getElementById('video-player-container'),
+    videoElement: document.getElementById('video-element'),
+    videoBadgeText: document.getElementById('video-badge-text'),
+    btnDownloadVideo: document.getElementById('btn-download-video'),
+    btnChangeVideo: document.getElementById('btn-change-video'),
+    btnRemoveVideo: document.getElementById('btn-remove-video'),
+    videoUploadArea: document.getElementById('video-upload-area'),
+    videoDropzone: document.getElementById('video-dropzone'),
+    inputVideoFile: document.getElementById('input-video-file'),
+    videoUploadSpinner: document.getElementById('video-upload-spinner'),
+    videoUploadStatusText: document.getElementById('video-upload-status-text'),
+
     // Report & Payload
     reportContainer: document.getElementById('report-md-container'),
     payloadContainer: document.getElementById('payload-json-container'),
@@ -1158,6 +1171,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(nextTheme === 'light' ? 'Modo Fundo Branco ativado!' : 'Modo Fundo Escuro ativado!', 'info');
       });
     }
+
+    // Inicializa listeners de upload e exclusão de vídeo
+    setupVideoListeners();
   }
 
   // ===========================================================================
@@ -1475,6 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Mídias
     renderMediaGallery(data.packageId);
+    renderVideoSection(data.packageId, data.video || data.payload?.video);
 
     // 2.5 Carrossel em Slides e PDF
     renderCarouselView(data.packageId, data.carousel || data.payload?.carousel);
@@ -1708,6 +1725,164 @@ document.addEventListener('DOMContentLoaded', () => {
     setImg(elements.img9x16, elements.linkWebp9x16, elements.linkJpg9x16, 'instagram_stories_reels_9x16');
   }
 
+  // ---------------------------------------------------------------------------
+  // GESTÃO DE VÍDEO DO PACOTE (OPÇÃO A: REELS / LINKEDIN / X)
+  // ---------------------------------------------------------------------------
+  function renderVideoSection(packageId, videoData) {
+    if (!elements.videoBadgeText) return;
+
+    if (videoData && videoData.url) {
+      if (elements.videoPlayerContainer) elements.videoPlayerContainer.style.display = 'block';
+      if (elements.videoUploadArea) elements.videoUploadArea.style.display = 'none';
+      if (elements.videoElement) {
+        elements.videoElement.src = videoData.url;
+        elements.videoElement.load();
+      }
+      if (elements.videoBadgeText) {
+        elements.videoBadgeText.textContent = '🎬 Vídeo Ativo (Reels / Post)';
+        elements.videoBadgeText.style.background = 'rgba(16, 185, 129, 0.2)';
+        elements.videoBadgeText.style.color = '#34d399';
+        elements.videoBadgeText.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      }
+      if (elements.btnDownloadVideo) {
+        elements.btnDownloadVideo.href = videoData.url;
+      }
+    } else {
+      if (elements.videoPlayerContainer) elements.videoPlayerContainer.style.display = 'none';
+      if (elements.videoUploadArea) elements.videoUploadArea.style.display = 'block';
+      if (elements.videoDropzone) elements.videoDropzone.style.display = 'block';
+      if (elements.videoUploadSpinner) elements.videoUploadSpinner.style.display = 'none';
+      if (elements.videoElement) {
+        elements.videoElement.pause();
+        elements.videoElement.src = '';
+      }
+      if (elements.videoBadgeText) {
+        elements.videoBadgeText.textContent = 'Sem vídeo anexado';
+        elements.videoBadgeText.style.background = '';
+        elements.videoBadgeText.style.color = '';
+        elements.videoBadgeText.style.borderColor = '';
+      }
+    }
+  }
+
+  function setupVideoListeners() {
+    if (!elements.videoDropzone || !elements.inputVideoFile) return;
+
+    const triggerFileSelect = () => elements.inputVideoFile.click();
+    elements.videoDropzone.addEventListener('click', triggerFileSelect);
+    if (elements.btnChangeVideo) {
+      elements.btnChangeVideo.addEventListener('click', triggerFileSelect);
+    }
+
+    elements.videoDropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      elements.videoDropzone.style.borderColor = '#38bdf8';
+      elements.videoDropzone.style.background = 'rgba(56, 189, 248, 0.1)';
+    });
+
+    elements.videoDropzone.addEventListener('dragleave', () => {
+      elements.videoDropzone.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+      elements.videoDropzone.style.background = 'rgba(56, 189, 248, 0.04)';
+    });
+
+    elements.videoDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      elements.videoDropzone.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+      elements.videoDropzone.style.background = 'rgba(56, 189, 248, 0.04)';
+      if (e.dataTransfer?.files?.length > 0) {
+        handleVideoUpload(e.dataTransfer.files[0]);
+      }
+    });
+
+    elements.inputVideoFile.addEventListener('change', (e) => {
+      if (e.target.files?.length > 0) {
+        handleVideoUpload(e.target.files[0]);
+        e.target.value = '';
+      }
+    });
+
+    if (elements.btnRemoveVideo) {
+      elements.btnRemoveVideo.addEventListener('click', async () => {
+        const packageId = state.currentPackage?.packageId;
+        if (!packageId) return;
+
+        if (!confirm('Deseja realmente remover o vídeo anexado deste pacote?')) return;
+
+        try {
+          const res = await fetch(`/api/packages/${packageId}/video`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${state.token}`
+            }
+          });
+          const data = await res.json();
+          if (res.ok) {
+            delete state.currentPackage.video;
+            renderVideoSection(packageId, null);
+            showToast('Vídeo removido do pacote com sucesso.', 'info');
+          } else {
+            showToast(`Falha ao remover vídeo: ${data.error}`, 'error');
+          }
+        } catch (err) {
+          showToast(`Erro na requisição: ${err.message}`, 'error');
+        }
+      });
+    }
+  }
+
+  async function handleVideoUpload(file) {
+    const packageId = state.currentPackage?.packageId;
+    if (!packageId) {
+      showToast('Nenhum pacote selecionado para anexar o vídeo.', 'error');
+      return;
+    }
+
+    if (!file) return;
+
+    const validExts = ['.mp4', '.mov', '.webm'];
+    const fileName = file.name.toLowerCase();
+    const hasValidExt = validExts.some(ext => fileName.endsWith(ext));
+    if (!hasValidExt) {
+      showToast('Formato inválido. Por favor, envie um arquivo .mp4, .mov ou .webm.', 'error');
+      return;
+    }
+
+    if (file.size > 250 * 1024 * 1024) {
+      showToast('O arquivo excede o limite máximo permitido de 250 MB.', 'error');
+      return;
+    }
+
+    try {
+      if (elements.videoDropzone) elements.videoDropzone.style.display = 'none';
+      if (elements.videoUploadSpinner) elements.videoUploadSpinner.style.display = 'block';
+      if (elements.videoUploadStatusText) {
+        elements.videoUploadStatusText.textContent = `Enviando "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`;
+      }
+
+      const res = await fetch(`/api/packages/${packageId}/video?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+          'Content-Type': file.type || 'video/mp4'
+        },
+        body: file
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha no upload do vídeo.');
+      }
+
+      state.currentPackage.video = data.video;
+      renderVideoSection(packageId, data.video);
+      showToast('🎬 Vídeo anexado com sucesso ao pacote!', 'success');
+    } catch (err) {
+      showToast(`Erro no upload: ${err.message}`, 'error');
+      if (elements.videoDropzone) elements.videoDropzone.style.display = 'block';
+      if (elements.videoUploadSpinner) elements.videoUploadSpinner.style.display = 'none';
+    }
+  }
+
   // ===========================================================================
   // 5. MODAL DE PUBLICAÇÃO (IMEDIATO OU AGENDADO EM BACKGROUND)
   // ===========================================================================
@@ -1719,6 +1894,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const tzOffset = defaultDate.getTimezoneOffset() * 60000;
     const localISOTime = (new Date(defaultDate.getTime() - tzOffset)).toISOString().slice(0, 16);
     elements.publishScheduleTime.value = localISOTime;
+
+    const noticeEl = document.getElementById('publish-media-notice');
+    if (noticeEl) {
+      if (state.currentPackage?.video) {
+        noticeEl.innerHTML = '🎬 <strong>Modo Vídeo Ativo:</strong> As redes compatíveis (Instagram Reels, LinkedIn e X) receberão o vídeo anexado nativamente.';
+        noticeEl.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+        noticeEl.style.background = 'rgba(16, 185, 129, 0.12)';
+        noticeEl.style.color = '#34d399';
+      } else {
+        noticeEl.innerHTML = '🖼️ <strong>Modo Imagem Ativo:</strong> As redes receberão as imagens geradas com o título sobreposto.';
+        noticeEl.style.borderColor = 'rgba(56, 189, 248, 0.25)';
+        noticeEl.style.background = 'rgba(56, 189, 248, 0.1)';
+        noticeEl.style.color = '#38bdf8';
+      }
+    }
 
     // Reseta modo para 'now'
     const radioNow = document.querySelector('input[name="publish-mode"][value="now"]');

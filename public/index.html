@@ -582,6 +582,47 @@
 
       <!-- TAB 2: ESTÚDIO DE MÍDIAS -->
       <div id="tab-images" class="tab-panel">
+        
+        <!-- CARD DE VÍDEO (OPÇÃO A: UPLOAD DE VÍDEO PRONTO PARA REELS, LINKEDIN E X) -->
+        <div class="video-manager-card glass-panel" id="video-manager-card" style="margin-bottom: 24px; padding: 22px; border-radius: 16px; border: 1px solid rgba(56, 189, 248, 0.25); background: rgba(15, 23, 42, 0.65);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 26px;">🎬</span>
+              <div>
+                <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #f8fafc;">Vídeo do Pacote (Reels, LinkedIn &amp; X)</h4>
+                <p style="margin: 4px 0 0; font-size: 13px; color: #94a3b8;">Ao anexar um vídeo, ele substitui automaticamente as imagens estáticas no envio para Instagram Reels, LinkedIn e X (Twitter).</p>
+              </div>
+            </div>
+            <div id="video-status-badge">
+              <span class="badge-ratio-gold" id="video-badge-text">Sem vídeo anexado</span>
+            </div>
+          </div>
+
+          <!-- Player do Vídeo Ativo -->
+          <div id="video-player-container" style="display: none; margin-bottom: 16px; text-align: center;">
+            <video id="video-element" controls style="max-width: 100%; max-height: 400px; border-radius: 12px; background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.6);"></video>
+            <div style="margin-top: 14px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+              <a id="btn-download-video" href="#" download class="btn-media-dl" style="padding: 9px 18px; border-radius: 8px; background: rgba(56,189,248,0.18); color: #38bdf8; text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">⬇ Baixar Vídeo MP4</a>
+              <button id="btn-change-video" type="button" class="btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">🔄 Substituir Vídeo</button>
+              <button id="btn-remove-video" type="button" class="btn-danger-sm" style="padding: 9px 18px; border-radius: 8px; background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); cursor: pointer; font-size: 13px; font-weight: 600;">🗑 Remover Vídeo</button>
+            </div>
+          </div>
+
+          <!-- Área de Upload de Vídeo -->
+          <div id="video-upload-area">
+            <input type="file" id="input-video-file" accept="video/mp4,video/quicktime,video/webm" style="display: none;">
+            <div id="video-dropzone" style="border: 2px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 26px 16px; text-align: center; cursor: pointer; transition: all 0.2s ease; background: rgba(56, 189, 248, 0.04);">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" style="margin-bottom: 10px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              <div style="font-size: 14px; font-weight: 600; color: #f8fafc; margin-bottom: 6px;">Clique aqui para selecionar ou arraste um vídeo pronto (.mp4, .mov, .webm)</div>
+              <div style="font-size: 12px; color: #94a3b8;">Formatos recomendados: 9:16 (Vertical Reels/Shorts) ou 16:9 (Horizontal). Suporte até 250 MB.</div>
+            </div>
+            <div id="video-upload-spinner" style="display: none; text-align: center; padding: 20px;">
+              <div class="spinner" style="margin: 0 auto 12px; width: 32px; height: 32px; border-width: 3px;"></div>
+              <span id="video-upload-status-text" style="font-size: 13px; color: #38bdf8; font-weight: 600;">Enviando vídeo para o servidor...</span>
+            </div>
+          </div>
+        </div>
+
         <div class="media-grid">
           
           <!-- Card 16:9 -->
@@ -1467,6 +1508,9 @@
       </div>
       <div class="modal-body">
         <p class="publish-dialog-desc">Escolha os canais e o modo de envio para o pacote <strong id="publish-dialog-pkg-id">...</strong>:</p>
+
+        <!-- Indicador de Vídeo / Imagem -->
+        <div id="publish-media-notice" style="margin-bottom: 14px; font-size: 13px; padding: 10px 14px; border-radius: 8px; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: #38bdf8;"></div>
 
         <!-- Seleção de Canais -->
         <div class="publish-channels-select">

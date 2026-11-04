@@ -111,7 +111,7 @@ async function getBufferChannel(channelId, token) {
  */
 async function publishToBuffer(config, copies, packageId, options = {}) {
   const { accessToken, profileIds, now = true } = config;
-  const { images = [], article = {}, outputDir } = options;
+  const { images = [], article = {}, outputDir, video = null } = options;
   const token = (accessToken || '').trim();
 
   let idList = Array.isArray(profileIds)
@@ -133,10 +133,15 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
     return { status: 'skipped', message: 'Nenhum canal ativo foi informado ou encontrado no Buffer.' };
   }
 
-  // Tenta localizar imagens do pacote para canais visuais (Instagram, LinkedIn, Twitter)
+  // Tenta localizar imagens e vídeos do pacote para canais visuais (Instagram, LinkedIn, Twitter)
   const baseUrl = process.env.BASE_URL || 'https://social360.anauedesign.com.br';
   let instagramImageUrl = null;
   let genericImageUrl = null;
+  let packageVideoUrl = null;
+
+  if (video && video.url) {
+    packageVideoUrl = video.url.startsWith('http') ? video.url : `${baseUrl}${video.url}`;
+  }
 
   if (packageId) {
     const imagesDir = outputDir && fs.existsSync(path.join(outputDir, 'images'))
@@ -144,6 +149,17 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
       : (outputDir && fs.existsSync(outputDir) ? outputDir : null);
 
     if (imagesDir && fs.existsSync(imagesDir)) {
+      // Localiza vídeos anexados
+      if (!packageVideoUrl) {
+        const videoFiles = ['video_post.mp4', 'video_post.mov', 'video_post.webm'];
+        for (const vf of videoFiles) {
+          if (fs.existsSync(path.join(imagesDir, vf))) {
+            packageVideoUrl = `${baseUrl}/api/media/${packageId}/${vf}`;
+            break;
+          }
+        }
+      }
+
       if (fs.existsSync(path.join(imagesDir, 'instagram_feed_portrait_4x5.jpg'))) {
         instagramImageUrl = `${baseUrl}/api/media/${packageId}/instagram_feed_portrait_4x5.jpg`;
       } else if (fs.existsSync(path.join(imagesDir, 'instagram_threads_square_1x1.jpg'))) {
@@ -162,6 +178,10 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
       genericImageUrl = imgObj.url || imgObj.src;
       instagramImageUrl = imgObj.url || imgObj.src;
     }
+  }
+
+  if (packageVideoUrl) {
+    console.log(`🎬 [Buffer] Pacote possui vídeo anexado: ${packageVideoUrl}`);
   }
 
   const results = [];
@@ -203,17 +223,18 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
     const service = (channelInfo.service || '').toLowerCase();
     const channelName = channelInfo.name || profileId;
 
-    // 2. Proteção Especial para Instagram: Instagram NÃO aceita publicações de texto puro
+    // 2. Proteção Especial para Instagram: Instagram NÃO aceita publicações de texto puro (exige imagem ou vídeo)
     const postImage = (service === 'instagram') ? (instagramImageUrl || genericImageUrl) : genericImageUrl;
-    if (service === 'instagram' && !postImage) {
-      console.warn(`[Buffer] Canal Instagram ${channelName} ignorado: pacote sem imagem anexada.`);
+    const hasMedia = Boolean(packageVideoUrl || postImage);
+    if (service === 'instagram' && !hasMedia) {
+      console.warn(`[Buffer] Canal Instagram ${channelName} ignorado: pacote sem imagem ou vídeo anexado.`);
       results.push({
         profileId,
         channelName,
         service,
         status: 'skipped',
         api: 'graphql',
-        error: 'O Instagram exige imagem ou vídeo obrigatório. Como este pacote não possui imagem anexada, a publicação no Instagram foi ignorada.'
+        error: 'O Instagram exige imagem ou vídeo obrigatório. Como este pacote não possui mídia anexada, a publicação no Instagram foi ignorada.'
       });
       continue;
     }
@@ -258,8 +279,16 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
       needsApproval: false
     };
 
-    // Anexa imagem se houver
-    if (postImage) {
+    // Anexa vídeo ou imagem se houver
+    if (packageVideoUrl) {
+      input.assets = [
+        {
+          video: {
+            url: packageVideoUrl
+          }
+        }
+      ];
+    } else if (postImage) {
       input.assets = [
         {
           image: {
@@ -274,11 +303,11 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
       input.metadata = { google: { type: 'whats_new' } };
     }
 
-    // Instagram exige metadata com type e shouldShareToFeed
+    // Instagram exige metadata com type (reel para vídeo ou post para imagem) e shouldShareToFeed
     if (service === 'instagram') {
       input.metadata = {
         instagram: {
-          type: 'post',
+          type: packageVideoUrl ? 'reel' : 'post',
           shouldShareToFeed: true
         }
       };
@@ -916,7 +945,7 @@ async function testChannelConnection(channelName, channelConfig) {
 /**
  * Orquestrador central de publicação para todos os canais ativados no cliente.
  */
-async function dispatchToClientChannels({ client, copies, images, article, packageId, outputDir, targetChannels }) {
+async function dispatchToClientChannels({ client, copies, images, article, packageId, outputDir, targetChannels, video = null }) {
   const channels = client.channels || {};
   const isChannelAllowed = (ch) => !targetChannels || targetChannels.length === 0 || targetChannels.includes(ch);
 
@@ -936,14 +965,15 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
       article,
       copies,
       images,
-      packageId
+      packageId,
+      video
     });
   }
 
   // 2. Buffer API
   if (isChannelAllowed('buffer') && channels.buffer?.enabled && channels.buffer?.accessToken) {
     console.log(`🚀 [DISPATCH] Agendando via Buffer API...`);
-    dispatchResults.channels.buffer = await publishToBuffer(channels.buffer, copies, packageId, { images, article, outputDir });
+    dispatchResults.channels.buffer = await publishToBuffer(channels.buffer, copies, packageId, { images, article, outputDir, video });
   }
 
   // 3. LinkedIn Direto
