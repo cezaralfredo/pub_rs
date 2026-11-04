@@ -192,6 +192,13 @@ document.addEventListener('DOMContentLoaded', () => {
     inputVideoFile: document.getElementById('input-video-file'),
     videoUploadSpinner: document.getElementById('video-upload-spinner'),
     videoUploadStatusText: document.getElementById('video-upload-status-text'),
+    btnTabVideoUpload: document.getElementById('btn-tab-video-upload'),
+    btnTabVideoAi: document.getElementById('btn-tab-video-ai'),
+    videoAiArea: document.getElementById('video-ai-area'),
+    selectAiVoice: document.getElementById('select-ai-voice'),
+    btnTriggerAiVideo: document.getElementById('btn-trigger-ai-video'),
+    videoAiSpinner: document.getElementById('video-ai-spinner'),
+    videoAiStatusStep: document.getElementById('video-ai-status-step'),
 
     // Report & Payload
     reportContainer: document.getElementById('report-md-container'),
@@ -1801,6 +1808,28 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // Alternância entre Upload Manual e Gerador IA (Opção C)
+    if (elements.btnTabVideoUpload && elements.btnTabVideoAi) {
+      elements.btnTabVideoUpload.addEventListener('click', () => {
+        elements.btnTabVideoUpload.classList.add('active');
+        elements.btnTabVideoAi.classList.remove('active');
+        if (elements.videoUploadArea) elements.videoUploadArea.style.display = 'block';
+        if (elements.videoAiArea) elements.videoAiArea.style.display = 'none';
+      });
+
+      elements.btnTabVideoAi.addEventListener('click', () => {
+        elements.btnTabVideoAi.classList.add('active');
+        elements.btnTabVideoUpload.classList.remove('active');
+        if (elements.videoUploadArea) elements.videoUploadArea.style.display = 'none';
+        if (elements.videoAiArea) elements.videoAiArea.style.display = 'block';
+      });
+    }
+
+    // Botão de Disparo do Gerador de Vídeo IA (Opção C)
+    if (elements.btnTriggerAiVideo) {
+      elements.btnTriggerAiVideo.addEventListener('click', handleAiVideoGeneration);
+    }
+
     if (elements.btnRemoveVideo) {
       elements.btnRemoveVideo.addEventListener('click', async () => {
         const packageId = state.currentPackage?.packageId;
@@ -1880,6 +1909,62 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(`Erro no upload: ${err.message}`, 'error');
       if (elements.videoDropzone) elements.videoDropzone.style.display = 'block';
       if (elements.videoUploadSpinner) elements.videoUploadSpinner.style.display = 'none';
+    }
+  }
+
+  async function handleAiVideoGeneration() {
+    const packageId = state.currentPackage?.packageId;
+    if (!packageId) {
+      showToast('Nenhum pacote selecionado para gerar o vídeo.', 'error');
+      return;
+    }
+
+    const voice = elements.selectAiVoice ? elements.selectAiVoice.value : 'pt-BR';
+
+    try {
+      if (elements.btnTriggerAiVideo) elements.btnTriggerAiVideo.disabled = true;
+      if (elements.videoAiSpinner) elements.videoAiSpinner.style.display = 'block';
+
+      // Animação textual de progresso
+      const steps = [
+        '📝 Roteirizando pontos em 5 cenas dinâmicas...',
+        '🎙️ Sintetizando locução neural em português...',
+        '🎨 Renderizando frames verticais (9:16) com legendas...',
+        '🎞️ Montando clipe final MP4 com sincronia labial e áudio...'
+      ];
+      let stepIdx = 0;
+      const progressTimer = setInterval(() => {
+        stepIdx = (stepIdx + 1) % steps.length;
+        if (elements.videoAiStatusStep) {
+          elements.videoAiStatusStep.textContent = steps[stepIdx];
+        }
+      }, 5000);
+
+      const res = await fetch(`/api/packages/${packageId}/generate-video`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ voice })
+      });
+
+      clearInterval(progressTimer);
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Falha ao gerar vídeo com IA.');
+      }
+
+      state.currentPackage.video = data.video;
+      renderVideoSection(packageId, data.video);
+      showToast('✨ Vídeo com locução IA e legendas gerado com sucesso!', 'success');
+
+    } catch (err) {
+      showToast(`Erro na geração de vídeo IA: ${err.message}`, 'error');
+    } finally {
+      if (elements.btnTriggerAiVideo) elements.btnTriggerAiVideo.disabled = false;
+      if (elements.videoAiSpinner) elements.videoAiSpinner.style.display = 'none';
     }
   }
 

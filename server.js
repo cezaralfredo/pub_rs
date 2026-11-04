@@ -1172,6 +1172,44 @@ app.delete('/api/packages/:packageId/video', requireAuth, (req, res) => {
   }
 });
 
+// Gerar vídeo com locução IA e legendas dinâmicas para o pacote (Opção C)
+app.post('/api/packages/:packageId/generate-video', requireAuth, rateLimiter, async (req, res) => {
+  try {
+    const safePackageId = sanitizeIdentifier(req.params.packageId);
+    const outputBase = path.join(__dirname, 'output');
+    const packageDir = safePathResolve(outputBase, safePackageId);
+
+    if (!fs.existsSync(packageDir)) {
+      return res.status(404).json({ error: 'Pacote não encontrado.' });
+    }
+
+    const { voice, speed } = req.body || {};
+    const { generateAiVideoForPackage } = require('./src/videoGen');
+
+    const payloadPath = path.join(packageDir, 'payload.json');
+    let clientConfig = {};
+    if (fs.existsSync(payloadPath)) {
+      try {
+        const payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
+        const clientId = payload.client || 'anaue-design';
+        clientConfig = loadClientConfig(clientId);
+      } catch {}
+    }
+
+    console.log(`\n🎬 [VIDEOGEN IA] Solicitando geração de vídeo para pacote ${safePackageId}...`);
+    const result = await generateAiVideoForPackage(packageDir, safePackageId, {
+      voice,
+      speed,
+      client: clientConfig
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error(`[VIDEOGEN ERRO] Falha ao gerar vídeo IA para ${req.params.packageId}:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // 4. EXECUÇÃO DO PIPELINE & IDEAÇÃO DE PAUTAS
 // ---------------------------------------------------------------------------

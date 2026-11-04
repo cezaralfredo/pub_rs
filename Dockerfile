@@ -1,8 +1,8 @@
 FROM node:20-slim
 
-# Instalar dependências necessárias para sharp e utilitários
+# Instalar dependências necessárias para sharp, ffmpeg e utilitários
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    curl ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
