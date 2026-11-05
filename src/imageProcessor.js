@@ -53,17 +53,17 @@ async function generateFallbackCard(width, height, title, brandName, brandHandle
   const cleanBrand = escapeXml(brandName || 'Anauê Design').toUpperCase();
   const cleanFooter = escapeXml(footerText || client.footerText || 'Design - Marketing - IA  |  anauedesign.com.br');
 
-  let maxChars = 32;
-  let fontSize = 44;
-  let lineHeight = 54;
+  let maxChars = 28;
+  let fontSize = 53;
+  let lineHeight = 65;
   if (cleanTitle.length > 110) {
-    maxChars = 44;
-    fontSize = 28;
-    lineHeight = 36;
-  } else if (cleanTitle.length > 70) {
     maxChars = 38;
     fontSize = 34;
-    lineHeight = 44;
+    lineHeight = 43;
+  } else if (cleanTitle.length > 70) {
+    maxChars = 32;
+    fontSize = 41;
+    lineHeight = 53;
   }
 
   const lines = wrapFullText(cleanTitle, maxChars);
@@ -130,19 +130,19 @@ function createTitleOverlaySvg({ width, height, title, brandName, brandHandle, c
   const colorAccent = colors[2] || colors[0] || '#00D2FF';
 
   if (format === 'linkedin_twitter_facebook_16x9') {
-    // 1200 x 675 (Horizontal - LinkedIn, X/Twitter, Facebook)
-    let maxChars = 34;
-    let fontSize = 42;
-    let lineHeight = 50;
+    // 1200 x 675 (Horizontal - LinkedIn, X/Twitter, Facebook) - Fonte ampliada em +20%
+    let maxChars = 28;
+    let fontSize = 50;
+    let lineHeight = 60;
 
     if (cleanTitle.length > 110) {
-      maxChars = 44;
-      fontSize = 26;
-      lineHeight = 34;
-    } else if (cleanTitle.length > 70) {
       maxChars = 38;
-      fontSize = 32;
-      lineHeight = 40;
+      fontSize = 31;
+      lineHeight = 41;
+    } else if (cleanTitle.length > 70) {
+      maxChars = 32;
+      fontSize = 38;
+      lineHeight = 48;
     }
 
     const lines = wrapFullText(cleanTitle, maxChars);
@@ -191,19 +191,19 @@ function createTitleOverlaySvg({ width, height, title, brandName, brandHandle, c
   }
 
   if (format === 'instagram_threads_square_1x1') {
-    // 1080 x 1080 (Quadrado - Instagram, Threads)
-    let maxChars = 28;
-    let fontSize = 42;
-    let lineHeight = 52;
+    // 1080 x 1080 (Quadrado - Instagram, Threads) - Fonte ampliada em +30%
+    let maxChars = 22;
+    let fontSize = 55;
+    let lineHeight = 68;
 
     if (cleanTitle.length > 110) {
-      maxChars = 38;
-      fontSize = 28;
-      lineHeight = 36;
+      maxChars = 30;
+      fontSize = 36;
+      lineHeight = 47;
     } else if (cleanTitle.length > 70) {
-      maxChars = 32;
-      fontSize = 34;
-      lineHeight = 44;
+      maxChars = 25;
+      fontSize = 44;
+      lineHeight = 57;
     }
 
     const lines = wrapFullText(cleanTitle, maxChars);
@@ -251,33 +251,33 @@ function createTitleOverlaySvg({ width, height, title, brandName, brandHandle, c
     `);
   }
 
-  // Formatos Verticais: 4:5 Retrato (Padrão Instagram) e 9:16 Vertical
+  // Formatos Verticais: 4:5 Retrato (Padrão Instagram) e 9:16 Vertical - Fonte ampliada em +30%
   const is4x5 = format === 'instagram_feed_portrait_4x5';
-  let maxChars = is4x5 ? 26 : 24;
-  let fontSize = 36;
-  let lineHeight = 46;
+  let maxChars = is4x5 ? 22 : 20;
+  let fontSize = 47;
+  let lineHeight = 60;
 
   if (cleanTitle.length > 120) {
-    maxChars = is4x5 ? 36 : 32;
-    fontSize = 24;
-    lineHeight = 32;
-  } else if (cleanTitle.length > 80) {
-    maxChars = is4x5 ? 32 : 28;
-    fontSize = 28;
-    lineHeight = 38;
-  } else if (cleanTitle.length > 50) {
-    maxChars = is4x5 ? 28 : 26;
-    fontSize = 32;
+    maxChars = is4x5 ? 30 : 28;
+    fontSize = 31;
     lineHeight = 42;
+  } else if (cleanTitle.length > 80) {
+    maxChars = is4x5 ? 26 : 24;
+    fontSize = 36;
+    lineHeight = 49;
+  } else if (cleanTitle.length > 50) {
+    maxChars = is4x5 ? 24 : 22;
+    fontSize = 42;
+    lineHeight = 55;
   }
 
   const lines = wrapFullText(cleanTitle, maxChars);
-  const cardPaddingY = 30;
-  const cardHeight = lines.length * lineHeight + (cardPaddingY * 2) + 16;
+  const cardPaddingY = 32;
+  const cardHeight = lines.length * lineHeight + (cardPaddingY * 2) + 20;
   const footerHeight = is4x5 ? 75 : 95;
   const cardY = is4x5
-    ? Math.max(height - cardHeight - footerHeight - 25, 870)
-    : Math.max(height - cardHeight - footerHeight - 50, 1220);
+    ? Math.max(height - cardHeight - footerHeight - 25, 840)
+    : Math.max(height - cardHeight - footerHeight - 50, 1180);
 
   const tspans = lines.map((l, i) =>
     `<tspan x="${width / 2}" dy="${i === 0 ? 0 : lineHeight}">${escapeXml(l)}</tspan>`
@@ -547,4 +547,4 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
   }
 }
 
-module.exports = { processSocialImages };
+module.exports = { processSocialImages, createTitleOverlaySvg };
