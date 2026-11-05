@@ -46,70 +46,132 @@ function wrapText(text, maxCharsPerLine = 34, maxLines = 4) {
 }
 
 /**
+ * Decompõe o título em 2 camadas tipográficas editoriais:
+ * 1. Kicker / Gancho Inicial (Serif em itálico - tom autoral e humano)
+ * 2. Manchete Principal (Sans-Serif em negrito 800 - força visual e clareza)
+ */
+function parseDualFontTitle(rawTitle, maxCharsHeadline = 24, maxCharsKicker = 28) {
+  const clean = (rawTitle || 'Artigo em Destaque').trim();
+
+  // Padrão 1: Título com separador oficial (ex: "GEO: O Guia Definitivo..." ou "Vendas - Estratégia...")
+  // Não quebra em hífens internos de palavras (como First-Party)
+  const separatorMatch = clean.match(/^([^:—]+?)(?:\s*:\s*|\s+[—\-]\s+)(.+)$/);
+  if (separatorMatch) {
+    const kickerRaw = separatorMatch[1].trim();
+    const mainRaw = separatorMatch[2].trim();
+
+    if (kickerRaw.length <= 55) {
+      return {
+        hasKicker: true,
+        kickerLines: wrapFullText(kickerRaw, maxCharsKicker),
+        headlineLines: wrapFullText(mainRaw, maxCharsHeadline)
+      };
+    }
+  }
+
+  // Padrão 2: Sem separador - a primeira linha atua como gancho editorial expressivo em Serif
+  const allLines = wrapFullText(clean, maxCharsHeadline);
+  if (allLines.length <= 1) {
+    return {
+      hasKicker: false,
+      kickerLines: [],
+      headlineLines: allLines
+    };
+  }
+
+  return {
+    hasKicker: true,
+    kickerLines: [allLines[0]],
+    headlineLines: allLines.slice(1)
+  };
+}
+
+/**
  * Cria um card gráfico moderno de backup quando o artigo não tem imagem original.
  */
 async function generateFallbackCard(width, height, title, brandName, brandHandle, client = {}, footerText) {
-  const cleanTitle = (title || 'Artigo em Destaque').trim();
   const cleanBrand = escapeXml(brandName || 'Anauê Design').toUpperCase();
-  const cleanFooter = escapeXml(footerText || client.footerText || 'Design - Marketing - IA  |  anauedesign.com.br');
+  const cleanFooter = escapeXml(footerText || client.footerText || 'Design  •  Marketing  •  IA   |   anauedesign.com.br');
+  const colors = client.visualIdentity?.preferredColors || ['#0052FF', '#0A0E17', '#00D2FF'];
+  const color1 = colors[0] || '#0052FF';
+  const colorAccent = colors[2] || colors[0] || '#00D2FF';
 
-  let maxChars = 28;
-  let fontSize = 53;
-  let lineHeight = 65;
-  if (cleanTitle.length > 110) {
-    maxChars = 38;
-    fontSize = 34;
-    lineHeight = 43;
-  } else if (cleanTitle.length > 70) {
-    maxChars = 32;
-    fontSize = 41;
-    lineHeight = 53;
+  const parsed = parseDualFontTitle(title, 28, 32);
+  const kickerFontSize = 32;
+  const kickerLineHeight = 40;
+  let headlineFontSize = 48;
+  let headlineLineHeight = 58;
+
+  if ((title || '').length > 110) {
+    headlineFontSize = 36;
+    headlineLineHeight = 46;
+  } else if ((title || '').length > 70) {
+    headlineFontSize = 42;
+    headlineLineHeight = 52;
   }
 
-  const lines = wrapFullText(cleanTitle, maxChars);
-  const colors = client.visualIdentity?.preferredColors || ['#38bdf8', '#818cf8'];
-  const color1 = colors[0] || '#38bdf8';
-  const color2 = colors[1] || colors[0] || '#818cf8';
+  const kickerBlockHeight = parsed.hasKicker ? (parsed.kickerLines.length * kickerLineHeight) : 0;
+  const headlineBlockHeight = parsed.headlineLines.length * headlineLineHeight;
+  const gap = parsed.hasKicker ? 16 : 0;
+  const totalTextHeight = kickerBlockHeight + gap + headlineBlockHeight;
 
-  const tspans = lines.map((line, idx) => 
-    `<tspan x="100" dy="${idx === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`
+  const startX = 90;
+  const textStartY = Math.round((height - totalTextHeight) / 2) + 20;
+
+  const kickerTspans = parsed.kickerLines.map((l, i) =>
+    `<tspan x="${startX}" dy="${i === 0 ? 0 : kickerLineHeight}">${escapeXml(l)}</tspan>`
+  ).join('\n');
+
+  const headlineStartY = parsed.hasKicker ? (textStartY + kickerBlockHeight + gap) : textStartY;
+  const headlineTspans = parsed.headlineLines.map((l, i) =>
+    `<tspan x="${startX}" dy="${i === 0 ? 0 : headlineLineHeight}">${escapeXml(l)}</tspan>`
   ).join('\n');
 
   const svg = `
   <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#0a0f1d" />
-        <stop offset="50%" stop-color="#0f172a" />
-        <stop offset="100%" stop-color="#1e1b4b" />
-      </linearGradient>
-      <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="${color1}" />
-        <stop offset="100%" stop-color="${color2}" />
+      <linearGradient id="fallbackBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#050811" />
+        <stop offset="45%" stop-color="#090f1f" />
+        <stop offset="100%" stop-color="#0d1830" />
       </linearGradient>
     </defs>
 
     <!-- Fundo Escuro Gradiente -->
-    <rect width="100%" height="100%" fill="url(#bgGrad)" />
+    <rect width="100%" height="100%" fill="url(#fallbackBgGrad)" />
 
-    <!-- Grade / Glow Sutil -->
-    <circle cx="${width - 150}" cy="150" r="320" fill="#38bdf8" opacity="0.08" filter="blur(80px)" />
-    <circle cx="150" cy="${height - 150}" r="280" fill="#818cf8" opacity="0.08" filter="blur(70px)" />
+    <!-- Luminous Ambient Glows -->
+    <circle cx="${width - 120}" cy="120" r="340" fill="${colorAccent}" opacity="0.12" filter="blur(90px)" />
+    <circle cx="120" cy="${height - 120}" r="300" fill="${color1}" opacity="0.15" filter="blur(90px)" />
 
-    <!-- Badge da Marca -->
-    <rect x="100" y="80" width="${cleanBrand.length * 14 + 60}" height="42" rx="21" fill="#ffffff" fill-opacity="0.08" stroke="#38bdf8" stroke-width="1.5" />
-    <text x="130" y="107" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" fill="#38bdf8" letter-spacing="2">
-      ${cleanBrand}
-    </text>
+    <!-- Minimalist Brand Capsule -->
+    <g transform="translate(${startX}, 60)">
+      <rect x="0" y="0" width="${cleanBrand.length * 10 + 36}" height="32" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="${colorAccent}" stroke-width="1.2" stroke-opacity="0.8" />
+      <text x="18" y="21" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="${colorAccent}" letter-spacing="1.8">
+        ${cleanBrand}
+      </text>
+    </g>
 
-    <!-- Título do Artigo Completo -->
-    <text x="100" y="210" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}" font-weight="800" fill="#f8fafc" letter-spacing="-0.5">
-      ${tspans}
-    </text>
+    <!-- Kicker (Font 1: Editorial Serif Italic) -->
+    ${parsed.hasKicker ? `
+    <g filter="drop-shadow(0 2px 6px rgba(0,0,0,0.85))">
+      <line x1="${startX}" y1="${textStartY - 8}" x2="${startX + 45}" y2="${textStartY - 8}" stroke="${colorAccent}" stroke-width="2.5" stroke-linecap="round" />
+      <text x="${startX}" y="${textStartY + kickerFontSize}" font-family="'Playfair Display', 'Newsreader', 'Georgia', 'DejaVu Serif', serif" font-style="italic" font-size="${kickerFontSize}" font-weight="600" fill="${colorAccent}" letter-spacing="0.5">
+        ${kickerTspans}
+      </text>
+    </g>
+    ` : ''}
 
-    <!-- Rodapé: estritamente a informação solicitada pelo cliente -->
-    <line x1="100" y1="${height - 80}" x2="${width - 100}" y2="${height - 80}" stroke="#334155" stroke-width="1" />
-    <text x="${width / 2}" y="${height - 40}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="600" fill="#94a3b8" letter-spacing="1">
+    <!-- Headline (Font 2: Bold Modern Sans-Serif) -->
+    <g filter="drop-shadow(0 3px 10px rgba(0,0,0,0.92))">
+      <text x="${startX}" y="${headlineStartY + headlineFontSize}" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'DejaVu Sans', Roboto, sans-serif" font-size="${headlineFontSize}" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
+        ${headlineTspans}
+      </text>
+    </g>
+
+    <!-- Minimalist Editorial Footer -->
+    <line x1="${startX}" y1="${height - 65}" x2="${width - startX}" y2="${height - 65}" stroke="#334155" stroke-width="1" opacity="0.6" />
+    <text x="${width / 2}" y="${height - 30}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="#94a3b8" letter-spacing="1.5">
       ${cleanFooter}
     </text>
   </svg>
@@ -119,200 +181,139 @@ async function generateFallbackCard(width, height, title, brandName, brandHandle
 }
 
 /**
- * Cria overlay com o título do artigo completo, badge da marca e rodapé editorial
- * para sobrepor sobre a imagem nos 4 formatos oficiais das redes sociais.
+ * Cria overlay com o título do artigo em tipografia dual (Serif + Sans),
+ * sem retângulo/card fechado, com degradê suave e rodapé editorial limpo.
  */
 function createTitleOverlaySvg({ width, height, title, brandName, brandHandle, colors = [], format, footerText }) {
-  const cleanTitle = (title || 'Artigo em Destaque').trim();
   const cleanBrand = escapeXml(brandName || 'Anauê Design').toUpperCase();
-  const cleanFooter = escapeXml(footerText || 'Design - Marketing - IA  |  anauedesign.com.br');
-  const color1 = colors[0] || '#0052FF';
+  const cleanFooter = escapeXml(footerText || 'Design  •  Marketing  •  IA   |   anauedesign.com.br');
   const colorAccent = colors[2] || colors[0] || '#00D2FF';
 
+  let maxCharsHeadline = 22;
+  let maxCharsKicker = 26;
+  let kickerFontSize = 34;
+  let kickerLineHeight = 44;
+  let headlineFontSize = 47;
+  let headlineLineHeight = 60;
+  let startX = 80;
+  let textBottomMargin = 90;
+  let vignetteTop = height * 0.42;
+  let brandY = 50;
+
   if (format === 'linkedin_twitter_facebook_16x9') {
-    // 1200 x 675 (Horizontal - LinkedIn, X/Twitter, Facebook) - Fonte ampliada em +20%
-    let maxChars = 28;
-    let fontSize = 50;
-    let lineHeight = 60;
-
-    if (cleanTitle.length > 110) {
-      maxChars = 38;
-      fontSize = 31;
-      lineHeight = 41;
-    } else if (cleanTitle.length > 70) {
-      maxChars = 32;
-      fontSize = 38;
-      lineHeight = 48;
-    }
-
-    const lines = wrapFullText(cleanTitle, maxChars);
-    const startY = height - 70 - ((lines.length - 1) * lineHeight);
-
-    const tspans = lines.map((l, i) =>
-      `<tspan x="80" dy="${i === 0 ? 0 : lineHeight}">${escapeXml(l)}</tspan>`
-    ).join('\n');
-
-    return Buffer.from(`
-    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="overlayGrad16x9" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#050a14" stop-opacity="0" />
-          <stop offset="25%" stop-color="#050a14" stop-opacity="0.3" />
-          <stop offset="55%" stop-color="#050a14" stop-opacity="0.85" />
-          <stop offset="100%" stop-color="#050a14" stop-opacity="0.98" />
-        </linearGradient>
-      </defs>
-
-      <!-- Gradiente escuro para legibilidade máxima -->
-      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#overlayGrad16x9)" />
-
-      <!-- Badge de Marca no canto superior -->
-      <g transform="translate(80, 50)">
-        <rect x="0" y="0" width="${cleanBrand.length * 11 + 40}" height="34" rx="17" fill="#000000" fill-opacity="0.65" stroke="${colorAccent}" stroke-width="1.5" />
-        <text x="20" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="${colorAccent}" letter-spacing="1.5">
-          ${cleanBrand}
-        </text>
-      </g>
-
-      <!-- Título do Artigo Completo -->
-      <g filter="drop-shadow(0px 3px 6px rgba(0,0,0,0.85))">
-        <text x="80" y="${startY}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
-          ${tspans}
-        </text>
-      </g>
-
-      <!-- Rodapé: estritamente a informação solicitada -->
-      <line x1="80" y1="${height - 50}" x2="${width - 80}" y2="${height - 50}" stroke="#334155" stroke-width="1" opacity="0.6" />
-      <text x="${width / 2}" y="${height - 22}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="#94a3b8" letter-spacing="1">
-        ${cleanFooter}
-      </text>
-    </svg>
-    `);
+    // 1200 x 675 (Horizontal - LinkedIn, X/Twitter, Facebook)
+    maxCharsHeadline = 28;
+    maxCharsKicker = 32;
+    kickerFontSize = 30;
+    kickerLineHeight = 38;
+    headlineFontSize = 50;
+    headlineLineHeight = 60;
+    startX = 80;
+    textBottomMargin = 72;
+    vignetteTop = height * 0.25;
+    brandY = 45;
+  } else if (format === 'instagram_threads_square_1x1') {
+    // 1080 x 1080 (Quadrado - Instagram, Threads)
+    maxCharsHeadline = 22;
+    maxCharsKicker = 26;
+    kickerFontSize = 36;
+    kickerLineHeight = 46;
+    headlineFontSize = 54;
+    headlineLineHeight = 66;
+    startX = 75;
+    textBottomMargin = 85;
+    vignetteTop = height * 0.38;
+    brandY = 50;
+  } else if (format === 'instagram_stories_reels_9x16') {
+    // 1080 x 1920 (Vertical 9:16 - Stories e Reels)
+    maxCharsHeadline = 20;
+    maxCharsKicker = 24;
+    kickerFontSize = 34;
+    kickerLineHeight = 44;
+    headlineFontSize = 47;
+    headlineLineHeight = 60;
+    startX = 80;
+    textBottomMargin = 140;
+    vignetteTop = height * 0.48;
+    brandY = 135;
   }
 
-  if (format === 'instagram_threads_square_1x1') {
-    // 1080 x 1080 (Quadrado - Instagram, Threads) - Fonte ampliada em +30%
-    let maxChars = 22;
-    let fontSize = 55;
-    let lineHeight = 68;
+  const parsed = parseDualFontTitle(title, maxCharsHeadline, maxCharsKicker);
 
-    if (cleanTitle.length > 110) {
-      maxChars = 30;
-      fontSize = 36;
-      lineHeight = 47;
-    } else if (cleanTitle.length > 70) {
-      maxChars = 25;
-      fontSize = 44;
-      lineHeight = 57;
-    }
-
-    const lines = wrapFullText(cleanTitle, maxChars);
-    const startY = height - 90 - ((lines.length - 1) * lineHeight);
-
-    const tspans = lines.map((l, i) =>
-      `<tspan x="70" dy="${i === 0 ? 0 : lineHeight}">${escapeXml(l)}</tspan>`
-    ).join('\n');
-
-    return Buffer.from(`
-    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="overlayGrad1x1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#050a14" stop-opacity="0" />
-          <stop offset="30%" stop-color="#050a14" stop-opacity="0.3" />
-          <stop offset="60%" stop-color="#050a14" stop-opacity="0.88" />
-          <stop offset="100%" stop-color="#050a14" stop-opacity="0.98" />
-        </linearGradient>
-      </defs>
-
-      <!-- Gradiente escuro para legibilidade -->
-      <rect x="0" y="0" width="${width}" height="${height}" fill="url(#overlayGrad1x1)" />
-
-      <!-- Badge de Marca -->
-      <g transform="translate(70, 60)">
-        <rect x="0" y="0" width="${cleanBrand.length * 11 + 40}" height="36" rx="18" fill="#000000" fill-opacity="0.65" stroke="${colorAccent}" stroke-width="1.5" />
-        <text x="20" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="${colorAccent}" letter-spacing="1.5">
-          ${cleanBrand}
-        </text>
-      </g>
-
-      <!-- Título do Artigo Completo -->
-      <g filter="drop-shadow(0px 3px 6px rgba(0,0,0,0.85))">
-        <text x="70" y="${startY}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
-          ${tspans}
-        </text>
-      </g>
-
-      <!-- Rodapé: estritamente a informação solicitada -->
-      <line x1="70" y1="${height - 60}" x2="${width - 70}" y2="${height - 60}" stroke="#334155" stroke-width="1" opacity="0.6" />
-      <text x="${width / 2}" y="${height - 28}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="600" fill="#94a3b8" letter-spacing="1">
-        ${cleanFooter}
-      </text>
-    </svg>
-    `);
+  // Escala dinâmica suave para títulos muito longos
+  const totalChars = (title || '').length;
+  if (totalChars > 115) {
+    headlineFontSize = Math.round(headlineFontSize * 0.82);
+    headlineLineHeight = Math.round(headlineLineHeight * 0.84);
+    kickerFontSize = Math.round(kickerFontSize * 0.85);
+    kickerLineHeight = Math.round(kickerLineHeight * 0.85);
+  } else if (totalChars > 80) {
+    headlineFontSize = Math.round(headlineFontSize * 0.90);
+    headlineLineHeight = Math.round(headlineLineHeight * 0.90);
   }
 
-  // Formatos Verticais: 4:5 Retrato (Padrão Instagram) e 9:16 Vertical - Fonte ampliada em +30%
-  const is4x5 = format === 'instagram_feed_portrait_4x5';
-  let maxChars = is4x5 ? 22 : 20;
-  let fontSize = 47;
-  let lineHeight = 60;
+  const kickerBlockHeight = parsed.hasKicker ? (parsed.kickerLines.length * kickerLineHeight) : 0;
+  const headlineBlockHeight = parsed.headlineLines.length * headlineLineHeight;
+  const gap = parsed.hasKicker ? 16 : 0;
+  const totalTextHeight = kickerBlockHeight + gap + headlineBlockHeight;
 
-  if (cleanTitle.length > 120) {
-    maxChars = is4x5 ? 30 : 28;
-    fontSize = 31;
-    lineHeight = 42;
-  } else if (cleanTitle.length > 80) {
-    maxChars = is4x5 ? 26 : 24;
-    fontSize = 36;
-    lineHeight = 49;
-  } else if (cleanTitle.length > 50) {
-    maxChars = is4x5 ? 24 : 22;
-    fontSize = 42;
-    lineHeight = 55;
-  }
+  const textBottomY = height - textBottomMargin;
+  const textStartY = textBottomY - totalTextHeight;
 
-  const lines = wrapFullText(cleanTitle, maxChars);
-  const cardPaddingY = 32;
-  const cardHeight = lines.length * lineHeight + (cardPaddingY * 2) + 20;
-  const footerHeight = is4x5 ? 75 : 95;
-  const cardY = is4x5
-    ? Math.max(height - cardHeight - footerHeight - 25, 840)
-    : Math.max(height - cardHeight - footerHeight - 50, 1180);
-
-  const tspans = lines.map((l, i) =>
-    `<tspan x="${width / 2}" dy="${i === 0 ? 0 : lineHeight}">${escapeXml(l)}</tspan>`
+  const kickerTspans = parsed.kickerLines.map((l, i) =>
+    `<tspan x="${startX}" dy="${i === 0 ? 0 : kickerLineHeight}">${escapeXml(l)}</tspan>`
   ).join('\n');
+
+  const headlineStartY = parsed.hasKicker ? (textStartY + kickerBlockHeight + gap) : textStartY;
+  const headlineTspans = parsed.headlineLines.map((l, i) =>
+    `<tspan x="${startX}" dy="${i === 0 ? 0 : headlineLineHeight}">${escapeXml(l)}</tspan>`
+  ).join('\n');
+
+  const footerLineY = height - Math.round(textBottomMargin * 0.65);
+  const footerTextY = height - Math.round(textBottomMargin * 0.28);
 
   return Buffer.from(`
   <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#0a0f1d" stop-opacity="0.94" />
-        <stop offset="100%" stop-color="#050a14" stop-opacity="0.98" />
+      <linearGradient id="editorialVignette_${format}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#040711" stop-opacity="0" />
+        <stop offset="28%" stop-color="#040711" stop-opacity="0.45" />
+        <stop offset="65%" stop-color="#040711" stop-opacity="0.88" />
+        <stop offset="100%" stop-color="#040711" stop-opacity="0.98" />
       </linearGradient>
     </defs>
 
-    <!-- Barra Superior -->
-    <rect x="0" y="0" width="${width}" height="${is4x5 ? 115 : 140}" fill="#000000" fill-opacity="0.65" />
-    <text x="${width / 2}" y="${is4x5 ? 72 : 85}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${is4x5 ? 22 : 24}" font-weight="800" fill="#ffffff" letter-spacing="3">
-      ${cleanBrand}
-    </text>
+    <!-- Degradê suave na base para contraste impecável e visual fluido (sem caixas) -->
+    <rect x="0" y="${vignetteTop}" width="${width}" height="${height - vignetteTop}" fill="url(#editorialVignette_${format})" />
 
-    <!-- Card Central com o Título sobre a Imagem (Tamanho Dinâmico para Título 100% Completo) -->
-    <rect x="50" y="${cardY}" width="${width - 100}" height="${cardHeight}" rx="22" fill="url(#cardGrad)" stroke="${colorAccent}" stroke-width="1.5" stroke-opacity="0.75" />
-    <rect x="${width / 2 - 40}" y="${cardY + 16}" width="80" height="4" rx="2" fill="${colorAccent}" />
-
-    <!-- Título do Artigo Completo -->
-    <g filter="drop-shadow(0px 3px 6px rgba(0,0,0,0.85))">
-      <text x="${width / 2}" y="${cardY + 32 + fontSize}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${fontSize}" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
-        ${tspans}
+    <!-- Cápsula da Marca Minimalista e Elegante -->
+    <g transform="translate(${startX}, ${brandY})">
+      <rect x="0" y="0" width="${cleanBrand.length * 10 + 36}" height="32" rx="16" fill="#000000" fill-opacity="0.55" stroke="${colorAccent}" stroke-width="1.2" stroke-opacity="0.8" />
+      <text x="18" y="21" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="${colorAccent}" letter-spacing="1.8">
+        ${cleanBrand}
       </text>
     </g>
 
-    <!-- Barra Inferior: estritamente a informação solicitada -->
-    <rect x="0" y="${height - footerHeight}" width="${width}" height="${footerHeight}" fill="#000000" fill-opacity="0.85" />
-    <line x1="0" y1="${height - footerHeight}" x2="${width}" y2="${height - footerHeight}" stroke="#334155" stroke-width="1" opacity="0.6" />
-    <text x="${width / 2}" y="${height - Math.round(footerHeight / 2) + 6}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${is4x5 ? 17 : 19}" font-weight="600" fill="#94a3b8" letter-spacing="1">
+    <!-- Fonte 1: Kicker / Gancho Editorial em Serif Itálico (Humano e Expressivo) -->
+    ${parsed.hasKicker ? `
+    <g filter="drop-shadow(0 2px 6px rgba(0,0,0,0.85))">
+      <line x1="${startX}" y1="${textStartY - 6}" x2="${startX + 45}" y2="${textStartY - 6}" stroke="${colorAccent}" stroke-width="2.5" stroke-linecap="round" />
+      <text x="${startX}" y="${textStartY + kickerFontSize}" font-family="'Playfair Display', 'Newsreader', 'Georgia', 'DejaVu Serif', serif" font-style="italic" font-size="${kickerFontSize}" font-weight="600" fill="${colorAccent}" letter-spacing="0.5">
+        ${kickerTspans}
+      </text>
+    </g>
+    ` : ''}
+
+    <!-- Fonte 2: Manchete Principal em Sans-Serif Bold 800 (Forte e Nítido) -->
+    <g filter="drop-shadow(0 3px 10px rgba(0,0,0,0.92))">
+      <text x="${startX}" y="${headlineStartY + headlineFontSize}" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'DejaVu Sans', Roboto, sans-serif" font-size="${headlineFontSize}" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
+        ${headlineTspans}
+      </text>
+    </g>
+
+    <!-- Rodapé Editorial Minimalista -->
+    <line x1="${startX}" y1="${footerLineY}" x2="${width - startX}" y2="${footerLineY}" stroke="#334155" stroke-width="1" opacity="0.6" />
+    <text x="${width / 2}" y="${footerTextY}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="${width >= 1200 ? 14 : 15}" font-weight="600" fill="#94a3b8" letter-spacing="1.5">
       ${cleanFooter}
     </text>
   </svg>
@@ -452,7 +453,7 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
         if (targetHeight > maxHeight) targetHeight = maxHeight;
 
         // Recorta a faixa centralizada de largura fmt.width (1080)
-        const mainOverlay = await sharp(inputBuffer)
+        const croppedImage = await sharp(inputBuffer)
           .resize(targetWidth, targetHeight, { fit: 'cover', position: 'center' })
           .extract({
             left: Math.round((targetWidth - fmt.width) / 2),
@@ -462,11 +463,28 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
           })
           .toBuffer();
 
+        // Aplica ligeiro degradê transparente na base da imagem vinda do post (transição suave e humana)
+        const fadeMaskSvg = Buffer.from(`
+          <svg width="${fmt.width}" height="${targetHeight}" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="imgBaseFade_${fmt.name}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+                <stop offset="55%" stop-color="#ffffff" stop-opacity="1" />
+                <stop offset="85%" stop-color="#ffffff" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#imgBaseFade_${fmt.name})" />
+          </svg>
+        `);
+
+        const mainOverlay = await sharp(croppedImage)
+          .composite([{ input: fadeMaskSvg, blend: 'dest-in' }])
+          .png()
+          .toBuffer();
+
         // 2. Posicionamento vertical:
-        // Sobe um pouco mais da linha do centro para que o texto/card não cubra a imagem
-        // No 4:5 (1080x1350): centro é 675. Posiciona em top=135 (centro fica em ~515, 160px acima do centro).
-        // No 9:16 (1080x1920): centro é 960. Posiciona em top=360 (centro fica em ~740, 220px acima do centro).
-        const overlayTop = is4x5 ? 135 : 360;
+        const overlayTop = is4x5 ? 110 : 280;
 
         const brandedOverlay = createTitleOverlaySvg({
           width: fmt.width,
