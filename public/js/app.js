@@ -637,13 +637,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Botão de Publicação Direta nos Canais (Abre modal de opções)
-    elements.btnPublishChannels.addEventListener('click', () => {
-      if (!state.currentPackage?.packageId) {
-        showToast('Nenhum pacote carregado no estúdio.', 'warning');
-        return;
-      }
-      openPublishDialog(state.currentPackage.packageId);
-    });
+    if (elements.btnPublishChannels) {
+      elements.btnPublishChannels.addEventListener('click', (e) => {
+        if (e) e.preventDefault();
+        const pkgId = state.currentPackage?.packageId || elements.resultsStudio?.getAttribute('data-package-id');
+        if (!pkgId) {
+          showToast('Nenhum pacote carregado no estúdio.', 'warning');
+          return;
+        }
+        openPublishDialog(pkgId);
+      });
+    }
 
     // Diálogo de Publicação (Modo Agora vs Agendado)
     document.querySelectorAll('input[name="publish-mode"]').forEach(radio => {
@@ -1440,6 +1444,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function displayResults(data) {
     if (!data) return;
 
+    // Garante que o estado global do pacote esteja sempre consistente
+    state.currentPackage = data;
+    if (data.packageId && elements.resultsStudio) {
+      elements.resultsStudio.setAttribute('data-package-id', data.packageId);
+    }
+
     // Badges do Header
     elements.resClientTag.textContent = data.client?.brandName || data.client?.name || data.client || 'Cliente';
     elements.resArticleTitle.textContent = data.article?.title || 'Artigo';
@@ -1977,117 +1987,171 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===========================================================================
   // 5. MODAL DE PUBLICAÇÃO (IMEDIATO OU AGENDADO EM BACKGROUND)
   // ===========================================================================
-  async function openPublishDialog(packageId) {
-    elements.publishDialogPkgId.textContent = packageId;
-
-    // Define data/hora padrão: 1 hora no futuro
-    const defaultDate = new Date(Date.now() + 60 * 60 * 1000);
-    const tzOffset = defaultDate.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(defaultDate.getTime() - tzOffset)).toISOString().slice(0, 16);
-    elements.publishScheduleTime.value = localISOTime;
-
-    const noticeEl = document.getElementById('publish-media-notice');
-    if (noticeEl) {
-      if (state.currentPackage?.video) {
-        noticeEl.innerHTML = '🎬 <strong>Modo Vídeo Ativo:</strong> As redes compatíveis (Instagram Reels, LinkedIn e X) receberão o vídeo anexado nativamente.';
-        noticeEl.style.borderColor = 'rgba(52, 211, 153, 0.4)';
-        noticeEl.style.background = 'rgba(16, 185, 129, 0.12)';
-        noticeEl.style.color = '#34d399';
-      } else {
-        noticeEl.innerHTML = '🖼️ <strong>Modo Imagem Ativo:</strong> As redes receberão as imagens geradas com o título sobreposto.';
-        noticeEl.style.borderColor = 'rgba(56, 189, 248, 0.25)';
-        noticeEl.style.background = 'rgba(56, 189, 248, 0.1)';
-        noticeEl.style.color = '#38bdf8';
+  function resolveCurrentClientId() {
+    if (state.currentPackage?.client) {
+      if (typeof state.currentPackage.client === 'object') {
+        return state.currentPackage.client.id || 'anaue-design';
+      }
+      if (typeof state.currentPackage.client === 'string') {
+        return state.currentPackage.client;
       }
     }
+    return elements.topClientSelect?.value || 'anaue-design';
+  }
 
-    // Carrega dados atualizados do cliente para checar quais canais estão realmente ativos
-    const clientId = state.currentPackage?.client || elements.topClientSelect?.value || 'anaue-design';
-    let client = state.clients?.find(c => c.id === clientId) || null;
+  async function openPublishDialog(packageId) {
     try {
-      const res = await authFetch(`/api/clients/${clientId}`);
-      if (res.ok) client = await res.json();
-    } catch {}
-
-    const chConfig = {
-      buffer: Boolean(client?.channels?.buffer?.enabled && (client.channels.buffer.hasToken || client.channels.buffer.accessToken)),
-      linkedin: Boolean(client?.channels?.linkedin?.enabled && (client.channels.linkedin.hasToken || client.channels.linkedin.accessToken)),
-      twitter: Boolean(client?.channels?.twitter?.enabled && (client.channels.twitter.hasToken || client.channels.twitter.accessToken || client.channels.twitter.bearerToken || client.channels.twitter.apiKey)),
-      meta: Boolean(client?.channels?.meta?.enabled && (client.channels.meta.hasToken || client.channels.meta.pageAccessToken)),
-      telegram: Boolean(client?.channels?.telegram?.enabled && (client.channels.telegram.hasToken || client.channels.telegram.botToken)),
-      webhook: Boolean(client?.channels?.webhook?.enabled !== false && (client?.channels?.webhook?.url || client?.webhookUrl))
-    };
-
-    let activeCount = 0;
-    const channelKeys = ['buffer', 'linkedin', 'twitter', 'meta', 'telegram', 'webhook'];
-    channelKeys.forEach(k => {
-      const checkEl = document.getElementById(`pub-check-${k}`);
-      const badgeEl = document.getElementById(`badge-pub-${k}`);
-      const labelEl = document.getElementById(`label-pub-${k}`);
-      const isReady = chConfig[k];
-
-      if (checkEl) checkEl.checked = isReady;
-      if (badgeEl) {
-        badgeEl.className = `channel-status-pill ${isReady ? 'active' : 'inactive'}`;
-        badgeEl.textContent = isReady ? 'Pronto ✓' : 'Não configurado';
+      if (!packageId) {
+        packageId = state.currentPackage?.packageId || elements.resultsStudio?.getAttribute('data-package-id');
       }
-      if (labelEl) {
-        if (isReady) {
-          labelEl.classList.remove('disabled-channel');
-          activeCount++;
+      if (!packageId) {
+        showToast('Nenhum pacote identificado para publicação.', 'warning');
+        return;
+      }
+
+      if (elements.publishDialogPkgId) {
+        elements.publishDialogPkgId.textContent = packageId;
+      }
+
+      // Define data/hora padrão: 1 hora no futuro
+      const defaultDate = new Date(Date.now() + 60 * 60 * 1000);
+      const tzOffset = defaultDate.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(defaultDate.getTime() - tzOffset)).toISOString().slice(0, 16);
+      if (elements.publishScheduleTime) {
+        elements.publishScheduleTime.value = localISOTime;
+      }
+
+      const noticeEl = document.getElementById('publish-media-notice');
+      if (noticeEl) {
+        if (state.currentPackage?.video) {
+          noticeEl.innerHTML = '🎬 <strong>Modo Vídeo Ativo:</strong> As redes compatíveis (Instagram Reels, LinkedIn e X) receberão o vídeo anexado nativamente.';
+          noticeEl.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+          noticeEl.style.background = 'rgba(16, 185, 129, 0.12)';
+          noticeEl.style.color = '#34d399';
         } else {
-          labelEl.classList.add('disabled-channel');
+          noticeEl.innerHTML = '🖼️ <strong>Modo Imagem Ativo:</strong> As redes receberão as imagens geradas com o layout editorial.';
+          noticeEl.style.borderColor = 'rgba(56, 189, 248, 0.25)';
+          noticeEl.style.background = 'rgba(56, 189, 248, 0.1)';
+          noticeEl.style.color = '#38bdf8';
         }
       }
-    });
 
-    const warningEl = document.getElementById('publish-channels-warning');
-    if (warningEl) {
-      if (activeCount === 0) {
-        warningEl.classList.remove('hidden');
-        warningEl.innerHTML = `
-          <div style="display:flex;align-items:flex-start;gap:10px;">
-            <span style="font-size:1.3rem;">⚠️</span>
-            <div style="flex:1;">
-              <strong>Nenhum canal ativo com credenciais</strong> para <em>${escapeHtml(client?.brandName || client?.name || clientId)}</em>.<br>
-              <span style="font-size:0.83rem;opacity:0.9;">Para que as redes sociais recebam o artigo e a mídia, conecte ao menos uma rede (ex: Buffer API ou redes diretas).</span>
-              <div style="margin-top:8px;display:flex;gap:8px;">
-                <button type="button" class="btn btn-secondary" style="font-size:0.78rem;padding:4px 10px;" id="btn-quick-config-channels">⚙️ Configurar Redes do Cliente</button>
-                <a href="/guia-redes.html" target="_blank" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;">📖 Ver Guia</a>
+      // Normaliza o ID do cliente garantindo string válida
+      const clientId = resolveCurrentClientId();
+
+      // Prioridade 1: Buscar do cache em memória de clientes
+      let client = state.clients?.find(c => c.id === clientId) || null;
+
+      // Prioridade 2: Se o pacote já trouxer o objeto de cliente com canais configurados
+      if (!client && typeof state.currentPackage?.client === 'object' && state.currentPackage.client.channels) {
+        client = state.currentPackage.client;
+      }
+
+      // Prioridade 3: Atualizar com a API REST
+      try {
+        const res = await authFetch(`/api/clients/${encodeURIComponent(clientId)}`);
+        if (res.ok) {
+          const fresh = await res.json();
+          if (fresh && (fresh.id || fresh.brandName)) {
+            client = fresh;
+          }
+        }
+      } catch (err) {
+        console.warn('Aviso: usando dados locais de cliente:', err.message);
+      }
+
+      const chConfig = {
+        buffer: Boolean(client?.channels?.buffer?.enabled && (client.channels.buffer.hasToken || client.channels.buffer.accessToken)),
+        linkedin: Boolean(client?.channels?.linkedin?.enabled && (client.channels.linkedin.hasToken || client.channels.linkedin.accessToken)),
+        twitter: Boolean(client?.channels?.twitter?.enabled && (client.channels.twitter.hasToken || client.channels.twitter.accessToken || client.channels.twitter.bearerToken || client.channels.twitter.apiKey)),
+        meta: Boolean(client?.channels?.meta?.enabled && (client.channels.meta.hasToken || client.channels.meta.pageAccessToken)),
+        telegram: Boolean(client?.channels?.telegram?.enabled && (client.channels.telegram.hasToken || client.channels.telegram.botToken)),
+        webhook: Boolean(client?.channels?.webhook?.enabled !== false && (client?.channels?.webhook?.url || client?.webhookUrl))
+      };
+
+      let activeCount = 0;
+      const channelKeys = ['buffer', 'linkedin', 'twitter', 'meta', 'telegram', 'webhook'];
+      channelKeys.forEach(k => {
+        const checkEl = document.getElementById(`pub-check-${k}`);
+        const badgeEl = document.getElementById(`badge-pub-${k}`);
+        const labelEl = document.getElementById(`label-pub-${k}`);
+        const isReady = chConfig[k];
+
+        if (checkEl) {
+          checkEl.checked = isReady;
+          checkEl.disabled = false;
+        }
+        if (badgeEl) {
+          badgeEl.className = `channel-status-pill ${isReady ? 'active' : 'inactive'}`;
+          badgeEl.textContent = isReady ? 'Pronto ✓' : 'Não configurado';
+        }
+        if (labelEl) {
+          if (isReady) {
+            labelEl.classList.remove('disabled-channel');
+            activeCount++;
+          } else {
+            labelEl.classList.add('disabled-channel');
+          }
+        }
+      });
+
+      const warningEl = document.getElementById('publish-channels-warning');
+      if (warningEl) {
+        if (activeCount === 0) {
+          warningEl.classList.remove('hidden');
+          const brandDisplay = client?.brandName || client?.name || clientId;
+          warningEl.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <span style="font-size:1.3rem;">⚠️</span>
+              <div style="flex:1;">
+                <strong>Nenhum canal ativo com credenciais</strong> para <em>${escapeHtml(brandDisplay)}</em>.<br>
+                <span style="font-size:0.83rem;opacity:0.9;">Para que as redes sociais recebam o artigo e a mídia, conecte ao menos uma rede (ex: Buffer API ou redes diretas).</span>
+                <div style="margin-top:8px;display:flex;gap:8px;">
+                  <button type="button" class="btn btn-secondary" style="font-size:0.78rem;padding:4px 10px;" id="btn-quick-config-channels">⚙️ Configurar Redes do Cliente</button>
+                  <a href="/guia-redes.html" target="_blank" class="btn btn-ghost" style="font-size:0.78rem;padding:4px 10px;">📖 Ver Guia</a>
+                </div>
               </div>
             </div>
-          </div>
-        `;
-        const btnQuick = document.getElementById('btn-quick-config-channels');
-        if (btnQuick) {
-          btnQuick.onclick = () => {
-            elements.modalPublishDialog.classList.add('hidden');
-            switchView('management', 'cl-tab-channels');
-            if (elements.modalClientSelect) elements.modalClientSelect.value = clientId;
-            populateClientModal(clientId);
-          };
+          `;
+          const btnQuick = document.getElementById('btn-quick-config-channels');
+          if (btnQuick) {
+            btnQuick.onclick = () => {
+              if (elements.modalPublishDialog) elements.modalPublishDialog.classList.add('hidden');
+              switchView('management', 'cl-tab-channels');
+              if (elements.modalClientSelect) elements.modalClientSelect.value = clientId;
+              populateClientModal(clientId);
+            };
+          }
+        } else {
+          warningEl.classList.add('hidden');
         }
-      } else {
-        warningEl.classList.add('hidden');
       }
+
+      // Reseta modo para 'now'
+      const radioNow = document.querySelector('input[name="publish-mode"][value="now"]');
+      if (radioNow) radioNow.checked = true;
+      if (elements.labelModeNow) elements.labelModeNow.classList.add('active');
+      if (elements.labelModeSchedule) elements.labelModeSchedule.classList.remove('active');
+      if (elements.scheduleDatetimeWrap) elements.scheduleDatetimeWrap.classList.add('hidden');
+
+      if (elements.modalPublishDialog) {
+        elements.modalPublishDialog.classList.remove('hidden');
+      }
+    } catch (err) {
+      console.error('Erro ao abrir diálogo de publicação:', err);
+      showToast(`Erro ao abrir publicação: ${err.message}`, 'error');
     }
-
-    // Reseta modo para 'now'
-    const radioNow = document.querySelector('input[name="publish-mode"][value="now"]');
-    if (radioNow) radioNow.checked = true;
-    elements.labelModeNow.classList.add('active');
-    elements.labelModeSchedule.classList.remove('active');
-    elements.scheduleDatetimeWrap.classList.add('hidden');
-
-    elements.modalPublishDialog.classList.remove('hidden');
   }
 
   async function handlePublishConfirm() {
-    const packageId = state.currentPackage?.packageId;
-    if (!packageId) return;
+    const packageId = state.currentPackage?.packageId || elements.resultsStudio?.getAttribute('data-package-id');
+    if (!packageId) {
+      showToast('Nenhum pacote carregado para publicação.', 'warning');
+      return;
+    }
 
     const mode = document.querySelector('input[name="publish-mode"]:checked')?.value || 'now';
-    const scheduledFor = mode === 'schedule' ? elements.publishScheduleTime.value : null;
+    const scheduledFor = mode === 'schedule' ? elements.publishScheduleTime?.value : null;
 
     // Coleta canais selecionados
     const targetChannels = [];
@@ -2103,21 +2167,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    elements.modalPublishDialog.classList.add('hidden');
+    if (elements.modalPublishDialog) {
+      elements.modalPublishDialog.classList.add('hidden');
+    }
 
     if (mode === 'now') {
       // Disparo imediato direto
-      await publishCurrentPackageToChannels(targetChannels);
+      await publishCurrentPackageToChannels(targetChannels, packageId);
     } else {
       // Enfileiramento na fila de background
       try {
         showToast('Agendando publicação em background...', 'info');
+        const clientId = resolveCurrentClientId();
         const res = await authFetch('/api/queue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             packageId,
-            clientId: elements.topClientSelect.value || 'anaue-design',
+            clientId,
             scheduledFor,
             targetChannels
           })
@@ -2135,21 +2202,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function publishCurrentPackageToChannels(targetChannels = null) {
-    if (!state.currentPackage?.packageId) {
+  async function publishCurrentPackageToChannels(targetChannels = null, pkgId = null) {
+    const packageId = pkgId || state.currentPackage?.packageId || elements.resultsStudio?.getAttribute('data-package-id');
+    if (!packageId) {
       showToast('Nenhum pacote carregado para publicação.', 'warning');
       return;
     }
 
-    elements.modalDispatchResult.classList.remove('hidden');
-    elements.dispatchResultsList.innerHTML = `
-      <div class="dispatch-item">
-        <p>🚀 Disparando pacote <strong>${state.currentPackage.packageId}</strong> para os canais do cliente...</p>
-      </div>
-    `;
+    if (elements.modalDispatchResult) {
+      elements.modalDispatchResult.classList.remove('hidden');
+    }
+    if (elements.dispatchResultsList) {
+      elements.dispatchResultsList.innerHTML = `
+        <div class="dispatch-item">
+          <p>🚀 Disparando pacote <strong>${escapeHtml(packageId)}</strong> para os canais do cliente...</p>
+        </div>
+      `;
+    }
 
     try {
-      const res = await authFetch(`/api/packages/${state.currentPackage.packageId}/publish`, {
+      const res = await authFetch(`/api/packages/${encodeURIComponent(packageId)}/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetChannels })
@@ -2161,12 +2233,15 @@ document.addEventListener('DOMContentLoaded', () => {
       renderDispatchResults(data.dispatchResult);
       showToast('Disparo concluído!', 'success');
     } catch (err) {
-      elements.dispatchResultsList.innerHTML = `
-        <div class="dispatch-item">
-          <div class="dispatch-badge error">Erro</div>
-          <p class="dispatch-detail-msg">${err.message}</p>
-        </div>
-      `;
+      if (elements.dispatchResultsList) {
+        elements.dispatchResultsList.innerHTML = `
+          <div class="dispatch-item">
+            <div class="dispatch-badge error">Erro</div>
+            <p class="dispatch-detail-msg">${escapeHtml(err.message)}</p>
+          </div>
+        `;
+      }
+      showToast(`Erro no disparo: ${err.message}`, 'error');
     }
   }
 
@@ -2183,7 +2258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? 'Todos os canais selecionados estão desativados ou sem tokens de acesso configurados no perfil deste cliente.'
         : 'Nenhum canal ativo foi disparado.');
       
-      const clientId = state.currentPackage?.client || elements.topClientSelect?.value || 'anaue-design';
+      const clientId = resolveCurrentClientId();
 
       elements.dispatchResultsList.innerHTML = `
         <div class="dispatch-item" style="padding:1.5rem 1rem;text-align:center;">
@@ -2833,19 +2908,24 @@ document.addEventListener('DOMContentLoaded', () => {
   async function openSavedPackage(pkgId) {
     try {
       showToast('Carregando pacote salvo...', 'info');
-      const res = await authFetch(`/api/packages/${pkgId}`);
+      const res = await authFetch(`/api/packages/${encodeURIComponent(pkgId)}`);
       if (!res.ok) throw new Error('Falha ao abrir pacote.');
       const data = await res.json();
 
-      displayResults({
-        packageId: data.packageId,
+      const pkgData = {
+        packageId: data.packageId || pkgId,
         article: data.payload?.article,
         client: data.payload?.client,
         copies: data.payload?.copies,
         images: data.payload?.images,
         carousel: data.payload?.carousel,
-        reportMd: data.reportMd
-      });
+        reportMd: data.reportMd,
+        video: data.payload?.video || null,
+        payload: data.payload
+      };
+
+      state.currentPackage = pkgData;
+      displayResults(pkgData);
 
       switchView('studio');
       showToast('Pacote carregado no estúdio!', 'success');
@@ -2853,6 +2933,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       showToast(err.message, 'error');
     }
+  }
+
+  function openPackageFromHistory(pkgId) {
+    return openSavedPackage(pkgId);
   }
 
   // ===========================================================================
@@ -3523,11 +3607,6 @@ document.addEventListener('DOMContentLoaded', () => {
       toast.style.transform = 'translateY(10px)';
       setTimeout(() => toast.remove(), 300);
     }, 3200);
-  }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function generateSummaryMarkdown(data) {

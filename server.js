@@ -840,7 +840,12 @@ app.post('/api/packages/:packageId/publish', requireAuth, rateLimiter, async (re
     }
 
     const payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
-    const clientId = payload.client || 'default';
+    let clientId = 'default';
+    if (typeof payload.client === 'object' && payload.client) {
+      clientId = payload.client.id || 'default';
+    } else if (typeof payload.client === 'string' && payload.client) {
+      clientId = payload.client;
+    }
     const client = loadClientConfig(clientId);
 
     // Auto-reparo: se porventura o pacote foi salvo com copies vazias, regenera dinamicamente antes de despachar
