@@ -96,18 +96,19 @@ async function generateFallbackCard(width, height, title, brandName, brandHandle
   const color1 = colors[0] || '#0052FF';
   const colorAccent = colors[2] || colors[0] || '#00D2FF';
 
-  const parsed = parseDualFontTitle(title, 28, 32);
-  const kickerFontSize = 32;
-  const kickerLineHeight = 40;
-  let headlineFontSize = 48;
-  let headlineLineHeight = 58;
+  const isInstagram = height >= width;
+  const parsed = parseDualFontTitle(title, isInstagram ? 18 : 28, isInstagram ? 22 : 32);
+  const kickerFontSize = isInstagram ? 48 : 32;
+  const kickerLineHeight = isInstagram ? 60 : 40;
+  let headlineFontSize = isInstagram ? 72 : 48;
+  let headlineLineHeight = isInstagram ? 88 : 58;
 
   if ((title || '').length > 110) {
-    headlineFontSize = 36;
-    headlineLineHeight = 46;
+    headlineFontSize = isInstagram ? 54 : 36;
+    headlineLineHeight = isInstagram ? 68 : 46;
   } else if ((title || '').length > 70) {
-    headlineFontSize = 42;
-    headlineLineHeight = 52;
+    headlineFontSize = isInstagram ? 63 : 42;
+    headlineLineHeight = isInstagram ? 78 : 52;
   }
 
   const kickerBlockHeight = parsed.hasKicker ? (parsed.kickerLines.length * kickerLineHeight) : 0;
@@ -189,15 +190,16 @@ function createTitleOverlaySvg({ width, height, title, brandName, brandHandle, c
   const cleanFooter = escapeXml(footerText || 'Design  •  Marketing  •  IA   |   anauedesign.com.br');
   const colorAccent = colors[2] || colors[0] || '#00D2FF';
 
-  let maxCharsHeadline = 22;
-  let maxCharsKicker = 26;
-  let kickerFontSize = 34;
-  let kickerLineHeight = 44;
-  let headlineFontSize = 47;
-  let headlineLineHeight = 60;
+  // Configuração padrão: instagram_feed_portrait_4x5 (1080x1350) - Retrato Feed Instagram com fonte +50%
+  let maxCharsHeadline = 16;
+  let maxCharsKicker = 20;
+  let kickerFontSize = 51;      // +50% para leitura nítida no feed
+  let kickerLineHeight = 64;
+  let headlineFontSize = 71;    // +50% para destaque editorial impactante
+  let headlineLineHeight = 88;
   let startX = 80;
-  let textBottomMargin = 90;
-  let vignetteTop = height * 0.42;
+  let textBottomMargin = 95;
+  let vignetteTop = height * 0.40;
   let brandY = 50;
 
   if (format === 'linkedin_twitter_facebook_16x9') {
@@ -213,28 +215,28 @@ function createTitleOverlaySvg({ width, height, title, brandName, brandHandle, c
     vignetteTop = height * 0.25;
     brandY = 45;
   } else if (format === 'instagram_threads_square_1x1') {
-    // 1080 x 1080 (Quadrado - Instagram, Threads)
-    maxCharsHeadline = 22;
-    maxCharsKicker = 26;
-    kickerFontSize = 36;
-    kickerLineHeight = 46;
-    headlineFontSize = 54;
-    headlineLineHeight = 66;
+    // 1080 x 1080 (Quadrado - Instagram, Threads) com fonte +50%
+    maxCharsHeadline = 15;
+    maxCharsKicker = 19;
+    kickerFontSize = 54;      // +50%
+    kickerLineHeight = 68;
+    headlineFontSize = 80;    // +50%
+    headlineLineHeight = 96;
     startX = 75;
-    textBottomMargin = 85;
-    vignetteTop = height * 0.38;
-    brandY = 50;
+    textBottomMargin = 90;
+    vignetteTop = height * 0.35;
+    brandY = 45;
   } else if (format === 'instagram_stories_reels_9x16') {
-    // 1080 x 1920 (Vertical 9:16 - Stories e Reels)
-    maxCharsHeadline = 20;
-    maxCharsKicker = 24;
-    kickerFontSize = 34;
-    kickerLineHeight = 44;
-    headlineFontSize = 47;
-    headlineLineHeight = 60;
+    // 1080 x 1920 (Vertical 9:16 - Stories e Reels) com fonte +50%
+    maxCharsHeadline = 16;
+    maxCharsKicker = 20;
+    kickerFontSize = 51;      // +50%
+    kickerLineHeight = 64;
+    headlineFontSize = 71;    // +50%
+    headlineLineHeight = 88;
     startX = 80;
-    textBottomMargin = 140;
-    vignetteTop = height * 0.48;
+    textBottomMargin = 150;
+    vignetteTop = height * 0.44;
     brandY = 135;
   }
 
