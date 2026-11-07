@@ -79,7 +79,9 @@ async function suggestTopicIdeas(client, options = {}) {
 
   const count = options.count || 4;
   const available = detectAvailableProviders();
-  const preferredProvider = options.provider || client.llm?.provider || (available.length > 0 ? available[0] : null);
+  const preferredProvider = (options.provider && options.provider !== 'auto') 
+    ? options.provider 
+    : (client.llm?.provider || (available.length > 0 ? available[0] : null));
 
   // 1. Se houver provedor configurado, utiliza LLM para ideação rica
   if (preferredProvider && preferredProvider !== 'none') {
@@ -215,7 +217,9 @@ async function synthesizeTopicContent({
   const slug = slugify(cleanTopic);
 
   const available = detectAvailableProviders();
-  const preferredProvider = options.provider || client.llm?.provider || (available.length > 0 ? available[0] : null);
+  const preferredProvider = (options.provider && options.provider !== 'auto') 
+    ? options.provider 
+    : (client.llm?.provider || (available.length > 0 ? available[0] : null));
 
   // 1. Tenta sintetizar com LLM para profundidade e sofisticação semântica
   if (preferredProvider && preferredProvider !== 'none') {

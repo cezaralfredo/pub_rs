@@ -67,7 +67,11 @@ function detectAvailableProviders() {
  * Executa uma chamada para o provedor especificado.
  */
 async function callProvider(providerName, systemInstructions, userContent, modelOverride, apiKeyOverride, baseUrlOverride) {
-  const p = providerName.toLowerCase();
+  let p = (providerName || 'auto').toLowerCase();
+  if (p === 'auto') {
+    const available = detectAvailableProviders();
+    p = apiKeyOverride ? 'openrouter' : (available.length > 0 ? available[0] : 'openai');
+  }
 
   switch (p) {
     case 'gemini':

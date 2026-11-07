@@ -87,46 +87,12 @@ function parseDualFontTitle(rawTitle, maxCharsHeadline = 24, maxCharsKicker = 28
 }
 
 /**
- * Cria um card gráfico moderno de backup quando o artigo não tem imagem original.
+ * Cria uma textura de background gráfico moderno de backup quando não há imagem.
  */
 async function generateFallbackCard(width, height, title, brandName, brandHandle, client = {}, footerText) {
-  const cleanBrand = escapeXml(brandName || 'Anauê Design').toUpperCase();
-  const cleanFooter = escapeXml(footerText || client.footerText || 'Design  •  Marketing  •  IA   |   anauedesign.com.br');
   const colors = client.visualIdentity?.preferredColors || ['#0052FF', '#0A0E17', '#00D2FF'];
   const color1 = colors[0] || '#0052FF';
   const colorAccent = colors[2] || colors[0] || '#00D2FF';
-
-  const isInstagram = height >= width;
-  const parsed = parseDualFontTitle(title, isInstagram ? 18 : 28, isInstagram ? 22 : 32);
-  const kickerFontSize = isInstagram ? 48 : 32;
-  const kickerLineHeight = isInstagram ? 60 : 40;
-  let headlineFontSize = isInstagram ? 72 : 48;
-  let headlineLineHeight = isInstagram ? 88 : 58;
-
-  if ((title || '').length > 110) {
-    headlineFontSize = isInstagram ? 54 : 36;
-    headlineLineHeight = isInstagram ? 68 : 46;
-  } else if ((title || '').length > 70) {
-    headlineFontSize = isInstagram ? 63 : 42;
-    headlineLineHeight = isInstagram ? 78 : 52;
-  }
-
-  const kickerBlockHeight = parsed.hasKicker ? (parsed.kickerLines.length * kickerLineHeight) : 0;
-  const headlineBlockHeight = parsed.headlineLines.length * headlineLineHeight;
-  const gap = parsed.hasKicker ? 16 : 0;
-  const totalTextHeight = kickerBlockHeight + gap + headlineBlockHeight;
-
-  const startX = 90;
-  const textStartY = Math.round((height - totalTextHeight) / 2) + 20;
-
-  const kickerTspans = parsed.kickerLines.map((l, i) =>
-    `<tspan x="${startX}" dy="${i === 0 ? 0 : kickerLineHeight}">${escapeXml(l)}</tspan>`
-  ).join('\n');
-
-  const headlineStartY = parsed.hasKicker ? (textStartY + kickerBlockHeight + gap) : textStartY;
-  const headlineTspans = parsed.headlineLines.map((l, i) =>
-    `<tspan x="${startX}" dy="${i === 0 ? 0 : headlineLineHeight}">${escapeXml(l)}</tspan>`
-  ).join('\n');
 
   const svg = `
   <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
@@ -136,45 +102,34 @@ async function generateFallbackCard(width, height, title, brandName, brandHandle
         <stop offset="45%" stop-color="#090f1f" />
         <stop offset="100%" stop-color="#0d1830" />
       </linearGradient>
+      <radialGradient id="glowTopRight" cx="80%" cy="20%" r="60%">
+        <stop offset="0%" stop-color="${colorAccent}" stop-opacity="0.35" />
+        <stop offset="60%" stop-color="${colorAccent}" stop-opacity="0.05" />
+        <stop offset="100%" stop-color="${colorAccent}" stop-opacity="0" />
+      </radialGradient>
+      <radialGradient id="glowBottomLeft" cx="20%" cy="80%" r="60%">
+        <stop offset="0%" stop-color="${color1}" stop-opacity="0.4" />
+        <stop offset="60%" stop-color="${color1}" stop-opacity="0.08" />
+        <stop offset="100%" stop-color="${color1}" stop-opacity="0" />
+      </radialGradient>
+      <pattern id="dotGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+        <circle cx="20" cy="20" r="1.2" fill="#ffffff" fill-opacity="0.06" />
+      </pattern>
     </defs>
 
     <!-- Fundo Escuro Gradiente -->
     <rect width="100%" height="100%" fill="url(#fallbackBgGrad)" />
 
+    <!-- Grid Sutil Tech -->
+    <rect width="100%" height="100%" fill="url(#dotGrid)" />
+
     <!-- Luminous Ambient Glows -->
-    <circle cx="${width - 120}" cy="120" r="340" fill="${colorAccent}" opacity="0.12" filter="blur(90px)" />
-    <circle cx="120" cy="${height - 120}" r="300" fill="${color1}" opacity="0.15" filter="blur(90px)" />
+    <rect width="100%" height="100%" fill="url(#glowTopRight)" />
+    <rect width="100%" height="100%" fill="url(#glowBottomLeft)" />
 
-    <!-- Minimalist Brand Capsule -->
-    <g transform="translate(${startX}, 60)">
-      <rect x="0" y="0" width="${cleanBrand.length * 10 + 36}" height="32" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="${colorAccent}" stroke-width="1.2" stroke-opacity="0.8" />
-      <text x="18" y="21" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="${colorAccent}" letter-spacing="1.8">
-        ${cleanBrand}
-      </text>
-    </g>
-
-    <!-- Kicker (Font 1: Editorial Serif Italic) -->
-    ${parsed.hasKicker ? `
-    <g filter="drop-shadow(0 2px 6px rgba(0,0,0,0.85))">
-      <line x1="${startX}" y1="${textStartY - 8}" x2="${startX + 45}" y2="${textStartY - 8}" stroke="${colorAccent}" stroke-width="2.5" stroke-linecap="round" />
-      <text x="${startX}" y="${textStartY + kickerFontSize}" font-family="'Playfair Display', 'Newsreader', 'Georgia', 'DejaVu Serif', serif" font-style="italic" font-size="${kickerFontSize}" font-weight="600" fill="${colorAccent}" letter-spacing="0.5">
-        ${kickerTspans}
-      </text>
-    </g>
-    ` : ''}
-
-    <!-- Headline (Font 2: Bold Modern Sans-Serif) -->
-    <g filter="drop-shadow(0 3px 10px rgba(0,0,0,0.92))">
-      <text x="${startX}" y="${headlineStartY + headlineFontSize}" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'DejaVu Sans', Roboto, sans-serif" font-size="${headlineFontSize}" font-weight="800" fill="#ffffff" letter-spacing="-0.5">
-        ${headlineTspans}
-      </text>
-    </g>
-
-    <!-- Minimalist Editorial Footer -->
-    <line x1="${startX}" y1="${height - 65}" x2="${width - startX}" y2="${height - 65}" stroke="#334155" stroke-width="1" opacity="0.6" />
-    <text x="${width / 2}" y="${height - 30}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="#94a3b8" letter-spacing="1.5">
-      ${cleanFooter}
-    </text>
+    <!-- Linhas Abstratas Sutis -->
+    <line x1="0" y1="${height * 0.3}" x2="${width}" y2="${height * 0.4}" stroke="${colorAccent}" stroke-opacity="0.12" stroke-width="1.5" />
+    <line x1="0" y1="${height * 0.7}" x2="${width}" y2="${height * 0.6}" stroke="${color1}" stroke-opacity="0.15" stroke-width="1.5" />
   </svg>
   `;
 
@@ -360,16 +315,16 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
 
     // Se não houver imagem válida baixada:
     if (!inputBuffer) {
+      const isTopic = Boolean(options.article?.isTopicMode || options.isTopicMode || !imageUrl);
       const shouldTryAi = options.aiImage ||
+                          isTopic ||
                           options.client?.generateAiImage ||
                           process.env.GENERATE_AI_IMAGE === 'true' ||
                           process.env.GENERATE_AI_IMAGE === 'auto';
 
-      const hasAiKey = Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
-
-      if (shouldTryAi && hasAiKey) {
+      if (shouldTryAi) {
         try {
-          console.log(`   🎨 [IA Visual] Solicitando arte conceitual via IA...`);
+          console.log(`   🎨 [IA Visual] Solicitando arte conceitual de background via IA...`);
           const aiImageResult = await generateAiImageIfPossible({
             title: articleTitle,
             description: options.article?.description,
@@ -385,16 +340,16 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
             inputBuffer = aiImageResult.buffer;
             const aiOriginalPath = path.join(imagesDir, 'ai_cover_original.jpg');
             fs.writeFileSync(aiOriginalPath, inputBuffer);
-            console.log(`   ✓ Arte gerada com sucesso via ${aiImageResult.provider} (${aiImageResult.model})!`);
+            console.log(`   ✓ Arte de background gerada com sucesso via ${aiImageResult.provider} (${aiImageResult.model})!`);
           }
         } catch (aiErr) {
-          console.warn(`   ⚠️ [IA Visual Aviso] Falha ao gerar via IA (${aiErr.message}). Alternando para card SVG.`);
+          console.warn(`   ⚠️ [IA Visual Aviso] Falha ao gerar via IA (${aiErr.message}). Alternando para textura abstrata.`);
         }
       }
 
-      // Fallback para card gráfico elegante em SVG se a IA não gerou
+      // Fallback para textura gráfica abstrata elegante em SVG se a IA não gerou
       if (!inputBuffer) {
-        console.log(`   🎨 [Mídia] Gerando card gráfico profissional com o título e marca do cliente...`);
+        console.log(`   🎨 [Mídia] Gerando textura gráfica abstrata de background para o cliente...`);
         inputBuffer = await generateFallbackCard(1200, 675, articleTitle, brandName, brandHandle, options.client, footerText);
         isFallbackCard = true;
       }
@@ -520,33 +475,27 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
           .resize(fmt.width, fmt.height, { fit: 'cover', position: 'center' })
           .toBuffer();
 
-        if (isFallbackCard && fmt.name === 'linkedin_twitter_facebook_16x9') {
-          // O fallback SVG já possui título e layout completo em 16:9
-          await sharp(baseLayer).webp({ quality: 90 }).toFile(webpPath);
-          await sharp(baseLayer).jpeg({ quality: 90 }).toFile(jpgPath);
-        } else {
-          // Sobrepõe título completo, badge e degradê com rodapé exclusivo
-          const titleOverlay = createTitleOverlaySvg({
-            width: fmt.width,
-            height: fmt.height,
-            title: articleTitle,
-            brandName,
-            brandHandle,
-            colors,
-            format: fmt.name,
-            footerText
-          });
+        // Sobrepõe título completo, badge e degradê com rodapé exclusivo
+        const titleOverlay = createTitleOverlaySvg({
+          width: fmt.width,
+          height: fmt.height,
+          title: articleTitle,
+          brandName,
+          brandHandle,
+          colors,
+          format: fmt.name,
+          footerText
+        });
 
-          await sharp(baseLayer)
-            .composite([{ input: titleOverlay, top: 0, left: 0 }])
-            .webp({ quality: 90 })
-            .toFile(webpPath);
+        await sharp(baseLayer)
+          .composite([{ input: titleOverlay, top: 0, left: 0 }])
+          .webp({ quality: 90 })
+          .toFile(webpPath);
 
-          await sharp(baseLayer)
-            .composite([{ input: titleOverlay, top: 0, left: 0 }])
-            .jpeg({ quality: 90 })
-            .toFile(jpgPath);
-        }
+        await sharp(baseLayer)
+          .composite([{ input: titleOverlay, top: 0, left: 0 }])
+          .jpeg({ quality: 90 })
+          .toFile(jpgPath);
       }
 
       results.push({

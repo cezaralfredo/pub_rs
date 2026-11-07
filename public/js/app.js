@@ -180,6 +180,13 @@ document.addEventListener('DOMContentLoaded', () => {
     linkWebp9x16: document.getElementById('link-webp-9x16'),
     linkJpg9x16: document.getElementById('link-jpg-9x16'),
 
+    // Gestão de Imagem de Fundo (Background)
+    inputBgImageFile: document.getElementById('input-bg-image-file'),
+    btnUploadBgImage: document.getElementById('btn-upload-bg-image'),
+    btnRegenerateBgAi: document.getElementById('btn-regenerate-bg-ai'),
+    bgImageSpinner: document.getElementById('bg-image-spinner'),
+    bgImageStatusText: document.getElementById('bg-image-status-text'),
+
     // Gestão de Vídeo (Opção A)
     videoPlayerContainer: document.getElementById('video-player-container'),
     videoElement: document.getElementById('video-element'),
@@ -1183,8 +1190,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Inicializa listeners de upload e exclusão de vídeo
+    // Inicializa listeners de upload e exclusão de vídeo e imagem de fundo
     setupVideoListeners();
+    setupBgImageListeners();
   }
 
   // ===========================================================================
@@ -1736,18 +1744,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderMediaGallery(packageId) {
+  function renderMediaGallery(packageId, timestamp = null) {
     if (!packageId) return;
 
+    const query = timestamp ? `?t=${timestamp}` : '';
     const setImg = (elImg, elWebp, elJpg, baseName) => {
-      const webpUrl = `/api/media/${packageId}/${baseName}.webp`;
-      const jpgUrl = `/api/media/${packageId}/${baseName}.jpg`;
+      const webpUrl = `/api/media/${packageId}/${baseName}.webp${query}`;
+      const jpgUrl = `/api/media/${packageId}/${baseName}.jpg${query}`;
 
-      elImg.src = webpUrl;
-      elImg.onerror = () => { elImg.src = jpgUrl; };
+      if (elImg) {
+        elImg.src = webpUrl;
+        elImg.onerror = () => { elImg.src = jpgUrl; };
+      }
 
-      elWebp.href = webpUrl;
-      elJpg.href = jpgUrl;
+      if (elWebp) elWebp.href = webpUrl;
+      if (elJpg) elJpg.href = jpgUrl;
     };
 
     setImg(elements.img16x9, elements.linkWebp16x9, elements.linkJpg16x9, 'linkedin_twitter_facebook_16x9');
@@ -1989,6 +2000,109 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       if (elements.btnTriggerAiVideo) elements.btnTriggerAiVideo.disabled = false;
       if (elements.videoAiSpinner) elements.videoAiSpinner.style.display = 'none';
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // GESTÃO DE IMAGEM DE FUNDO (BACKGROUND DO PACOTE NO ESTÚDIO)
+  // ---------------------------------------------------------------------------
+  function setupBgImageListeners() {
+    if (elements.btnUploadBgImage && elements.inputBgImageFile) {
+      elements.btnUploadBgImage.addEventListener('click', () => {
+        elements.inputBgImageFile.click();
+      });
+
+      elements.inputBgImageFile.addEventListener('change', async (e) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        e.target.value = '';
+        await handleBgImageUpload(file);
+      });
+    }
+
+    if (elements.btnRegenerateBgAi) {
+      elements.btnRegenerateBgAi.addEventListener('click', handleBgImageRegenerate);
+    }
+  }
+
+  async function handleBgImageRegenerate() {
+    const packageId = state.currentPackage?.packageId;
+    if (!packageId) {
+      showToast('Nenhum pacote carregado para regenerar imagem.', 'warning');
+      return;
+    }
+
+    try {
+      if (elements.bgImageSpinner) elements.bgImageSpinner.style.display = 'block';
+      if (elements.btnRegenerateBgAi) elements.btnRegenerateBgAi.disabled = true;
+      if (elements.btnUploadBgImage) elements.btnUploadBgImage.disabled = true;
+
+      const token = localStorage.getItem('pub_rs_token') || state.token;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/packages/${packageId}/regenerate-image`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          visualStyle: state.currentPackage?.article?.visualStyle || 'dark-cinematic',
+          promptHint: state.currentPackage?.article?.visualPromptHint || ''
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Falha ao regenerar imagem de fundo.');
+
+      renderMediaGallery(packageId, Date.now());
+      showToast('✨ Imagem de background regenerada com IA com sucesso!', 'success');
+    } catch (err) {
+      showToast(`Erro ao regenerar: ${err.message}`, 'error');
+    } finally {
+      if (elements.bgImageSpinner) elements.bgImageSpinner.style.display = 'none';
+      if (elements.btnRegenerateBgAi) elements.btnRegenerateBgAi.disabled = false;
+      if (elements.btnUploadBgImage) elements.btnUploadBgImage.disabled = false;
+    }
+  }
+
+  async function handleBgImageUpload(file) {
+    const packageId = state.currentPackage?.packageId;
+    if (!packageId) {
+      showToast('Nenhum pacote carregado para atualizar imagem.', 'warning');
+      return;
+    }
+
+    try {
+      if (elements.bgImageSpinner) {
+        elements.bgImageSpinner.style.display = 'block';
+        if (elements.bgImageStatusText) elements.bgImageStatusText.textContent = `Enviando imagem "${file.name}"...`;
+      }
+      if (elements.btnRegenerateBgAi) elements.btnRegenerateBgAi.disabled = true;
+      if (elements.btnUploadBgImage) elements.btnUploadBgImage.disabled = true;
+
+      const token = localStorage.getItem('pub_rs_token') || state.token;
+      const headers = { 'Content-Type': file.type || 'image/jpeg' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/packages/${packageId}/upload-image`, {
+        method: 'POST',
+        headers,
+        body: file
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Falha no upload da imagem.');
+
+      renderMediaGallery(packageId, Date.now());
+      showToast('📤 Nova imagem de fundo aplicada a todas as peças!', 'success');
+    } catch (err) {
+      showToast(`Erro no upload: ${err.message}`, 'error');
+    } finally {
+      if (elements.bgImageSpinner) {
+        elements.bgImageSpinner.style.display = 'none';
+        if (elements.bgImageStatusText) elements.bgImageStatusText.textContent = 'Gerando nova imagem conceitual de background com IA...';
+      }
+      if (elements.btnRegenerateBgAi) elements.btnRegenerateBgAi.disabled = false;
+      if (elements.btnUploadBgImage) elements.btnUploadBgImage.disabled = false;
     }
   }
 

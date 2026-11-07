@@ -1215,6 +1215,146 @@ app.post('/api/packages/:packageId/generate-video', requireAuth, rateLimiter, as
   }
 });
 
+// Regenerar imagem conceitual de background com IA para o pacote (Estúdio de Mídias)
+app.post('/api/packages/:packageId/regenerate-image', requireAuth, rateLimiter, async (req, res) => {
+  try {
+    const safePackageId = sanitizeIdentifier(req.params.packageId);
+    const outputBase = path.join(__dirname, 'output');
+    const packageDir = safePathResolve(outputBase, safePackageId);
+
+    if (!fs.existsSync(packageDir)) {
+      return res.status(404).json({ error: 'Pacote não encontrado.' });
+    }
+
+    const payloadPath = path.join(packageDir, 'payload.json');
+    let payload = {};
+    if (fs.existsSync(payloadPath)) {
+      payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
+    }
+
+    const { loadClientConfig } = require('./src/pipeline');
+    const { processSocialImages } = require('./src/imageProcessor');
+    const { generateCarousel } = require('./src/carouselGenerator');
+
+    const clientId = payload.client || 'anaue-design';
+    const client = loadClientConfig(clientId);
+    const article = payload.article || { title: 'Artigo', slug: safePackageId };
+    const visualPromptHint = req.body?.promptHint || article.visualPromptHint;
+    const visualStyle = req.body?.visualStyle || article.visualStyle;
+
+    console.log(`\n🎨 [ESTÚDIO DE MÍDIAS] Regenerando imagem de background com IA para ${safePackageId}...`);
+    const images = await processSocialImages(null, packageDir, {
+      client,
+      title: article.title,
+      article,
+      aiImage: true,
+      visualStyle,
+      visualPromptHint,
+      seed: Math.floor(Math.random() * 9999999)
+    });
+
+    let carousel = null;
+    if (payload.copies) {
+      try {
+        carousel = await generateCarousel({
+          article,
+          client,
+          copies: payload.copies,
+          outputDir: packageDir
+        });
+      } catch (err) {
+        console.warn(`[Aviso Carrossel] Falha ao atualizar carrossel: ${err.message}`);
+      }
+    }
+
+    payload.images = images;
+    if (carousel) payload.carousel = carousel;
+    fs.writeFileSync(payloadPath, JSON.stringify(payload, null, 2));
+
+    res.json({
+      success: true,
+      images,
+      carousel,
+      message: 'Imagem de background regenerada com sucesso!'
+    });
+  } catch (err) {
+    console.error(`[IMAGEM ERRO] Falha ao regenerar imagem para ${req.params.packageId}:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upload manual de nova imagem de background para o pacote (Estúdio de Mídias)
+app.post('/api/packages/:packageId/upload-image', requireAuth, express.raw({ type: ['image/*', 'application/octet-stream'], limit: '30mb' }), async (req, res) => {
+  try {
+    const safePackageId = sanitizeIdentifier(req.params.packageId);
+    const outputBase = path.join(__dirname, 'output');
+    const packageDir = safePathResolve(outputBase, safePackageId);
+
+    if (!fs.existsSync(packageDir)) {
+      return res.status(404).json({ error: 'Pacote não encontrado.' });
+    }
+
+    if (!req.body || req.body.length === 0) {
+      return res.status(400).json({ error: 'Nenhum dado de imagem recebido no upload.' });
+    }
+
+    const imagesDir = path.join(packageDir, 'images');
+    if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+
+    const customImgPath = path.join(imagesDir, 'custom_cover_original.jpg');
+    fs.writeFileSync(customImgPath, req.body);
+
+    const payloadPath = path.join(packageDir, 'payload.json');
+    let payload = {};
+    if (fs.existsSync(payloadPath)) {
+      payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
+    }
+
+    const { loadClientConfig } = require('./src/pipeline');
+    const { processSocialImages } = require('./src/imageProcessor');
+    const { generateCarousel } = require('./src/carouselGenerator');
+
+    const clientId = payload.client || 'anaue-design';
+    const client = loadClientConfig(clientId);
+    const article = payload.article || { title: 'Artigo', slug: safePackageId };
+
+    console.log(`\n📤 [ESTÚDIO DE MÍDIAS] Nova imagem de background recebida via upload (${(req.body.length / 1024).toFixed(1)} KB)...`);
+    const images = await processSocialImages(customImgPath, packageDir, {
+      client,
+      title: article.title,
+      article
+    });
+
+    let carousel = null;
+    if (payload.copies) {
+      try {
+        carousel = await generateCarousel({
+          article,
+          client,
+          copies: payload.copies,
+          outputDir: packageDir
+        });
+      } catch (err) {
+        console.warn(`[Aviso Carrossel] Falha ao atualizar carrossel: ${err.message}`);
+      }
+    }
+
+    payload.images = images;
+    if (carousel) payload.carousel = carousel;
+    fs.writeFileSync(payloadPath, JSON.stringify(payload, null, 2));
+
+    res.json({
+      success: true,
+      images,
+      carousel,
+      message: 'Nova imagem de background aplicada com sucesso às peças!'
+    });
+  } catch (err) {
+    console.error(`[UPLOAD IMAGEM ERRO] Falha no upload para ${req.params.packageId}:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // 4. EXECUÇÃO DO PIPELINE & IDEAÇÃO DE PAUTAS
 // ---------------------------------------------------------------------------

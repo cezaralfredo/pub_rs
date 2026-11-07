@@ -118,6 +118,48 @@ async function generateImagen(prompt, apiKey, model = 'imagen-3.0-generate-002')
 }
 
 /**
+ * Gerador via Pollinations.ai (Flux)
+ * Motor autônomo de alta resolução (16:9), sem necessidade de API key,
+ * produzindo artes conceituais fotorrealistas e cinematográficas de alto nível.
+ */
+async function generatePollinations(prompt, options = {}) {
+  const cleanPrompt = encodeURIComponent(prompt.slice(0, 650));
+  const seed = options.seed || Math.floor(Math.random() * 9999999);
+  const url = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1280&height=720&model=flux&nologo=true&seed=${seed}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Pollinations HTTP ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    if (buffer.length < 5000) {
+      throw new Error('Imagem retornada pelo Pollinations é inválida ou muito pequena.');
+    }
+
+    return {
+      buffer,
+      provider: 'Pollinations AI',
+      model: 'flux'
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * Tenta gerar a imagem via IA utilizando o melhor provedor configurado.
  */
 async function generateAiImageIfPossible({ title, description, client, options = {} }) {
@@ -128,8 +170,8 @@ async function generateAiImageIfPossible({ title, description, client, options =
   const openAiKey = (client?.llm?.provider === 'openai' && clientKey) ? clientKey : process.env.OPENAI_API_KEY;
   const geminiKey = (client?.llm?.provider === 'gemini' && clientKey) ? clientKey : process.env.GEMINI_API_KEY;
 
-  // 1. Se preferir OpenAI explicitamente ou se tiver chave da OpenAI
-  if ((preferredProvider === 'openai' || !geminiKey) && openAiKey) {
+  // 1. OpenAI DALL-E 3 (se configurado ou se tiver chave da OpenAI)
+  if ((preferredProvider === 'openai' || (!geminiKey && preferredProvider !== 'pollinations')) && openAiKey) {
     try {
       console.log(`   🎨 [DALL-E 3] Solicitando geração de arte alinhada ao estilo "${options.visualStyle || client?.visualIdentity?.style || 'dark-cinematic'}"...`);
       return await generateDallE(prompt, openAiKey, options.imageModel || process.env.IMAGE_MODEL || 'dall-e-3');
@@ -137,14 +179,17 @@ async function generateAiImageIfPossible({ title, description, client, options =
       console.warn(`   ⚠️ [DALL-E Erro] ${err.message}.`);
       if (geminiKey) {
         console.log(`   🔄 Tentando fallback para Google Imagen 3...`);
-        return await generateImagen(prompt, geminiKey);
+        try {
+          return await generateImagen(prompt, geminiKey);
+        } catch (imgErr) {
+          console.warn(`   ⚠️ [Imagen Erro] ${imgErr.message}.`);
+        }
       }
-      throw err;
     }
   }
 
-  // 2. Se tiver chave do Google Gemini / Imagen
-  if (geminiKey) {
+  // 2. Google Imagen 3 (se configurado ou se tiver chave do Gemini)
+  if (geminiKey && preferredProvider !== 'pollinations') {
     try {
       console.log(`   🎨 [Google Imagen 3] Solicitando geração de arte no estilo "${options.visualStyle || client?.visualIdentity?.style || 'dark-cinematic'}"...`);
       return await generateImagen(prompt, geminiKey, options.imageModel || process.env.IMAGE_MODEL || 'imagen-3.0-generate-002');
@@ -152,10 +197,21 @@ async function generateAiImageIfPossible({ title, description, client, options =
       console.warn(`   ⚠️ [Imagen Erro] ${err.message}.`);
       if (openAiKey) {
         console.log(`   🔄 Tentando fallback para OpenAI DALL-E 3...`);
-        return await generateDallE(prompt, openAiKey);
+        try {
+          return await generateDallE(prompt, openAiKey);
+        } catch (dalErr) {
+          console.warn(`   ⚠️ [DALL-E Erro] ${dalErr.message}.`);
+        }
       }
-      throw err;
     }
+  }
+
+  // 3. Provedor Autônomo de Alta Resolução via Pollinations AI (Flux)
+  try {
+    console.log(`   🎨 [Pollinations Flux] Gerando imagem de background conceitual em 16:9...`);
+    return await generatePollinations(prompt, options);
+  } catch (err) {
+    console.warn(`   ⚠️ [Pollinations Erro] ${err.message}.`);
   }
 
   return null;
@@ -166,5 +222,6 @@ module.exports = {
   buildVisualPrompt,
   generateAiImageIfPossible,
   generateDallE,
-  generateImagen
+  generateImagen,
+  generatePollinations
 };
