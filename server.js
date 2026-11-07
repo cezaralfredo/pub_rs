@@ -197,7 +197,8 @@ app.get('/api/status', (req, res) => {
     clients,
     archetypes: ARCHETYPES,
     visualStyles: STYLE_DESCRIPTIONS,
-    hasImageGen: Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY)
+    hasImageGen: true,
+    imageProviders: ['Pollinations AI (Flux)', Boolean(process.env.OPENAI_API_KEY) && 'OpenAI (DALL-E 3)', Boolean(process.env.GEMINI_API_KEY) && 'Google (Imagen 3)'].filter(Boolean)
   });
 });
 
