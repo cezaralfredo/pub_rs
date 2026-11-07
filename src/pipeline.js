@@ -49,6 +49,7 @@ async function runPipeline({
   provider,
   model,
   aiImage = false,
+  imageProvider = 'pollinations',
   onProgress = () => {}
 }) {
   const clientConfig = loadClientConfig(clientId);
@@ -170,6 +171,7 @@ async function runPipeline({
     title: article.title,
     article,
     aiImage: effectiveAiImage,
+    imageProvider,
     visualStyle: visualStyle || article.visualStyle,
     visualPromptHint: article.visualPromptHint,
     provider

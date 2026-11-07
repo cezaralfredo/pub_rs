@@ -328,14 +328,26 @@
           </div>
 
           <!-- Extra Options -->
-          <div class="options-bar">
-            <label class="toggle-switch">
-              <input type="checkbox" id="toggle-ai-image" checked>
-              <span class="toggle-slider"></span>
-              <span class="toggle-label">
-                <strong>Gerar Arte com IA</strong> (DALL-E 3 / Imagen 3)
-              </span>
-            </label>
+          <div class="options-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+            <div style="display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-ai-image" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">
+                  <strong>Gerar Arte com IA</strong>
+                </span>
+              </label>
+
+              <!-- Seletor do Motor de Criação de Imagem -->
+              <div class="custom-select-wrap" style="min-width: 220px;">
+                <select id="form-image-provider-select" class="control-input" style="padding: 7px 12px; font-size: 13px; font-weight: 600; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.4); color: #f8fafc; border-radius: 8px;" title="Motor de Criação de Imagem">
+                  <option value="pollinations" selected>🎨 IA Visual Nativa (Flux / Sana)</option>
+                  <option value="gemini">⚡ Google Imagen 3 (Gemini)</option>
+                  <option value="openai">🧠 OpenAI DALL-E 3</option>
+                  <option value="auto">🔄 Automático (Melhor Disponível)</option>
+                </select>
+              </div>
+            </div>
 
             <button type="submit" id="btn-generate" class="btn-primary-action">
               <span class="btn-glow"></span>
@@ -676,6 +688,17 @@
               <button id="btn-upload-bg-image" type="button" class="btn-secondary" style="padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                 📤 Trocar Fundo (Upload)
               </button>
+
+              <!-- Seletor do Motor para Regenerar -->
+              <div class="custom-select-wrap">
+                <select id="select-bg-image-provider" class="control-input" style="padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; background: rgba(15, 23, 42, 0.9); color: #f8fafc; border: 1px solid rgba(56, 189, 248, 0.4); cursor: pointer;" title="Motor de Criação Visual">
+                  <option value="pollinations" selected>🎨 IA Visual Nativa (Flux / Sana)</option>
+                  <option value="gemini">⚡ Google Imagen 3 (Gemini)</option>
+                  <option value="openai">🧠 OpenAI DALL-E 3</option>
+                  <option value="auto">🔄 Automático (Melhor Disponível)</option>
+                </select>
+              </div>
+
               <button id="btn-regenerate-bg-ai" type="button" class="btn-primary" style="padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #0052FF 0%, #00D2FF 100%);">
                 ✨ Regenerar Fundo com IA
               </button>

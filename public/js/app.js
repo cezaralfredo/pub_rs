@@ -181,6 +181,8 @@ document.addEventListener('DOMContentLoaded', () => {
     linkJpg9x16: document.getElementById('link-jpg-9x16'),
 
     // Gestão de Imagem de Fundo (Background)
+    formImageProviderSelect: document.getElementById('form-image-provider-select'),
+    selectBgImageProvider: document.getElementById('select-bg-image-provider'),
     inputBgImageFile: document.getElementById('input-bg-image-file'),
     btnUploadBgImage: document.getElementById('btn-upload-bg-image'),
     btnRegenerateBgAi: document.getElementById('btn-regenerate-bg-ai'),
@@ -1344,6 +1346,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const provider = elements.formProviderSelect.value;
     const model = elements.formModelInput.value.trim();
     const aiImage = isTopic ? true : elements.toggleAiImage.checked;
+    const imageProvider = elements.formImageProviderSelect?.value || 'pollinations';
 
     if (!isTopic && !url) {
       showToast('Por favor, informe a URL do artigo.', 'warning');
@@ -1372,7 +1375,8 @@ document.addEventListener('DOMContentLoaded', () => {
       clientId,
       provider,
       model,
-      aiImage
+      aiImage,
+      imageProvider
     });
     if (token) {
       queryParams.append('token', token);
@@ -2037,6 +2041,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (elements.btnRegenerateBgAi) elements.btnRegenerateBgAi.disabled = true;
       if (elements.btnUploadBgImage) elements.btnUploadBgImage.disabled = true;
 
+      const imageProvider = elements.selectBgImageProvider?.value || 'pollinations';
       const token = localStorage.getItem('pub_rs_token') || state.token;
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -2045,8 +2050,8 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          visualStyle: state.currentPackage?.article?.visualStyle || 'dark-cinematic',
-          promptHint: state.currentPackage?.article?.visualPromptHint || ''
+          imageProvider,
+          visualStyle: state.currentPackage?.article?.visualStyle || 'dark-cinematic'
         })
       });
 

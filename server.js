@@ -1240,19 +1240,33 @@ app.post('/api/packages/:packageId/regenerate-image', requireAuth, rateLimiter, 
     const clientId = payload.client || 'anaue-design';
     const client = loadClientConfig(clientId);
     const article = payload.article || { title: 'Artigo', slug: safePackageId };
-    const visualPromptHint = req.body?.promptHint || article.visualPromptHint;
+    const imageProvider = (req.body?.imageProvider || req.body?.imageEngine || 'pollinations').toLowerCase();
     const visualStyle = req.body?.visualStyle || article.visualStyle;
 
-    console.log(`\n🎨 [ESTÚDIO DE MÍDIAS] Regenerando imagem de background com IA para ${safePackageId}...`);
+    // Deriva a cena visual específica conforme o critério do título em questão
+    const { deriveVisualSceneFromTitle } = require('./src/imageGen');
+    const visualPromptHint = await deriveVisualSceneFromTitle({
+      title: article.title,
+      description: article.description,
+      client,
+      visualStyle,
+      promptHint: req.body?.promptHint
+    });
+
+    console.log(`\n🎨 [ESTÚDIO DE MÍDIAS] Regenerando background com motor "${imageProvider}" conforme critério do título: "${article.title}"...`);
     const images = await processSocialImages(null, packageDir, {
       client,
       title: article.title,
       article,
       aiImage: true,
+      imageProvider,
       visualStyle,
       visualPromptHint,
       seed: Math.floor(Math.random() * 9999999)
     });
+
+    article.visualPromptHint = visualPromptHint;
+    payload.article.visualPromptHint = visualPromptHint;
 
     let carousel = null;
     if (payload.copies) {
@@ -1443,7 +1457,7 @@ app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
     return res.status(403).json({ error: quotaCheck.error, code: 'QUOTA_EXCEEDED' });
   }
 
-  const { mode = 'url', url, topic, archetype, visualStyle, clientId, provider, model, aiImage } = req.query;
+  const { mode = 'url', url, topic, archetype, visualStyle, clientId, provider, model, aiImage, imageProvider } = req.query;
   const isTopicMode = mode === 'topic' || (Boolean(topic) && !url);
 
   if (!isTopicMode && !url) {
@@ -1481,6 +1495,7 @@ app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
       provider,
       model,
       aiImage: aiImage === 'true' || aiImage === true,
+      imageProvider: imageProvider || 'pollinations',
       onProgress: (progress) => {
         sendEvent('progress', progress);
       }

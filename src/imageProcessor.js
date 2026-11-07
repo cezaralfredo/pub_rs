@@ -341,6 +341,12 @@ async function processSocialImages(imageUrl, outputDir, options = {}) {
             const aiOriginalPath = path.join(imagesDir, 'ai_cover_original.jpg');
             fs.writeFileSync(aiOriginalPath, inputBuffer);
             console.log(`   ✓ Arte de background gerada com sucesso via ${aiImageResult.provider} (${aiImageResult.model})!`);
+            if (options.article) {
+              if (aiImageResult.visualPromptHint) {
+                options.article.visualPromptHint = aiImageResult.visualPromptHint;
+              }
+              options.article.imageUrl = `/api/media/${path.basename(outputDir)}/ai_cover_original.jpg`;
+            }
           }
         } catch (aiErr) {
           console.warn(`   ⚠️ [IA Visual Aviso] Falha ao gerar via IA (${aiErr.message}). Alternando para textura abstrata.`);

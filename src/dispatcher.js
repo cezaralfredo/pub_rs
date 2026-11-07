@@ -157,7 +157,9 @@ ${copies.facebook.post}
       url: article.isTopicMode ? null : (article.canonicalUrl || article.url || null),
       isTopicMode: Boolean(article.isTopicMode),
       slug: article.slug,
-      siteName: article.siteName
+      siteName: article.siteName,
+      visualPromptHint: article.visualPromptHint || '',
+      visualStyle: article.visualStyle || client.visualIdentity?.style || 'dark-cinematic'
     },
     images,
     carousel: carousel || null,
