@@ -282,8 +282,8 @@ Gere agora a estrutura analítica completa no formato JSON exigido.`;
             fullTextSnippet,
             visualPromptHint: parsed.visualPromptHint || '',
             visualStyle: visualStyle || client.visualIdentity?.style || 'dark-cinematic',
-            canonicalUrl: client.brandHandle ? `https://instagram.com/${client.brandHandle.replace('@', '')}` : `https://${client.id || 'marca'}.com/insights/${slug}`,
-            url: `https://${client.id || 'marca'}.com/insights/${slug}`,
+            canonicalUrl: null,
+            url: null,
             isTopicMode: true,
             archetype,
             synthesizerMeta: {
@@ -331,8 +331,8 @@ Gere agora a estrutura analítica completa no formato JSON exigido.`;
     fullTextSnippet: paragraphs.join('\n\n'),
     visualPromptHint: `Conceptual modern business environment representing: ${cleanTopic}. Sophisticated high-tech composition with glowing accents.`,
     visualStyle: visualStyle || client.visualIdentity?.style || 'dark-cinematic',
-    canonicalUrl: `https://${client.id || 'marca'}.com/insights/${slug}`,
-    url: `https://${client.id || 'marca'}.com/insights/${slug}`,
+    canonicalUrl: null,
+    url: null,
     isTopicMode: true,
     archetype,
     synthesizerMeta: {

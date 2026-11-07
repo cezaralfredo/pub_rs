@@ -154,7 +154,8 @@ ${copies.facebook.post}
     article: {
       title: article.title,
       description: article.description,
-      url: article.canonicalUrl || article.url,
+      url: article.isTopicMode ? null : (article.canonicalUrl || article.url || null),
+      isTopicMode: Boolean(article.isTopicMode),
       slug: article.slug,
       siteName: article.siteName
     },

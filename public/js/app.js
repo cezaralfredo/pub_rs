@@ -1455,7 +1455,15 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.resArticleTitle.textContent = data.article?.title || 'Artigo';
     elements.resEngineTag.textContent = data.copies?.meta?.generator || 'pub_rs Engine';
     elements.resDateTag.textContent = new Date().toLocaleTimeString('pt-BR');
-    elements.resArticleLink.href = data.article?.url || '#';
+    if (elements.resArticleLink) {
+      if (data.article?.url && !data.article?.isTopicMode) {
+        elements.resArticleLink.classList.remove('hidden');
+        elements.resArticleLink.href = data.article.url;
+        elements.resArticleLink.textContent = 'Ver link original ↗';
+      } else {
+        elements.resArticleLink.classList.add('hidden');
+      }
+    }
 
     // 0.5 Badges do Motor de Decisão Jev (TypeSafe AI)
     const jev = data.jev || data.article?.jev;

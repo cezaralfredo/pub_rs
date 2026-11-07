@@ -280,10 +280,21 @@ async function generateWithLlm(article, client, options = {}) {
     throw new Error(`O modelo de IA ${result.provider} (${result.model}) retornou campos de texto vazios.`);
   }
 
-  // Injeção de URLs com parâmetros UTM oficiais
-  const targetUrl = article.canonicalUrl || article.url;
-  const slug = article.slug;
-  const replaceUrls = (txt, src) => (txt || '').replace(/\{[A-Z_]+_URL\}/g, getUtmUrl(targetUrl, src, slug));
+  // Validação de modo de criação: URL de artigo real vs Interesses / Tema Livre
+  const isTopic = Boolean(article.isTopicMode || article.mode === 'topic' || !article.url);
+  const targetUrl = isTopic ? null : (article.canonicalUrl || article.url);
+  const slug = article.slug || 'artigo';
+  const replaceUrls = (txt, src) => {
+    if (!txt) return '';
+    if (targetUrl) {
+      return txt.replace(/\{[A-Z_]+_URL\}/g, getUtmUrl(targetUrl, src, slug));
+    }
+    // No modo por interesses / tema livre (sem site):
+    return txt
+      .replace(/\n*Matéria completa em\s*\([^\)]*\)/gi, '')
+      .replace(/\{[A-Z_]+_URL\}/g, '')
+      .trim();
+  };
 
   // 1. Processamento específico para o X (Twitter): Somente ponto fundamental, sem título, máx 280 caracteres
   let twitterPostRaw = (typeof parsed.twitter === 'string' ? parsed.twitter : parsed.twitter?.post) || '';
@@ -299,12 +310,26 @@ async function generateWithLlm(article, client, options = {}) {
     finalTwitterPost = finalTwitterPost.slice(0, 277) + '...';
   }
 
-  // 2. Processamento para LinkedIn, Instagram e Facebook: Resumo de até 1700 caracteres com "Matéria completa em (url)"
+  // 2. Processamento para LinkedIn, Instagram e Facebook: Resumo de até 1700 caracteres
+  // Se for artigo de blog real: finaliza com "Matéria completa em (url)"
+  // Se for interesse / tema livre: NÃO inclui link de site (conteúdo 100% nativo)
   const formatRichSummary = (rawText, network) => {
     let text = (rawText || '').trim();
     if (!text) {
       text = article.description || 'Confira os destaques da análise estratégica.';
     }
+
+    if (isTopic || !targetUrl) {
+      text = text.replace(/\n*Matéria completa em\s*\([^\)]*\)/gi, '');
+      text = replaceUrls(text, network);
+      text = text.trim();
+      if (text.length > 1700) {
+        text = `${text.slice(0, 1697).replace(/[,;.\s]+$/, '')}...`;
+      }
+      return text.trim();
+    }
+
+    // Modo artigo web real:
     const netUrl = getUtmUrl(targetUrl, network, slug);
     const linkSuffix = `Matéria completa em (${netUrl})`;
 
@@ -326,6 +351,27 @@ async function generateWithLlm(article, client, options = {}) {
   const finalLinkedinPost = formatRichSummary(linkedinPostRaw, 'linkedin');
   const finalInstagramPost = formatRichSummary(instagramPostRaw, 'instagram');
   const finalFacebookPost = formatRichSummary(facebookPostRaw, 'facebook');
+
+  const cleanFirstComment = (rawComment, network, fallbackPrompt) => {
+    let comment = replaceUrls(rawComment, network);
+    comment = comment.replace(/\n*Matéria completa em\s*\([^\)]*\)/gi, '').trim();
+    if (!comment && isTopic) {
+      return fallbackPrompt;
+    }
+    return comment;
+  };
+
+  const finalLinkedinComment = isTopic
+    ? cleanFirstComment(linkedinCommentRaw, 'linkedin', 'Qual é a sua perspectiva sobre esse tema? Compartilhe sua visão nos comentários!')
+    : replaceUrls(linkedinCommentRaw, 'linkedin');
+
+  const finalInstagramComment = isTopic
+    ? cleanFirstComment(instagramCommentRaw, 'instagram', 'Qual desses insights fez mais sentido para você? Comente aqui embaixo!')
+    : replaceUrls(instagramCommentRaw, 'instagram');
+
+  const finalFacebookComment = isTopic
+    ? cleanFirstComment(facebookCommentRaw, 'facebook', 'Compartilhe sua experiência conosco nos comentários!')
+    : replaceUrls(facebookCommentRaw, 'facebook');
 
   const ensureHeading = (rawText, title, prefix = '') => {
     const txt = (rawText || '').trim();
@@ -362,21 +408,21 @@ async function generateWithLlm(article, client, options = {}) {
     },
     linkedin: {
       post: finalLinkedinPost,
-      firstComment: replaceUrls(linkedinCommentRaw, 'linkedin'),
+      firstComment: finalLinkedinComment,
       recommendedFormat: '16:9 ou 4:5 Retrato',
       charCount: finalLinkedinPost.length,
       maxLimit: 1700
     },
     instagram: {
       post: finalInstagramPost,
-      firstComment: replaceUrls(instagramCommentRaw, 'instagram'),
+      firstComment: finalInstagramComment,
       recommendedFormat: '4:5 (Retrato Padrão)',
       charCount: finalInstagramPost.length,
       maxLimit: 1700
     },
     facebook: {
       post: finalFacebookPost,
-      firstComment: replaceUrls(facebookCommentRaw, 'facebook'),
+      firstComment: finalFacebookComment,
       recommendedFormat: '16:9 ou 4:5 Retrato',
       charCount: finalFacebookPost.length,
       maxLimit: 1700

@@ -69,12 +69,15 @@ function buildTwitterFundamentalPoint(article, client) {
 
 /**
  * Gera um resumo editorial completo para Instagram, Facebook e LinkedIn
- * com até 1700 caracteres, finalizando com a URL no formato: "Matéria completa em (url)"
+ * com até 1700 caracteres.
+ * - Modo Artigo Web: finaliza com a URL no formato "Matéria completa em (url)"
+ * - Modo Interesses / Tema Livre: NÃO adiciona link de site (conteúdo 100% nativo)
  */
 function buildRichSummaryPost(article, client, network = 'linkedin') {
-  const targetUrl = article.canonicalUrl || article.url;
+  const isTopic = Boolean(article.isTopicMode || article.mode === 'topic' || !article.url);
+  const targetUrl = isTopic ? null : (article.canonicalUrl || article.url);
   const slug = article.slug || 'artigo';
-  const utmUrl = getUtmUrl(targetUrl, network, slug);
+  const utmUrl = targetUrl ? getUtmUrl(targetUrl, network, slug) : null;
 
   const hashtags = Array.isArray(client.defaultHashtags) && client.defaultHashtags.length > 0
     ? client.defaultHashtags.join(' ')
@@ -101,22 +104,19 @@ function buildRichSummaryPost(article, client, network = 'linkedin') {
     ? points.map((p, idx) => `${icons[idx % icons.length]} ${p}`).join('\n\n')
     : `🔹 Principais descobertas e análises aprofundadas\n\n⚡ Estratégias práticas aplicadas ao mercado atual\n\n💡 Lições essenciais para tomadores de decisão`;
 
-  // Formato estrito solicitado: "Matéria completa em (url)"
-  const footerLink = `Matéria completa em (${utmUrl})`;
+  // Formato: se houver URL válida de artigo, inclui "Matéria completa em (url)"
+  const footerLink = utmUrl ? `Matéria completa em (${utmUrl})` : '';
 
-  let post = `${leadSummary}
+  let post = '';
+  if (footerLink) {
+    post = `${leadSummary}\n\nDestaques e pontos fundamentais da análise:\n\n${formattedPoints}\n\n${hashtags}\n\n${footerLink}`;
+  } else {
+    post = `${leadSummary}\n\nDestaques e pontos fundamentais da análise:\n\n${formattedPoints}\n\n${hashtags}`;
+  }
 
-Destaques e pontos fundamentais da análise:
-
-${formattedPoints}
-
-${hashtags}
-
-${footerLink}`;
-
-  // Se ultrapassar 1700 caracteres, encurta o corpo preservando o rodapé com o link intacto
+  // Se ultrapassar 1700 caracteres, encurta o corpo preservando o rodapé
   if (post.length > 1700) {
-    const fixedEnd = `\n\n${hashtags}\n\n${footerLink}`;
+    const fixedEnd = footerLink ? `\n\n${hashtags}\n\n${footerLink}` : `\n\n${hashtags}`;
     const availableForBody = 1700 - fixedEnd.length;
     let body = `${leadSummary}\n\nDestaques da análise:\n\n${formattedPoints}`;
     if (body.length > availableForBody) {
@@ -127,9 +127,13 @@ ${footerLink}`;
 
   // Trava de segurança final para até 1700 caracteres
   if (post.length > 1700) {
-    const fixedEnd = `\n\n${footerLink}`;
-    const maxBody = 1700 - fixedEnd.length;
-    post = `${post.slice(0, maxBody - 3).replace(/[,;.\s]+$/, '')}...${fixedEnd}`;
+    if (footerLink) {
+      const fixedEnd = `\n\n${footerLink}`;
+      const maxBody = 1700 - fixedEnd.length;
+      post = `${post.slice(0, maxBody - 3).replace(/[,;.\s]+$/, '')}...${fixedEnd}`;
+    } else {
+      post = `${post.slice(0, 1697).replace(/[,;.\s]+$/, '')}...`;
+    }
   }
 
   return post.trim();
@@ -145,13 +149,14 @@ function generateAlgorithmicCopies(article, client) {
     ? client.defaultHashtags
     : ['#Inovacao', '#Estrategia', '#Tendencias', '#Mercado'];
   const hashtagsStr = hashtags.join(' ');
-  const targetUrl = article.canonicalUrl || article.url;
+  const isTopic = Boolean(article.isTopicMode || article.mode === 'topic' || !article.url);
+  const targetUrl = isTopic ? null : (article.canonicalUrl || article.url);
   const slug = article.slug || 'artigo';
 
   // 1. X (Twitter): Somente o ponto fundamental do artigo (sem título, máx 280 chars)
   const twitterPost = buildTwitterFundamentalPoint(article, client);
 
-  // 2. Instagram, Facebook e LinkedIn: Resumo detalhado com até 1700 caracteres e URL no final
+  // 2. Instagram, Facebook e LinkedIn: Resumo detalhado com até 1700 caracteres (com link se web, sem link se tópico)
   const linkedinPost = buildRichSummaryPost(article, client, 'linkedin');
   const instagramPost = buildRichSummaryPost(article, client, 'instagram');
   const facebookPost = buildRichSummaryPost(article, client, 'facebook');
@@ -197,59 +202,47 @@ function generateAlgorithmicCopies(article, client) {
     cta: `Salve este carrossel e siga ${handle || brand} para mais estratégias práticas.`
   };
 
-  const linkedinComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'linkedin', slug));
-  const instagramComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'instagram', slug));
-  const facebookComment = commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'facebook', slug));
+  const linkedinComment = isTopic
+    ? 'Qual é a sua visão sobre esse tema? Compartilhe sua experiência nos comentários!'
+    : (targetUrl ? commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'linkedin', slug)) : 'Compartilhe sua visão nos comentários!');
+  const instagramComment = isTopic
+    ? 'Qual desses insights fez mais sentido para você? Comente aqui embaixo!'
+    : (targetUrl ? commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'instagram', slug)) : 'Comente o que achou!');
+  const facebookComment = isTopic
+    ? 'Compartilhe sua experiência conosco nos comentários!'
+    : (targetUrl ? commentTemplate.replace('{URL}', getUtmUrl(targetUrl, 'facebook', slug)) : 'Deixe sua opinião nos comentários!');
 
   // 3. INSTAGRAM (STORIES)
-  const storiesCopy = 
-`NOVO ARTIGO NO AR 🚀
-
-${article.title}
-
-${leadSummary.slice(0, 140)}...
-
-👉 Toque na figurinha de link para ler na íntegra:
-${getUtmUrl(targetUrl, 'stories', slug)}`;
+  const storiesCopy = isTopic
+    ? `ANÁLISE ESTRATÉGICA 💡\n\n${article.title}\n\n${leadSummary.slice(0, 140)}...\n\n👉 O que você acha desse movimento? Deixe na caixinha!`
+    : `NOVO ARTIGO NO AR 🚀\n\n${article.title}\n\n${leadSummary.slice(0, 140)}...\n\n👉 Toque na figurinha de link para ler na íntegra:\n${getUtmUrl(targetUrl, 'stories', slug)}`;
 
   // 4. X (TWITTER) - THREAD
   const twitterThread = [
-    `1/4 🚨 ${article.title}
-
-${leadSummary.length > 150 ? leadSummary.slice(0, 145) + '...' : leadSummary}
-
-🧵 Segue o fio 👇`,
-
-    `2/4 💡 Diagnóstico e pontos de partida:
-${points.slice(0, 2).map(p => `• ${p}`).join('\n')}`,
-
-    `3/4 ⚡ Alavancas estratégicas de crescimento:
-${points.slice(2, 4).map(p => `• ${p}`).join('\n')}`,
-
-    `4/4 🔗 Leia a análise completa e acesse todas as fontes na íntegra:
-${getUtmUrl(targetUrl, 'twitter', slug)}
-
-${hashtags.slice(0, 3).join(' ')}`
+    `1/4 🚨 ${article.title}\n\n${leadSummary.length > 150 ? leadSummary.slice(0, 145) + '...' : leadSummary}\n\n🧵 Segue o fio 👇`,
+    `2/4 💡 Diagnóstico e pontos de partida:\n${points.slice(0, 2).map(p => `• ${p}`).join('\n')}`,
+    `3/4 ⚡ Alavancas estratégicas de crescimento:\n${points.slice(2, 4).map(p => `• ${p}`).join('\n')}`,
+    isTopic
+      ? `4/4 🎯 Conclusão e impacto no negócio:\nDomine esses fundamentos para acelerar resultados.\n\n${hashtags.slice(0, 3).join(' ')}`
+      : `4/4 🔗 Leia a análise completa e acesse todas as fontes na íntegra:\n${getUtmUrl(targetUrl, 'twitter', slug)}\n\n${hashtags.slice(0, 3).join(' ')}`
   ];
 
   // 5. THREADS (Post + Thread opcional)
-  const threadsCopy = 
-`${article.title}
+  const threadsCopy = isTopic
+    ? `${article.title}\n\n${leadSummary}\n\nPrincipais conclusões:\n${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}\n\nComo você ou seu time lidam com essa questão hoje?`
+    : `${article.title}\n\n${leadSummary}\n\nPrincipais conclusões:\n${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}\n\n🔗 Acesse a íntegra: ${getUtmUrl(targetUrl, 'threads', slug)}\n\nComo você ou seu time lidam com essa questão hoje?`;
 
-${leadSummary}
-
-Principais conclusões:
-${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}
-
-🔗 Acesse a íntegra: ${getUtmUrl(targetUrl, 'threads', slug)}
-
-Como você ou seu time lidam com essa questão hoje?`;
-
-  const threadsThread = [
-    `1/3 🚨 ${article.title}\n\n${leadSummary.slice(0, 160)}... 🧵`,
-    `2/3 💡 Principais conclusões:\n${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}`,
-    `3/3 🔗 Artigo completo com dados: ${getUtmUrl(targetUrl, 'threads', slug)}\n\nO que você achou dessa mudança?`
-  ];
+  const threadsThread = isTopic
+    ? [
+        `1/3 🚨 ${article.title}\n\n${leadSummary.slice(0, 160)}... 🧵`,
+        `2/3 💡 Principais conclusões:\n${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}`,
+        `3/3 🎯 Lição prática e reflexão:\nO que você achou dessa mudança?`
+      ]
+    : [
+        `1/3 🚨 ${article.title}\n\n${leadSummary.slice(0, 160)}... 🧵`,
+        `2/3 💡 Principais conclusões:\n${points.slice(0, 3).map(p => `→ ${p}`).join('\n')}`,
+        `3/3 🔗 Artigo completo com dados: ${getUtmUrl(targetUrl, 'threads', slug)}\n\nO que você achou dessa mudança?`
+      ];
 
   return {
     meta: {
