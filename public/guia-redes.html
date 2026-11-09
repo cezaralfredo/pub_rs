@@ -641,13 +641,21 @@
         </ul>
       </div>
 
+      <div class="alert-tip" style="margin-bottom: 1.5rem;">
+        <span>🎯</span>
+        <div>
+          <strong>Publicação no Perfil Pessoal em 1 Clique (Sem Burocracia):</strong><br>
+          Para publicar no seu perfil pessoal do LinkedIn, basta ativar o produto <strong>Share on LinkedIn</strong> (escopo <code>w_member_social</code>) no LinkedIn Developers. No Social360, cole seu Access Token e clique no botão <strong>"🔍 Detectar ID"</strong> — o sistema busca seu nome e preenche seu URN de membro (<code>urn:li:person:...</code>) automaticamente!
+        </div>
+      </div>
+
       <div class="alert-warning" style="margin-bottom: 1.5rem;">
         <span>⚠️</span>
         <div>
           <strong>Atenção Crucial: Company Page vs. Perfil Pessoal no LinkedIn Direct:</strong><br>
           Se você tentar postar com Author URN de empresa (<code>urn:li:organization:...</code>) usando um token padrão, a API do LinkedIn retornará o erro <code>Field Value validation failed in REQUEST_BODY: Data Processing Exception while processing fields [/author]</code>.<br>
           Isso acontece porque a API direta do LinkedIn exige que o aplicativo seja formalmente aprovado no produto <strong>"Community Management API"</strong> (que concede o escopo <code>w_organization_social</code>).<br>
-          👉 <strong>Solução Muito Mais Fácil:</strong> Conecte sua Company Page diretamente no <strong>Buffer</strong>! O Buffer já possui homologação corporativa com o LinkedIn e publica na sua Company Page instantaneamente, sem burocracia nem risco de rejeição.
+          👉 <strong>Solução Recomendada para Company Pages:</strong> Conecte sua Company Page diretamente no <strong>Buffer</strong> (topo deste guia) ou utilize a API direta focada no seu <strong>Perfil Pessoal</strong>.
         </div>
       </div>
 

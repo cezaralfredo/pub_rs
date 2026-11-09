@@ -799,6 +799,56 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Gerenciador de Tipo de Destino do LinkedIn (Perfil Pessoal vs Company Page vs Ambos)
+    const liTypeSelect = document.getElementById('ch-linkedin-type');
+    if (liTypeSelect) {
+      liTypeSelect.addEventListener('change', () => {
+        const val = liTypeSelect.value;
+        const personWrap = document.getElementById('field-wrap-linkedin-person');
+        const orgWrap = document.getElementById('field-wrap-linkedin-org');
+        if (personWrap) personWrap.classList.toggle('hidden', val === 'organization');
+        if (orgWrap) orgWrap.classList.toggle('hidden', val === 'person');
+      });
+    }
+
+    // Botão de Detecção Automática do Perfil Pessoal do LinkedIn
+    const btnDetectLi = document.getElementById('btn-detect-linkedin-profile');
+    if (btnDetectLi) {
+      btnDetectLi.addEventListener('click', async () => {
+        const token = (document.getElementById('ch-linkedin-token')?.value || '').trim();
+        if (!token) {
+          showToast('Cole o Access Token do LinkedIn no campo antes de detectar.', 'warning');
+          return;
+        }
+        btnDetectLi.disabled = true;
+        btnDetectLi.textContent = 'Buscando...';
+        try {
+          const res = await authFetch('/api/clients/test-channel-direct', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              channel: 'linkedin',
+              config: { accessToken: token, profileType: 'person' },
+              clientId: resolveCurrentClientId()
+            })
+          });
+          const data = await res.json();
+          if (data.ok && (data.detectedPersonalUrn || data.authorUrn)) {
+            const urn = data.detectedPersonalUrn || data.authorUrn;
+            document.getElementById('ch-linkedin-urn').value = urn;
+            showToast(`✓ Perfil Pessoal detectado: ${data.memberName || 'Usuário'} (${urn})`, 'success');
+          } else {
+            showToast(`✕ Erro ao detectar perfil: ${data.error || 'Falha'}`, 'error');
+          }
+        } catch (err) {
+          showToast(`Erro na requisição: ${err.message}`, 'error');
+        } finally {
+          btnDetectLi.disabled = false;
+          btnDetectLi.textContent = '🔍 Detectar ID';
+        }
+      });
+    }
+
     if (elements.btnCloseModalClients) {
       elements.btnCloseModalClients.addEventListener('click', () => {
         switchView('studio');
@@ -889,8 +939,10 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           linkedin: {
             enabled: document.getElementById('ch-linkedin-enabled').checked,
+            profileType: document.getElementById('ch-linkedin-type')?.value || 'person',
             accessToken: document.getElementById('ch-linkedin-token').value.trim(),
-            authorUrn: document.getElementById('ch-linkedin-urn').value.trim()
+            authorUrn: document.getElementById('ch-linkedin-urn').value.trim(),
+            organizationUrn: (document.getElementById('ch-linkedin-org-urn')?.value || '').trim()
           },
           twitter: {
             enabled: document.getElementById('ch-twitter-enabled').checked,
@@ -2243,6 +2295,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
+      // Atualiza texto do LinkedIn indicando se é Perfil Pessoal, Company Page ou Ambos
+      const liConfig = client?.channels?.linkedin || {};
+      const liType = liConfig.profileType || (liConfig.authorUrn?.includes(':organization:') ? 'organization' : 'person');
+      const liSpan = document.querySelector('#label-pub-linkedin span:not(.channel-status-pill)');
+      if (liSpan) {
+        if (liType === 'both') liSpan.textContent = '💼 LinkedIn (Pessoal & Empresa)';
+        else if (liType === 'organization') liSpan.textContent = '💼 LinkedIn (Company Page)';
+        else liSpan.textContent = '💼 LinkedIn (Perfil Pessoal)';
+      }
+
       const warningEl = document.getElementById('publish-channels-warning');
       if (warningEl) {
         if (activeCount === 0) {
@@ -2534,7 +2596,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ch-buffer-profiles').value = '';
     document.getElementById('ch-linkedin-enabled').checked = false;
     document.getElementById('ch-linkedin-token').value = '';
+    if (document.getElementById('ch-linkedin-type')) document.getElementById('ch-linkedin-type').value = 'person';
     document.getElementById('ch-linkedin-urn').value = '';
+    if (document.getElementById('ch-linkedin-org-urn')) document.getElementById('ch-linkedin-org-urn').value = '';
+    const pWrap = document.getElementById('field-wrap-linkedin-person');
+    const oWrap = document.getElementById('field-wrap-linkedin-org');
+    if (pWrap) pWrap.classList.remove('hidden');
+    if (oWrap) oWrap.classList.add('hidden');
     document.getElementById('ch-twitter-enabled').checked = false;
     if (document.getElementById('ch-twitter-apikey')) document.getElementById('ch-twitter-apikey').value = '';
     if (document.getElementById('ch-twitter-apisecret')) document.getElementById('ch-twitter-apisecret').value = '';
@@ -2611,7 +2679,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.getElementById('ch-linkedin-enabled').checked = Boolean(ch.linkedin?.enabled);
       document.getElementById('ch-linkedin-token').value = ch.linkedin?.accessToken || '';
+      const liType = ch.linkedin?.profileType || (ch.linkedin?.authorUrn?.includes(':organization:') ? 'organization' : 'person');
+      if (document.getElementById('ch-linkedin-type')) {
+        document.getElementById('ch-linkedin-type').value = liType;
+      }
       document.getElementById('ch-linkedin-urn').value = ch.linkedin?.authorUrn || '';
+      if (document.getElementById('ch-linkedin-org-urn')) {
+        document.getElementById('ch-linkedin-org-urn').value = ch.linkedin?.organizationUrn || (ch.linkedin?.authorUrn?.includes(':organization:') ? ch.linkedin.authorUrn : '');
+      }
+      const pWrap = document.getElementById('field-wrap-linkedin-person');
+      const oWrap = document.getElementById('field-wrap-linkedin-org');
+      if (pWrap) pWrap.classList.toggle('hidden', liType === 'organization');
+      if (oWrap) oWrap.classList.toggle('hidden', liType === 'person');
 
       document.getElementById('ch-twitter-enabled').checked = Boolean(ch.twitter?.enabled);
       if (document.getElementById('ch-twitter-apikey')) document.getElementById('ch-twitter-apikey').value = ch.twitter?.apiKey || '';
@@ -2756,6 +2835,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (channel === 'linkedin') {
       config.accessToken = document.getElementById('ch-linkedin-token').value.trim();
       config.authorUrn = document.getElementById('ch-linkedin-urn').value.trim();
+      config.profileType = document.getElementById('ch-linkedin-type')?.value || 'person';
+      config.organizationUrn = (document.getElementById('ch-linkedin-org-urn')?.value || '').trim();
     }
     if (channel === 'twitter') {
       config.apiKey = (document.getElementById('ch-twitter-apikey')?.value || '').trim();
@@ -2792,6 +2873,13 @@ document.addEventListener('DOMContentLoaded', () => {
           if (profilesInput) {
             profilesInput.value = data.channels.map(c => c.id).join(', ');
             showToast(`✓ IDs dos ${data.channels.length} canais ativos do Buffer preenchidos automaticamente no formulário!`, 'info');
+          }
+        }
+        if (channel === 'linkedin' && (data.detectedPersonalUrn || data.authorUrn)) {
+          const urnInput = document.getElementById('ch-linkedin-urn');
+          if (urnInput && !urnInput.value.trim()) {
+            urnInput.value = data.detectedPersonalUrn || data.authorUrn;
+            showToast(`✓ URN do perfil pessoal preenchido automaticamente: ${urnInput.value}`, 'info');
           }
         }
       } else {

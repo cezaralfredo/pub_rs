@@ -449,83 +449,179 @@ async function publishToBuffer(config, copies, packageId, options = {}) {
  * Publicação direta no LinkedIn via REST API v2
  * Endpoint: POST https://api.linkedin.com/v2/ugcPosts
  */
+/**
+ * Publicação direta no LinkedIn via UGC Posts API (v2)
+ * Suporta:
+ * 1. Perfil Pessoal (Author URN: urn:li:person:...) com escopo w_member_social
+ * 2. Company Page (Author URN: urn:li:organization:...) com escopo w_organization_social
+ * 3. Modo Ambos (publica em ambos os perfis sequencialmente)
+ * Endpoint: POST https://api.linkedin.com/v2/ugcPosts
+ */
 async function publishToLinkedIn(config, copies, article = {}) {
-  const { accessToken, authorUrn } = config;
+  const { accessToken, profileType = 'person' } = config;
+  let authorUrn = (config.authorUrn || '').trim();
+  const organizationUrn = (config.organizationUrn || '').trim();
 
-  if (!accessToken || !authorUrn) {
-    return { status: 'skipped', message: 'Credenciais do LinkedIn não configuradas (accessToken ou authorUrn).' };
+  if (!accessToken) {
+    return { status: 'skipped', message: 'Credenciais do LinkedIn não configuradas (accessToken ausente).' };
   }
 
-  try {
-    let postText = (typeof copies?.linkedin === 'string' ? copies.linkedin : copies?.linkedin?.post) || '';
+  // Se o Author URN pessoal não estiver preenchido, detecta automaticamente via userinfo
+  if (!authorUrn || authorUrn === 'auto' || (!authorUrn.includes(':') && profileType !== 'organization')) {
+    try {
+      const userRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+        headers: { 'Authorization': `Bearer ${accessToken.trim()}` }
+      });
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        const memberId = userData.sub || userData.id;
+        if (memberId) {
+          authorUrn = `urn:li:person:${memberId}`;
+        }
+      }
+    } catch {}
+  }
 
-    // Fallbacks resilientes se a copy específica do LinkedIn estiver vazia
-    if (!postText.trim()) {
-      postText = (typeof copies?.facebook === 'string' ? copies.facebook : copies?.facebook?.post) || '';
-    }
-    if (!postText.trim()) {
-      postText = (typeof copies?.instagram === 'string' ? copies.instagram : copies?.instagram?.post) || '';
-    }
-    if (!postText.trim() && article) {
-      postText = (article.description || article.title || 'Novo artigo publicado').trim();
-    }
+  // Lista de destinos a serem publicados
+  const targets = [];
+  if (profileType === 'both') {
+    if (authorUrn) targets.push({ urn: authorUrn, type: 'person', label: 'Perfil Pessoal' });
+    if (organizationUrn) targets.push({ urn: organizationUrn, type: 'organization', label: 'Company Page' });
+  } else if (profileType === 'organization') {
+    const org = organizationUrn || authorUrn;
+    if (org) targets.push({ urn: org, type: 'organization', label: 'Company Page' });
+  } else {
+    // Default: perfil pessoal
+    if (authorUrn) targets.push({ urn: authorUrn, type: 'person', label: 'Perfil Pessoal' });
+  }
 
-    postText = postText.trim();
-    if (!postText) throw new Error('Copy do LinkedIn não encontrada no pacote.');
+  if (targets.length === 0) {
+    return { status: 'skipped', message: 'Nenhum Author URN informado ou detectado para o LinkedIn (preencha o URN pessoal ou da empresa).' };
+  }
 
-    // Limite oficial do LinkedIn (resumo de até 1700 caracteres)
-    if (postText.length > 1700) {
-      postText = postText.slice(0, 1697) + '...';
+  let postText = (typeof copies?.linkedin === 'string' ? copies.linkedin : copies?.linkedin?.post) || '';
+
+  // Fallbacks resilientes se a copy específica do LinkedIn estiver vazia
+  if (!postText.trim()) {
+    postText = (typeof copies?.facebook === 'string' ? copies.facebook : copies?.facebook?.post) || '';
+  }
+  if (!postText.trim()) {
+    postText = (typeof copies?.instagram === 'string' ? copies.instagram : copies?.instagram?.post) || '';
+  }
+  if (!postText.trim() && article) {
+    postText = (article.description || article.title || 'Novo artigo publicado').trim();
+  }
+
+  postText = postText.trim();
+  if (!postText) throw new Error('Copy do LinkedIn não encontrada no pacote.');
+
+  // Limite oficial do LinkedIn (resumo de até 1700 caracteres)
+  if (postText.length > 1700) {
+    postText = postText.slice(0, 1697) + '...';
+  }
+
+  const targetUrl = article?.canonicalUrl || article?.url;
+  const isTopic = Boolean(article.isTopicMode || article.mode === 'topic' || !targetUrl);
+
+  const results = [];
+  let allSuccess = true;
+
+  for (const target of targets) {
+    const shareContent = {
+      shareCommentary: { text: postText },
+      shareMediaCategory: 'NONE'
+    };
+
+    // Se houver URL válida de artigo (não-tópico), formata como preview card oficial de artigo
+    if (targetUrl && targetUrl.startsWith('http') && !isTopic) {
+      shareContent.shareMediaCategory = 'ARTICLE';
+      shareContent.media = [
+        {
+          status: 'READY',
+          description: { text: (article.description || article.title || '').slice(0, 250) },
+          originalUrl: targetUrl,
+          title: { text: (article.title || 'Novo Artigo').slice(0, 200) }
+        }
+      ];
     }
 
     const payload = {
-      author: authorUrn, // ex: urn:li:organization:123456 ou urn:li:person:abcdef
+      author: target.urn,
       lifecycleState: 'PUBLISHED',
       specificContent: {
-        'com.linkedin.ugc.ShareContent': {
-          shareCommentary: { text: postText },
-          shareMediaCategory: 'NONE'
-        }
+        'com.linkedin.ugc.ShareContent': shareContent
       },
       visibility: {
         'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
       }
     };
 
-    const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'X-Restli-Protocol-Version': '2.0.0'
-      },
-      body: JSON.stringify(payload)
-    });
+    try {
+      const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken.trim()}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0'
+        },
+        body: JSON.stringify(payload)
+      });
 
-    const data = await res.json();
+      const data = await res.json();
+      let errorDetail = res.ok ? null : (data.message || `LinkedIn retornou HTTP ${res.status}`);
 
-    let errorDetail = res.ok ? null : (data.message || `LinkedIn retornou HTTP ${res.status}`);
-
-    // Tratamento especializado e explicativo para erro 403 / Access Denied no campo /author
-    if (!res.ok && res.status === 403 && (errorDetail.includes('/author') || errorDetail.includes('Data Processing Exception') || errorDetail.includes('ACCESS_DENIED'))) {
-      if (authorUrn.includes(':organization:')) {
-        errorDetail = 'Permissão Insuficiente (403 no /author): O token do LinkedIn não tem autorização para publicar em nome da Company Page (empresa). O LinkedIn exige formalmente a aprovação do produto "Community Management API" (escopo w_organization_social) para publicação direta em páginas empresariais. Alternativa recomendada: conecte sua Company Page do LinkedIn via Buffer API (onde a publicação é imediata e sem burocracia de desenvolvedor) ou utilize um URN de perfil pessoal (urn:li:person:...).';
-      } else {
-        errorDetail = 'Permissão Insuficiente (403 no /author): O URN de autor informado não corresponde ao usuário autenticado por este token do LinkedIn.';
+      // Tratamento especializado e explicativo para erro 403 / Access Denied no campo /author
+      if (!res.ok && res.status === 403 && (errorDetail.includes('/author') || errorDetail.includes('Data Processing Exception') || errorDetail.includes('ACCESS_DENIED'))) {
+        if (target.urn.includes(':organization:')) {
+          errorDetail = 'Permissão Insuficiente (403 no /author): O token do LinkedIn não tem autorização para publicar em nome da Company Page (empresa). O LinkedIn exige aprovação prévia do produto "Community Management API" (escopo w_organization_social) para postar em páginas empresariais. Para Company Pages, utilize o Buffer API ou selecione o modo "Perfil Pessoal".';
+        } else {
+          errorDetail = 'Permissão Insuficiente (403 no /author): O URN de autor informado não corresponde ao usuário autenticado por este token do LinkedIn.';
+        }
       }
-    }
 
-    return {
-      status: res.ok ? 'success' : 'error',
-      statusCode: res.status,
-      postId: data.id,
-      postUrl: data.id ? `https://www.linkedin.com/feed/update/${data.id}` : null,
-      error: errorDetail,
-      response: data
-    };
-  } catch (err) {
-    return { status: 'error', error: err.message };
+      if (!res.ok) allSuccess = false;
+
+      results.push({
+        target: target.label,
+        urn: target.urn,
+        status: res.ok ? 'success' : 'error',
+        statusCode: res.status,
+        postId: data.id,
+        postUrl: data.id ? `https://www.linkedin.com/feed/update/${data.id}` : null,
+        error: errorDetail,
+        response: data
+      });
+    } catch (err) {
+      allSuccess = false;
+      results.push({
+        target: target.label,
+        urn: target.urn,
+        status: 'error',
+        error: err.message
+      });
+    }
   }
+
+  // Se publicou apenas em um destino, mantém compatibilidade com retorno tradicional
+  if (results.length === 1) {
+    const single = results[0];
+    return {
+      status: single.status,
+      statusCode: single.statusCode,
+      postId: single.postId,
+      postUrl: single.postUrl,
+      error: single.error,
+      target: single.target,
+      urn: single.urn,
+      response: single.response
+    };
+  }
+
+  return {
+    status: allSuccess ? 'success' : (results.some(r => r.status === 'success') ? 'partial' : 'error'),
+    results,
+    message: allSuccess ? 'Publicado com sucesso no Perfil Pessoal e na Company Page do LinkedIn!' : 'Disparo concluído com avisos em um ou mais destinos.'
+  };
 }
 
 /**
@@ -1019,38 +1115,76 @@ async function testChannelConnection(channelName, channelConfig) {
     }
 
     case 'linkedin': {
-      const token = channelConfig?.accessToken;
-      const urn = channelConfig?.authorUrn;
-      if (!token || !urn) {
-        return { ok: false, error: 'Credenciais incompletas: informe Access Token e Author URN.' };
+      const token = (channelConfig?.accessToken || '').trim();
+      let urn = (channelConfig?.authorUrn || '').trim();
+      const profileType = channelConfig?.profileType || 'person';
+
+      if (!token) {
+        return { ok: false, error: 'Access Token do LinkedIn ausente. Informe seu token OAuth 2.0.' };
       }
+
       try {
-        const res = await fetch('https://api.linkedin.com/v2/userinfo', {
+        let memberData = null;
+        let memberId = null;
+        let memberName = null;
+
+        // 1. Tenta OpenID Connect userinfo
+        const resUserInfo = await fetch('https://api.linkedin.com/v2/userinfo', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.ok) {
-          const data = await res.json();
-          return { ok: true, message: `LinkedIn conectado: ${data.name || urn}` };
-        }
-        if (res.status === 403) {
-          if (urn.includes(':organization:')) {
-            return {
-              ok: false,
-              error: 'Atenção LinkedIn (HTTP 403): O token não possui permissão para publicar em Company Page. A API direta do LinkedIn exige o produto "Community Management API" (escopo w_organization_social) aprovado. Para Company Pages, recomendamos publicar através da integração com o Buffer (sem burocracia) ou utilizar um URN de perfil pessoal (urn:li:person:...).'
-            };
-          }
-          return {
-            ok: false,
-            error: 'LinkedIn retornou HTTP 403: O token não possui os escopos necessários (ex: w_member_social ou openid/profile).'
-          };
-        }
-        if (res.status === 401) {
+
+        if (resUserInfo.ok) {
+          memberData = await resUserInfo.json();
+          memberId = memberData.sub;
+          memberName = memberData.name || `${memberData.given_name || ''} ${memberData.family_name || ''}`.trim();
+        } else if (resUserInfo.status === 401) {
           return {
             ok: false,
             error: 'Erro 401 (Não Autorizado): Token do LinkedIn expirado ou inválido. Gere um novo token no LinkedIn Developers.'
           };
+        } else {
+          // 2. Fallback para rota legada /v2/me
+          try {
+            const resMe = await fetch('https://api.linkedin.com/v2/me', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resMe.ok) {
+              const dataMe = await resMe.json();
+              memberId = dataMe.id;
+              memberName = `${dataMe.localizedFirstName || ''} ${dataMe.localizedLastName || ''}`.trim() || dataMe.id;
+            }
+          } catch {}
         }
-        return { ok: false, error: `LinkedIn retornou HTTP ${res.status}.` };
+
+        const detectedPersonalUrn = memberId ? `urn:li:person:${memberId}` : null;
+        const targetUrn = urn || detectedPersonalUrn;
+
+        if (!targetUrn) {
+          return {
+            ok: false,
+            error: 'Não foi possível identificar o ID do perfil pessoal com este token. Verifique se o app possui os escopos "openid", "profile" e "w_member_social".'
+          };
+        }
+
+        const isPersonal = targetUrn.includes(':person:');
+        const isOrg = targetUrn.includes(':organization:');
+
+        let msg = `LinkedIn conectado com sucesso!`;
+        if (isPersonal) {
+          msg += ` Perfil Pessoal de ${memberName || 'Usuário'} (${targetUrn}). Pronto para postagens com escopo w_member_social!`;
+        } else if (isOrg) {
+          msg += ` Company Page: ${targetUrn} (Autenticado por: ${memberName || 'Usuário'}).`;
+        } else {
+          msg += ` Autor configurado: ${targetUrn}.`;
+        }
+
+        return {
+          ok: true,
+          message: msg,
+          detectedPersonalUrn,
+          memberName,
+          authorUrn: targetUrn
+        };
       } catch (err) {
         return { ok: false, error: err.message };
       }

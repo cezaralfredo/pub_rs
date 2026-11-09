@@ -46,8 +46,10 @@
     },
     "linkedin": {
       "enabled": false,
+      "profileType": "person",
       "accessToken": "",
-      "authorUrn": ""
+      "authorUrn": "",
+      "organizationUrn": ""
     },
     "twitter": {
       "enabled": false,

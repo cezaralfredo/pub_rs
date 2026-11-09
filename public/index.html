@@ -1024,17 +1024,45 @@
                     </label>
                   </div>
                   <div class="form-row">
-                    <div class="form-field">
+                    <div class="form-field flex-grow">
                       <label for="ch-linkedin-token" class="field-label">Access Token (OAuth 2.0)</label>
                       <input type="password" id="ch-linkedin-token" class="field-input" placeholder="LinkedIn Access Token">
                     </div>
-                    <div class="form-field">
-                      <label for="ch-linkedin-urn" class="field-label">Author URN (Pessoa ou Empresa)</label>
-                      <input type="text" id="ch-linkedin-urn" class="field-input" placeholder="urn:li:organization:123456 ou urn:li:person:abcdef">
+                    <div class="form-field" style="max-width: 220px;">
+                      <label for="ch-linkedin-type" class="field-label">Tipo de Destino</label>
+                      <select id="ch-linkedin-type" class="field-input">
+                        <option value="person" selected>👤 Perfil Pessoal</option>
+                        <option value="organization">🏢 Company Page</option>
+                        <option value="both">👥 Ambos (Perfil + Empresa)</option>
+                      </select>
                     </div>
                   </div>
-                  <div class="channel-test-btn-wrap">
-                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="linkedin">Testar LinkedIn</button>
+                  <div class="form-row" style="margin-top: 0.5rem;">
+                    <div class="form-field flex-grow" id="field-wrap-linkedin-person">
+                      <label for="ch-linkedin-urn" class="field-label">
+                        URN do Perfil Pessoal
+                        <span style="font-weight: normal; color: #94a3b8; font-size: 0.72rem;">(urn:li:person:...)</span>
+                      </label>
+                      <div style="display: flex; gap: 6px;">
+                        <input type="text" id="ch-linkedin-urn" class="field-input" placeholder="ex: urn:li:person:abcdef ou clique em Detectar ID">
+                        <button type="button" class="btn-ghost-sm" id="btn-detect-linkedin-profile" title="Detecta o ID do seu perfil pessoal direto pelo token" style="white-space: nowrap; font-size: 0.75rem; padding: 4px 8px;">
+                          🔍 Detectar ID
+                        </button>
+                      </div>
+                    </div>
+                    <div class="form-field flex-grow hidden" id="field-wrap-linkedin-org">
+                      <label for="ch-linkedin-org-urn" class="field-label">
+                        URN da Company Page
+                        <span style="font-weight: normal; color: #94a3b8; font-size: 0.72rem;">(urn:li:organization:...)</span>
+                      </label>
+                      <input type="text" id="ch-linkedin-org-urn" class="field-input" placeholder="ex: urn:li:organization:123456">
+                    </div>
+                  </div>
+                  <small class="field-hint" style="display:block; margin-top:0.4rem; color: #94a3b8; font-size: 0.76rem; line-height: 1.35;">
+                    💡 <strong>Perfil Pessoal:</strong> Para postar no seu perfil pessoal, utilize o produto <em>Share on LinkedIn</em> (escopo <code>w_member_social</code>) no LinkedIn Developers. O botão "Detectar ID" preenche seu URN de membro automaticamente.
+                  </small>
+                  <div class="channel-test-btn-wrap" style="margin-top: 0.65rem;">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="linkedin">Testar Conexão LinkedIn</button>
                   </div>
                 </div>
 
