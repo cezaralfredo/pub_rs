@@ -69,6 +69,17 @@
       "enabled": false,
       "accessToken": "",
       "profileIds": []
+    },
+    "googlebusiness": {
+      "enabled": false,
+      "accessToken": "",
+      "accountId": "",
+      "locationId": ""
+    },
+    "tiktok": {
+      "enabled": false,
+      "accessToken": "",
+      "openId": ""
     }
   }
 }

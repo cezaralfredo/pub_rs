@@ -78,6 +78,7 @@ function buildRichSummaryPost(article, client, network = 'linkedin') {
   const targetUrl = isTopic ? null : (article.canonicalUrl || article.url);
   const slug = article.slug || 'artigo';
   const utmUrl = targetUrl ? getUtmUrl(targetUrl, network, slug) : null;
+  const maxLimit = (network === 'googlebusiness') ? 1500 : 1700;
 
   const hashtags = Array.isArray(client.defaultHashtags) && client.defaultHashtags.length > 0
     ? client.defaultHashtags.join(' ')
@@ -114,10 +115,10 @@ function buildRichSummaryPost(article, client, network = 'linkedin') {
     post = `${leadSummary}\n\nDestaques e pontos fundamentais da análise:\n\n${formattedPoints}\n\n${hashtags}`;
   }
 
-  // Se ultrapassar 1700 caracteres, encurta o corpo preservando o rodapé
-  if (post.length > 1700) {
+  // Se ultrapassar maxLimit caracteres, encurta o corpo preservando o rodapé
+  if (post.length > maxLimit) {
     const fixedEnd = footerLink ? `\n\n${hashtags}\n\n${footerLink}` : `\n\n${hashtags}`;
-    const availableForBody = 1700 - fixedEnd.length;
+    const availableForBody = maxLimit - fixedEnd.length;
     let body = `${leadSummary}\n\nDestaques da análise:\n\n${formattedPoints}`;
     if (body.length > availableForBody) {
       body = body.slice(0, availableForBody - 3).replace(/[,;.\s]+$/, '') + '...';
@@ -125,14 +126,14 @@ function buildRichSummaryPost(article, client, network = 'linkedin') {
     post = `${body}${fixedEnd}`;
   }
 
-  // Trava de segurança final para até 1700 caracteres
-  if (post.length > 1700) {
+  // Trava de segurança final para até maxLimit caracteres
+  if (post.length > maxLimit) {
     if (footerLink) {
       const fixedEnd = `\n\n${footerLink}`;
-      const maxBody = 1700 - fixedEnd.length;
+      const maxBody = maxLimit - fixedEnd.length;
       post = `${post.slice(0, maxBody - 3).replace(/[,;.\s]+$/, '')}...${fixedEnd}`;
     } else {
-      post = `${post.slice(0, 1697).replace(/[,;.\s]+$/, '')}...`;
+      post = `${post.slice(0, maxLimit - 3).replace(/[,;.\s]+$/, '')}...`;
     }
   }
 
@@ -156,10 +157,11 @@ function generateAlgorithmicCopies(article, client) {
   // 1. X (Twitter): Somente o ponto fundamental do artigo (sem título, máx 280 chars)
   const twitterPost = buildTwitterFundamentalPoint(article, client);
 
-  // 2. Instagram, Facebook e LinkedIn: Resumo detalhado com até 1700 caracteres (com link se web, sem link se tópico)
+  // 2. Instagram, Facebook, LinkedIn e Google Perfil: Resumo detalhado (com link se web, sem link se tópico)
   const linkedinPost = buildRichSummaryPost(article, client, 'linkedin');
   const instagramPost = buildRichSummaryPost(article, client, 'instagram');
   const facebookPost = buildRichSummaryPost(article, client, 'facebook');
+  const googleBusinessPost = buildRichSummaryPost(article, client, 'googlebusiness');
 
   // Seleção e higienização dos pontos principais extraídos
   const rawPoints = (article.bulletPoints && article.bulletPoints.length >= 2)
@@ -181,6 +183,8 @@ function generateAlgorithmicCopies(article, client) {
   const leadSummary = article.description || 
     (article.paragraphs && article.paragraphs[0]) || 
     'Confira uma análise aprofundada com os principais insights, desafios e caminhos práticos para navegar este cenário.';
+
+  const tiktokCaption = `${article.title}\n\n${leadSummary.length > 180 ? leadSummary.slice(0, 175) + '...' : leadSummary}\n\n${hashtags.slice(0, 5).join(' ')}`;
 
   const commentTemplate = client.commentTemplate || '👉 Leia o artigo completo com todas as referências aqui: {URL}';
 
@@ -291,6 +295,18 @@ function generateAlgorithmicCopies(article, client) {
       post: threadsCopy,
       thread: threadsThread,
       recommendedFormat: '1:1 ou 16:9'
+    },
+    googlebusiness: {
+      post: googleBusinessPost,
+      recommendedFormat: '16:9 ou 1:1 Quadrado (Novidades)',
+      charCount: googleBusinessPost.length,
+      maxLimit: 1500
+    },
+    tiktok: {
+      post: tiktokCaption,
+      recommendedFormat: '9:16 (Vertical Vídeo)',
+      charCount: tiktokCaption.length,
+      maxLimit: 2200
     }
   };
 }

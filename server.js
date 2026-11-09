@@ -402,7 +402,7 @@ app.post('/api/clients/:id/test-connection', requireAuth, async (req, res) => {
 
     // 2. Testar Canais de Redes Sociais
     const channels = client.channels || {};
-    const channelKeys = ['webhook', 'telegram', 'buffer', 'linkedin', 'twitter', 'meta'];
+    const channelKeys = ['webhook', 'telegram', 'buffer', 'linkedin', 'twitter', 'meta', 'googlebusiness', 'tiktok'];
 
     for (const ch of channelKeys) {
       if ((target === 'all' || target === ch) && channels[ch]?.enabled) {

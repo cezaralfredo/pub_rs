@@ -1927,6 +1927,8 @@ body.light-theme {
 .dot-twitter { background: var(--color-twitter); box-shadow: 0 0 8px var(--color-twitter); }
 .dot-threads { background: #fff; box-shadow: 0 0 8px #fff; }
 .dot-facebook { background: var(--color-facebook); box-shadow: 0 0 8px var(--color-facebook); }
+.dot-googlebusiness { background: #4285f4; box-shadow: 0 0 8px #4285f4; }
+.dot-tiktok { background: #ff0050; box-shadow: 0 0 8px #ff0050; }
 
 .network-content {
   padding: 28px;

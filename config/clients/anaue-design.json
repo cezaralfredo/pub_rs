@@ -78,6 +78,17 @@
         "6aea23fbe29c69a1714e56d9",
         "6aea4b65e29c69a17150d1a2"
       ]
+    },
+    "googlebusiness": {
+      "enabled": false,
+      "accessToken": "",
+      "accountId": "",
+      "locationId": ""
+    },
+    "tiktok": {
+      "enabled": false,
+      "accessToken": "",
+      "openId": ""
     }
   }
 }

@@ -677,6 +677,205 @@ async function publishToMeta(config, copies, article) {
 }
 
 /**
+ * Publicação via Google Business Profile (Google Meu Negócio) API
+ * Endpoint: POST https://mybusiness.googleapis.com/v4/accounts/{accountId}/locations/{locationId}/localPosts
+ */
+async function publishToGoogleBusiness(config, copies, packageId, options = {}) {
+  const { accessToken, accountId, locationId } = config;
+  const { images = [], article = {}, outputDir } = options;
+
+  if (!accessToken) {
+    return { status: 'skipped', message: 'Access Token do Google Business Profile não configurado.' };
+  }
+  if (!locationId) {
+    return { status: 'skipped', message: 'Location ID do Google Business Profile não configurado.' };
+  }
+
+  const baseUrl = process.env.BASE_URL || 'https://social360.anauedesign.com.br';
+  let postImageUrl = null;
+
+  if (packageId && outputDir) {
+    const imagesDir = fs.existsSync(path.join(outputDir, 'images')) ? path.join(outputDir, 'images') : outputDir;
+    if (fs.existsSync(path.join(imagesDir, 'linkedin_twitter_facebook_16x9.jpg'))) {
+      postImageUrl = `${baseUrl}/api/media/${packageId}/linkedin_twitter_facebook_16x9.jpg`;
+    } else if (fs.existsSync(path.join(imagesDir, 'instagram_threads_square_1x1.jpg'))) {
+      postImageUrl = `${baseUrl}/api/media/${packageId}/instagram_threads_square_1x1.jpg`;
+    }
+  }
+
+  if (!postImageUrl && Array.isArray(images) && images.length > 0) {
+    const imgObj = images.find(img => img.url || img.src);
+    if (imgObj) postImageUrl = imgObj.url || imgObj.src;
+  }
+
+  const title = article?.title || 'Novidades';
+  let summary = (typeof copies?.googlebusiness === 'string' ? copies.googlebusiness : copies?.googlebusiness?.post) ||
+    (typeof copies?.linkedin === 'string' ? copies.linkedin : copies?.linkedin?.post) ||
+    (typeof copies?.facebook === 'string' ? copies.facebook : copies?.facebook?.post) ||
+    title;
+  summary = summary.trim();
+  if (summary.length > 1500) {
+    summary = summary.slice(0, 1497) + '...';
+  }
+
+  const targetUrl = article?.canonicalUrl || article?.url;
+
+  const cleanLoc = (locationId || '').trim().replace(/^locations\//, '');
+  const cleanAcc = (accountId || '').trim().replace(/^accounts\//, '');
+  const resourcePath = cleanAcc
+    ? `accounts/${cleanAcc}/locations/${cleanLoc}`
+    : `locations/${cleanLoc}`;
+
+  const postPayload = {
+    languageCode: 'pt-BR',
+    summary,
+    topicType: 'STANDARD'
+  };
+
+  if (targetUrl && targetUrl.startsWith('http')) {
+    postPayload.callToAction = {
+      actionType: 'LEARN_MORE',
+      url: targetUrl
+    };
+  }
+
+  if (postImageUrl && postImageUrl.startsWith('http')) {
+    postPayload.media = [
+      {
+        mediaFormat: 'PHOTO',
+        sourceUrl: postImageUrl
+      }
+    ];
+  }
+
+  try {
+    const endpoint = `https://mybusiness.googleapis.com/v4/${resourcePath}/localPosts`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken.trim()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(postPayload)
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (res.ok) {
+      return {
+        status: 'success',
+        postId: data?.name || data?.id,
+        postUrl: data?.searchUrl || null,
+        response: data
+      };
+    }
+
+    return {
+      status: 'error',
+      statusCode: res.status,
+      error: data?.error?.message || `Google Business API retornou HTTP ${res.status}: ${JSON.stringify(data)}`,
+      response: data
+    };
+  } catch (err) {
+    return { status: 'error', error: err.message };
+  }
+}
+
+/**
+ * Publicação via TikTok Content Posting API v2
+ * Endpoint: POST https://open.tiktokapis.com/v2/post/publish/video/init/
+ */
+async function publishToTikTok(config, copies, packageId, options = {}) {
+  const { accessToken } = config;
+  const { article = {}, outputDir, video = null } = options;
+
+  if (!accessToken) {
+    return { status: 'skipped', message: 'Access Token do TikTok não configurado.' };
+  }
+
+  const baseUrl = process.env.BASE_URL || 'https://social360.anauedesign.com.br';
+  let packageVideoUrl = null;
+
+  if (video && video.url) {
+    packageVideoUrl = video.url.startsWith('http') ? video.url : `${baseUrl}${video.url}`;
+  }
+
+  if (!packageVideoUrl && packageId && outputDir) {
+    const imagesDir = fs.existsSync(path.join(outputDir, 'images')) ? path.join(outputDir, 'images') : outputDir;
+    const videoFiles = ['video_post.mp4', 'video_post.mov', 'video_post.webm'];
+    for (const vf of videoFiles) {
+      if (fs.existsSync(path.join(imagesDir, vf))) {
+        packageVideoUrl = `${baseUrl}/api/media/${packageId}/${vf}`;
+        break;
+      }
+    }
+  }
+
+  // O TikTok exige estritamente um arquivo de vídeo para publicação via API
+  if (!packageVideoUrl) {
+    return {
+      status: 'skipped',
+      message: 'O TikTok exige um arquivo de vídeo (.mp4 vertical 9:16). Como este pacote não possui vídeo gerado ou anexado, a publicação no TikTok foi ignorada. Utilize a aba "Estúdio de Vídeo" para gerar o vídeo com IA antes do disparo.'
+    };
+  }
+
+  let caption = (typeof copies?.tiktok === 'string' ? copies.tiktok : copies?.tiktok?.post) ||
+    (typeof copies?.twitter === 'string' ? copies.twitter : copies?.twitter?.post) ||
+    article?.title || 'Confira!';
+  caption = caption.trim();
+  if (caption.length > 2200) {
+    caption = caption.slice(0, 2197) + '...';
+  }
+
+  const payload = {
+    post_info: {
+      title: caption,
+      privacy_level: 'PUBLIC_TO_EVERYONE',
+      disable_duet: false,
+      disable_stitch: false,
+      disable_comment: false,
+      video_cover_timestamp_ms: 1000
+    },
+    source_info: {
+      source: 'PULL_FROM_URL',
+      video_url: packageVideoUrl
+    }
+  };
+
+  try {
+    const res = await fetch('https://open.tiktokapis.com/v2/post/publish/video/init/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken.trim()}`,
+        'Content-Type': 'application/json; charset=UTF-8'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (res.ok && data?.data?.publish_id) {
+      return {
+        status: 'success',
+        publishId: data.data.publish_id,
+        message: 'Vídeo enviado para processamento e publicação no TikTok com sucesso!',
+        response: data
+      };
+    }
+
+    const errMsg = data?.error?.message || data?.error?.code || `TikTok API retornou HTTP ${res.status}`;
+    return {
+      status: 'error',
+      statusCode: res.status,
+      error: errMsg,
+      response: data
+    };
+  } catch (err) {
+    return { status: 'error', error: err.message };
+  }
+}
+
+/**
  * Validação / Teste de Conexão para Canais Individuais
  */
 async function testChannelConnection(channelName, channelConfig) {
@@ -941,6 +1140,80 @@ async function testChannelConnection(channelName, channelConfig) {
       }
     }
 
+    case 'googlebusiness': {
+      const token = (channelConfig?.accessToken || '').trim();
+      const locationId = (channelConfig?.locationId || '').trim();
+      if (!token) return { ok: false, error: 'Access Token do Google Business Profile ausente.' };
+
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data) {
+          const userStr = data.email || data.name || 'OK';
+          let msg = `Google conectado com sucesso (${userStr})!`;
+          if (locationId) {
+            msg += ` Local configurado: ${locationId}.`;
+          } else {
+            msg += ` (Atenção: Location ID ainda não preenchido).`;
+          }
+          return { ok: true, message: msg };
+        }
+
+        if (res.status === 401) {
+          return {
+            ok: false,
+            error: 'Erro 401 (Não Autorizado): Token da Google inválido ou expirado. Gere um novo OAuth 2.0 Access Token no Google Cloud Console com o escopo https://www.googleapis.com/auth/business.manage.'
+          };
+        }
+
+        return { ok: false, error: `Google API retornou HTTP ${res.status}: ${data?.error_description || data?.error || 'Falha na validação'}` };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
+    case 'tiktok': {
+      const token = (channelConfig?.accessToken || '').trim();
+      if (!token) return { ok: false, error: 'Access Token do TikTok ausente.' };
+
+      try {
+        const res = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.data?.user) {
+          const u = data.data.user;
+          return {
+            ok: true,
+            message: `TikTok conectado com sucesso: @${u.display_name || u.open_id || 'OK'}`
+          };
+        }
+
+        if (data?.error && data.error.code !== 'ok') {
+          if (data.error.code === 'access_token_invalid') {
+            return {
+              ok: false,
+              error: 'Erro TikTok: Access Token inválido ou expirado. Gere um novo token no TikTok for Developers.'
+            };
+          }
+          return {
+            ok: false,
+            error: `TikTok API retornou erro [${data.error.code}]: ${data.error.message || 'Falha'}`
+          };
+        }
+
+        return { ok: false, error: `TikTok retornou HTTP ${res.status}` };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+
     default:
       return { ok: false, error: `Canal não reconhecido para teste: "${channelName}"` };
   }
@@ -1056,6 +1329,36 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
     }
   }
 
+  // 7. Google Perfil da Empresa (Google Business Profile API)
+  if (isChannelAllowed('googlebusiness')) {
+    if (channels.googlebusiness?.enabled && channels.googlebusiness?.accessToken && channels.googlebusiness?.locationId) {
+      console.log(`🚀 [DISPATCH] Publicando no Google Perfil da Empresa...`);
+      dispatchResults.channels.googlebusiness = await publishToGoogleBusiness(channels.googlebusiness, copies, packageId, { images, article, outputDir, video });
+    } else if (targetChannels && targetChannels.includes('googlebusiness')) {
+      dispatchResults.channels.googlebusiness = {
+        status: 'skipped',
+        message: !channels.googlebusiness?.enabled
+          ? 'Google Perfil da Empresa desativado nas configurações do cliente.'
+          : 'Access Token ou Location ID do Google ausente nas configurações do cliente.'
+      };
+    }
+  }
+
+  // 8. TikTok (Content Posting API)
+  if (isChannelAllowed('tiktok')) {
+    if (channels.tiktok?.enabled && channels.tiktok?.accessToken) {
+      console.log(`🚀 [DISPATCH] Publicando no TikTok...`);
+      dispatchResults.channels.tiktok = await publishToTikTok(channels.tiktok, copies, packageId, { images, article, outputDir, video });
+    } else if (targetChannels && targetChannels.includes('tiktok')) {
+      dispatchResults.channels.tiktok = {
+        status: 'skipped',
+        message: !channels.tiktok?.enabled
+          ? 'TikTok desativado nas configurações do cliente.'
+          : 'Access Token do TikTok ausente nas configurações do cliente.'
+      };
+    }
+  }
+
   if (Object.keys(dispatchResults.channels).length === 0) {
     dispatchResults.channels.info = {
       status: 'skipped',
@@ -1080,5 +1383,7 @@ module.exports = {
   publishToTwitter,
   publishToTelegram,
   publishToMeta,
+  publishToGoogleBusiness,
+  publishToTikTok,
   testChannelConnection
 };

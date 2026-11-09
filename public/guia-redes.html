@@ -471,6 +471,8 @@
         <a href="#linkedin" class="nav-pill">💼 LinkedIn API</a>
         <a href="#meta" class="nav-pill">📸 Meta (Instagram / FB)</a>
         <a href="#twitter" class="nav-pill">🐦 X / Twitter</a>
+        <a href="#googlebusiness" class="nav-pill">🏢 Google Meu Negócio</a>
+        <a href="#tiktok" class="nav-pill">🎵 TikTok API</a>
         <a href="#ai-keys" class="nav-pill">🧠 Chaves de IA</a>
       </nav>
     </section>
@@ -800,7 +802,102 @@
       </div>
     </article>
 
-    <!-- 7. CHAVES DE IA -->
+    <!-- 7. GOOGLE PERFIL DA EMPRESA (GOOGLE BUSINESS PROFILE) -->
+    <article class="guide-card" id="googlebusiness">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">🏢</div>
+          <div>
+            <h2 class="card-title">Google Perfil da Empresa (Google Business Profile)</h2>
+            <p class="card-subtitle">Publicação direta de postagens de "Novidades" (What's New) com imagem, texto analítico e botão de CTA ("Saiba mais") na ficha da empresa no Google e Google Maps.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>Access Token (OAuth 2.0 com escopo <code>https://www.googleapis.com/auth/business.manage</code>)</li>
+          <li>Account ID (ex: <code>10987654321</code>)</li>
+          <li>Location ID (ex: <code>98765432101</code>)</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Acessar o Google Cloud Console:</strong>
+          Acesse <a href="https://console.cloud.google.com/" target="_blank" class="external-link">console.cloud.google.com</a>, crie um projeto e ative a <strong>Google Business Profile API</strong> (My Business API).
+        </li>
+        <li>
+          <strong class="step-title">Criar Credenciais OAuth 2.0:</strong>
+          Em <em>APIs & Services ➔ Credentials</em>, crie uma credencial OAuth 2.0 Web Application e autorize o escopo <code>https://www.googleapis.com/auth/business.manage</code>.
+        </li>
+        <li>
+          <strong class="step-title">Obter o Account ID e Location ID:</strong>
+          Utilize o endpoint <code>accounts</code> ou a ferramenta Google OAuth Playground para listar as contas e locais associados ao perfil verificado da sua empresa.
+        </li>
+        <li>
+          <strong class="step-title">Testar Conexão no Social360:</strong>
+          Preencha o Access Token e o Location ID e clique em <strong>"Testar Google Perfil"</strong>.
+        </li>
+      </ol>
+
+      <div class="alert-tip">
+        <span>💡</span>
+        <div><strong>Alternativa Instantânea via Buffer:</strong> Você também pode conectar a ficha do Google Perfil da Empresa no <strong>Buffer</strong> (topo deste guia) para publicar em 1 clique sem precisar configurar o Google Cloud Console.</div>
+      </div>
+    </article>
+
+    <!-- 8. TIKTOK (CONTENT POSTING API) -->
+    <article class="guide-card" id="tiktok">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-icon">🎵</div>
+          <div>
+            <h2 class="card-title">TikTok (Content Posting API v2)</h2>
+            <p class="card-subtitle">Publicação direta de vídeos verticais (formato 9:16) com legenda e hashtags geradas pela plataforma diretamente no perfil do TikTok.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert-warning" style="margin-bottom: 1.5rem;">
+        <span>🎬</span>
+        <div>
+          <strong>Requisito Obrigatório de Vídeo:</strong><br>
+          A API do TikTok exige estritamente um arquivo de vídeo (.mp4 vertical 9:16). Utilize a aba <strong>"Estúdio de Vídeo"</strong> para gerar o vídeo com IA antes de disparar o pacote para o TikTok.
+        </div>
+      </div>
+
+      <div class="fields-box">
+        <div class="fields-title">Campos necessários no Social360:</div>
+        <ul class="fields-list">
+          <li>User Access Token (com escopo <code>video.publish</code> ou <code>video.upload</code>)</li>
+          <li>Open ID do Criador (Opcional)</li>
+        </ul>
+      </div>
+
+      <ol class="steps-list">
+        <li>
+          <strong class="step-title">Acessar o TikTok for Developers:</strong>
+          Acesse <a href="https://developers.tiktok.com/" target="_blank" class="external-link">developers.tiktok.com</a> e faça login com sua conta do TikTok.
+        </li>
+        <li>
+          <strong class="step-title">Criar Aplicativo com o produto "Content Posting API":</strong>
+          Crie um aplicativo, adicione o produto <strong>Content Posting API</strong> e autorize o escopo <code>video.publish</code>.
+        </li>
+        <li>
+          <strong class="step-title">Testar Conexão no Social360:</strong>
+          Cole o Access Token e clique em <strong>"Testar Conexão TikTok"</strong>. O sistema validará a conta retornando <code>TikTok conectado com sucesso: @seu_usuario</code>!
+        </li>
+      </ol>
+
+      <div class="alert-tip">
+        <span>💡</span>
+        <div><strong>Dica Rápida:</strong> Se preferir não aguardar o processo de aprovação de aplicativo do TikTok for Developers, o <strong>Buffer</strong> também aceita postagens em vídeo para o TikTok diretamente!</div>
+      </div>
+    </article>
+
+    <!-- 9. CHAVES DE IA -->
     <article class="guide-card" id="ai-keys">
       <div class="card-header">
         <div class="card-title-wrap">

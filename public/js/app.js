@@ -905,6 +905,17 @@ document.addEventListener('DOMContentLoaded', () => {
             pageAccessToken: document.getElementById('ch-meta-token').value.trim(),
             pageId: document.getElementById('ch-meta-pageid').value.trim(),
             instagramAccountId: document.getElementById('ch-meta-igid').value.trim()
+          },
+          googlebusiness: {
+            enabled: Boolean(document.getElementById('ch-googlebusiness-enabled')?.checked),
+            accessToken: (document.getElementById('ch-googlebusiness-token')?.value || '').trim(),
+            accountId: (document.getElementById('ch-googlebusiness-accountid')?.value || '').trim(),
+            locationId: (document.getElementById('ch-googlebusiness-locationid')?.value || '').trim()
+          },
+          tiktok: {
+            enabled: Boolean(document.getElementById('ch-tiktok-enabled')?.checked),
+            accessToken: (document.getElementById('ch-tiktok-token')?.value || '').trim(),
+            openId: (document.getElementById('ch-tiktok-openid')?.value || '').trim()
           }
         }
       };
@@ -1567,7 +1578,9 @@ document.addEventListener('DOMContentLoaded', () => {
       stories: 'Instagram Stories (Teaser)',
       twitter: 'X (Twitter) Post',
       threads: 'Threads Post',
-      facebook: 'Facebook Post'
+      facebook: 'Facebook Post',
+      googlebusiness: 'Google Perfil da Empresa (Novidades)',
+      tiktok: 'TikTok (Vídeo Vertical)'
     };
 
     elements.currentNetName.textContent = netLabels[net] || 'Post';
@@ -1606,6 +1619,12 @@ document.addEventListener('DOMContentLoaded', () => {
       postText = copies.facebook?.post || '';
       firstComment = copies.facebook?.firstComment || '';
       formatDesc = 'Formato ideal: 16:9 ou 4:5 Retrato · Resumo com link';
+    } else if (net === 'googlebusiness') {
+      postText = (typeof copies.googlebusiness === 'string' ? copies.googlebusiness : copies.googlebusiness?.post) || copies.linkedin?.post || '';
+      formatDesc = 'Formato ideal: 16:9 ou 1:1 Quadrado · Resumo objetivo até 1500 caracteres';
+    } else if (net === 'tiktok') {
+      postText = (typeof copies.tiktok === 'string' ? copies.tiktok : copies.tiktok?.post) || '';
+      formatDesc = 'Formato obrigatório: 9:16 Vertical Vídeo · Legenda dinâmica e hashtags';
     }
 
     // Gerenciador de Ganchos A/B (LinkedIn, Instagram e Facebook)
@@ -2193,11 +2212,13 @@ document.addEventListener('DOMContentLoaded', () => {
         twitter: Boolean(client?.channels?.twitter?.enabled && (client.channels.twitter.hasToken || client.channels.twitter.accessToken || client.channels.twitter.bearerToken || client.channels.twitter.apiKey)),
         meta: Boolean(client?.channels?.meta?.enabled && (client.channels.meta.hasToken || client.channels.meta.pageAccessToken)),
         telegram: Boolean(client?.channels?.telegram?.enabled && (client.channels.telegram.hasToken || client.channels.telegram.botToken)),
-        webhook: Boolean(client?.channels?.webhook?.enabled !== false && (client?.channels?.webhook?.url || client?.webhookUrl))
+        webhook: Boolean(client?.channels?.webhook?.enabled !== false && (client?.channels?.webhook?.url || client?.webhookUrl)),
+        googlebusiness: Boolean(client?.channels?.googlebusiness?.enabled && (client.channels.googlebusiness.hasToken || client.channels.googlebusiness.accessToken)),
+        tiktok: Boolean(client?.channels?.tiktok?.enabled && (client.channels.tiktok.hasToken || client.channels.tiktok.accessToken))
       };
 
       let activeCount = 0;
-      const channelKeys = ['buffer', 'linkedin', 'twitter', 'meta', 'telegram', 'webhook'];
+      const channelKeys = ['buffer', 'linkedin', 'twitter', 'meta', 'telegram', 'webhook', 'googlebusiness', 'tiktok'];
       channelKeys.forEach(k => {
         const checkEl = document.getElementById(`pub-check-${k}`);
         const badgeEl = document.getElementById(`badge-pub-${k}`);
@@ -2288,6 +2309,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('pub-check-twitter')?.checked) targetChannels.push('twitter');
     if (document.getElementById('pub-check-buffer')?.checked) targetChannels.push('buffer');
     if (document.getElementById('pub-check-meta')?.checked) targetChannels.push('meta');
+    if (document.getElementById('pub-check-googlebusiness')?.checked) targetChannels.push('googlebusiness');
+    if (document.getElementById('pub-check-tiktok')?.checked) targetChannels.push('tiktok');
 
     if (targetChannels.length === 0) {
       showToast('Selecione pelo menos um canal de destino.', 'warning');
@@ -2419,7 +2442,9 @@ document.addEventListener('DOMContentLoaded', () => {
       buffer: 'Buffer API',
       linkedin: 'LinkedIn Direct Share',
       twitter: 'X (Twitter API v2)',
-      meta: 'Meta (Facebook & Instagram)'
+      meta: 'Meta (Facebook & Instagram)',
+      googlebusiness: 'Google Perfil da Empresa (GBP API)',
+      tiktok: 'TikTok (Content Posting API)'
     };
 
     elements.dispatchResultsList.innerHTML = channelKeys.map(key => {
@@ -2519,6 +2544,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ch-meta-token').value = '';
     document.getElementById('ch-meta-pageid').value = '';
     document.getElementById('ch-meta-igid').value = '';
+    if (document.getElementById('ch-googlebusiness-enabled')) document.getElementById('ch-googlebusiness-enabled').checked = false;
+    if (document.getElementById('ch-googlebusiness-token')) document.getElementById('ch-googlebusiness-token').value = '';
+    if (document.getElementById('ch-googlebusiness-accountid')) document.getElementById('ch-googlebusiness-accountid').value = '';
+    if (document.getElementById('ch-googlebusiness-locationid')) document.getElementById('ch-googlebusiness-locationid').value = '';
+    if (document.getElementById('ch-tiktok-enabled')) document.getElementById('ch-tiktok-enabled').checked = false;
+    if (document.getElementById('ch-tiktok-token')) document.getElementById('ch-tiktok-token').value = '';
+    if (document.getElementById('ch-tiktok-openid')) document.getElementById('ch-tiktok-openid').value = '';
 
     elements.llmTestFeedback.classList.add('hidden');
     if (elements.jevTestFeedback) elements.jevTestFeedback.classList.add('hidden');
@@ -2591,6 +2623,19 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('ch-meta-token').value = ch.meta?.pageAccessToken || '';
       document.getElementById('ch-meta-pageid').value = ch.meta?.pageId || '';
       document.getElementById('ch-meta-igid').value = ch.meta?.instagramAccountId || '';
+
+      if (document.getElementById('ch-googlebusiness-enabled')) {
+        document.getElementById('ch-googlebusiness-enabled').checked = Boolean(ch.googlebusiness?.enabled);
+        document.getElementById('ch-googlebusiness-token').value = ch.googlebusiness?.accessToken || '';
+        document.getElementById('ch-googlebusiness-accountid').value = ch.googlebusiness?.accountId || '';
+        document.getElementById('ch-googlebusiness-locationid').value = ch.googlebusiness?.locationId || '';
+      }
+
+      if (document.getElementById('ch-tiktok-enabled')) {
+        document.getElementById('ch-tiktok-enabled').checked = Boolean(ch.tiktok?.enabled);
+        document.getElementById('ch-tiktok-token').value = ch.tiktok?.accessToken || '';
+        document.getElementById('ch-tiktok-openid').value = ch.tiktok?.openId || '';
+      }
 
       if (elements.modalClientSelect) {
         elements.modalClientSelect.value = clientId;
@@ -2721,6 +2766,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (channel === 'meta') {
       config.pageAccessToken = document.getElementById('ch-meta-token').value.trim();
+    }
+    if (channel === 'googlebusiness') {
+      config.accessToken = (document.getElementById('ch-googlebusiness-token')?.value || '').trim();
+      config.accountId = (document.getElementById('ch-googlebusiness-accountid')?.value || '').trim();
+      config.locationId = (document.getElementById('ch-googlebusiness-locationid')?.value || '').trim();
+    }
+    if (channel === 'tiktok') {
+      config.accessToken = (document.getElementById('ch-tiktok-token')?.value || '').trim();
+      config.openId = (document.getElementById('ch-tiktok-openid')?.value || '').trim();
     }
 
     try {

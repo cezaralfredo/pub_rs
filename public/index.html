@@ -517,6 +517,12 @@
             <button class="net-btn" data-network="facebook">
               <span class="net-dot dot-facebook"></span> Facebook
             </button>
+            <button class="net-btn" data-network="googlebusiness">
+              <span class="net-dot dot-googlebusiness"></span> Google Perfil
+            </button>
+            <button class="net-btn" data-network="tiktok">
+              <span class="net-dot dot-tiktok"></span> TikTok
+            </button>
           </div>
 
           <!-- Network Content Box -->
@@ -1096,6 +1102,66 @@
                     <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="meta">Testar Meta</button>
                   </div>
                 </div>
+
+                <!-- Google Perfil da Empresa (Google Business Profile API) -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">🏢 Google Perfil da Empresa (Google Business Profile)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-googlebusiness-enabled">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-field flex-grow">
+                      <label for="ch-googlebusiness-token" class="field-label">Access Token (OAuth 2.0 Google)</label>
+                      <input type="password" id="ch-googlebusiness-token" class="field-input" placeholder="Google OAuth 2.0 Bearer Token">
+                    </div>
+                  </div>
+                  <div class="form-row" style="margin-top: 0.5rem;">
+                    <div class="form-field">
+                      <label for="ch-googlebusiness-accountid" class="field-label">Account ID</label>
+                      <input type="text" id="ch-googlebusiness-accountid" class="field-input" placeholder="ex: 10987654321">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-googlebusiness-locationid" class="field-label">Location ID</label>
+                      <input type="text" id="ch-googlebusiness-locationid" class="field-input" placeholder="ex: 98765432101">
+                    </div>
+                  </div>
+                  <small class="field-hint" style="display:block; margin-top:0.4rem; color: #94a3b8; font-size: 0.76rem; line-height: 1.35;">
+                    💡 <strong>Postagens de Novidades:</strong> Publica artigos no perfil local do Google com imagem editorial, resumo analítico e botão de CTA ("Saiba mais").
+                  </small>
+                  <div class="channel-test-btn-wrap" style="margin-top: 0.65rem;">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="googlebusiness">Testar Google Perfil</button>
+                  </div>
+                </div>
+
+                <!-- TikTok (Content Posting API) -->
+                <div class="channel-box">
+                  <div class="channel-header">
+                    <span class="channel-name">🎵 TikTok (Content Posting API v2)</span>
+                    <label class="toggle-switch-sm">
+                      <input type="checkbox" id="ch-tiktok-enabled">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-field flex-grow">
+                      <label for="ch-tiktok-token" class="field-label">User Access Token (TikTok for Developers)</label>
+                      <input type="password" id="ch-tiktok-token" class="field-input" placeholder="TikTok OAuth User Token (escopo video.publish)">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-tiktok-openid" class="field-label">Open ID (Opcional)</label>
+                      <input type="text" id="ch-tiktok-openid" class="field-input" placeholder="ex: _000abcdef...">
+                    </div>
+                  </div>
+                  <small class="field-hint" style="display:block; margin-top:0.4rem; color: #94a3b8; font-size: 0.76rem; line-height: 1.35;">
+                    🎬 <strong>Vídeo Obrigatório:</strong> O TikTok aceita estritamente arquivos de vídeo (.mp4 vertical 9:16). Gere o vídeo no Estúdio de Vídeo IA antes de disparar.
+                  </small>
+                  <div class="channel-test-btn-wrap" style="margin-top: 0.65rem;">
+                    <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="tiktok">Testar Conexão TikTok</button>
+                  </div>
+                </div>
               </div>
 
               <!-- Botão de Testar Todos os Canais -->
@@ -1633,6 +1699,16 @@
             <input type="checkbox" id="pub-check-webhook">
             <span>⚡ Webhook</span>
             <span class="channel-status-pill" id="badge-pub-webhook"></span>
+          </label>
+          <label class="channel-check-label" id="label-pub-googlebusiness">
+            <input type="checkbox" id="pub-check-googlebusiness">
+            <span>🏢 Google Meu Negócio</span>
+            <span class="channel-status-pill" id="badge-pub-googlebusiness"></span>
+          </label>
+          <label class="channel-check-label" id="label-pub-tiktok">
+            <input type="checkbox" id="pub-check-tiktok">
+            <span>🎵 TikTok</span>
+            <span class="channel-status-pill" id="badge-pub-tiktok"></span>
           </label>
         </div>
 

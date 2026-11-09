@@ -441,6 +441,18 @@ async function generateWithLlm(article, client, options = {}) {
         ? parsed.threads.thread.map(t => replaceUrls(t, 'threads'))
         : null,
       recommendedFormat: '1:1 ou 16:9'
+    },
+    googlebusiness: {
+      post: formatRichSummary(parsed.googlebusiness?.post || parsed.googlebusiness || finalLinkedinPost, 'googlebusiness').slice(0, 1500),
+      recommendedFormat: '16:9 ou 1:1 Quadrado (Novidades)',
+      charCount: 0,
+      maxLimit: 1500
+    },
+    tiktok: {
+      post: replaceUrls((parsed.tiktok?.post || parsed.tiktok || `${article.title}\n\n${(article.description || '').slice(0, 160)}...\n\n#Tendencias #Mercado`).slice(0, 2200), 'tiktok'),
+      recommendedFormat: '9:16 (Vertical Vídeo)',
+      charCount: 0,
+      maxLimit: 2200
     }
   };
 }

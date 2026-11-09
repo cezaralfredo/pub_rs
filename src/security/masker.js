@@ -87,6 +87,14 @@ function maskClientSecrets(client) {
       safeClient.channels.buffer.hasToken = true;
       safeClient.channels.buffer.accessToken = maskSecret(safeClient.channels.buffer.accessToken);
     }
+    if (safeClient.channels.googlebusiness?.accessToken) {
+      safeClient.channels.googlebusiness.hasToken = true;
+      safeClient.channels.googlebusiness.accessToken = maskSecret(safeClient.channels.googlebusiness.accessToken);
+    }
+    if (safeClient.channels.tiktok?.accessToken) {
+      safeClient.channels.tiktok.hasToken = true;
+      safeClient.channels.tiktok.accessToken = maskSecret(safeClient.channels.tiktok.accessToken);
+    }
   }
 
   return safeClient;
@@ -138,6 +146,12 @@ function mergeClientSecrets(newData, existingData = {}) {
     }
     if (merged.channels.buffer && isMaskedValue(merged.channels.buffer.accessToken)) {
       merged.channels.buffer.accessToken = existingData.channels.buffer?.accessToken || '';
+    }
+    if (merged.channels.googlebusiness && isMaskedValue(merged.channels.googlebusiness.accessToken)) {
+      merged.channels.googlebusiness.accessToken = existingData.channels.googlebusiness?.accessToken || '';
+    }
+    if (merged.channels.tiktok && isMaskedValue(merged.channels.tiktok.accessToken)) {
+      merged.channels.tiktok.accessToken = existingData.channels.tiktok?.accessToken || '';
     }
   }
 
