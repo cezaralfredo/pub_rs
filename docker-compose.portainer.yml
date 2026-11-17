@@ -5,7 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: pub_rs:latest
     container_name: pub_rs
     restart: unless-stopped
     ports:
