@@ -1501,6 +1501,241 @@ body.light-theme {
   border-color: var(--border-focus);
 }
 
+/* ==============================================================================
+   CARDS DE SEÇÃO EDITORIAL E PRODUÇÃO (REDESIGN HIGH-END)
+   ============================================================================== */
+.editorial-section-card {
+  background: rgba(18, 24, 43, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  margin-top: 20px;
+  margin-bottom: 22px;
+  position: relative;
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.editorial-section-card:hover {
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.5);
+}
+
+.section-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.section-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-card-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.section-card-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+
+.section-card-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.section-badge-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  white-space: nowrap;
+}
+
+.section-badge-pill.subtle {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Grids especializados */
+.editorial-matrix-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 22px;
+}
+
+.editorial-eeat-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px 22px;
+}
+
+.production-config-card {
+  margin-top: 24px;
+}
+
+.production-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px 22px;
+}
+
+.control-subhint {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+/* Custom Select styling & ellipsis */
+.custom-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 6px;
+  background-color: var(--text-secondary);
+  clip-path: polygon(100% 0%, 0 0%, 50% 100%);
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.custom-select-wrap:focus-within::after {
+  opacity: 1;
+  background-color: var(--accent-cyan);
+}
+
+select.control-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 36px !important;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+select.control-input option {
+  background-color: #0d1222;
+  color: #fff;
+  padding: 8px 12px;
+}
+
+/* Card Toggle Label for AI Image */
+.toggle-card-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  cursor: pointer;
+  min-height: 44px;
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.toggle-card-label:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.04);
+}
+
+.toggle-text-wrap {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.toggle-text-wrap strong {
+  font-size: 0.84rem;
+  color: #fff;
+}
+
+.toggle-text-wrap small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Action Submit Bar */
+.action-submit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 24px;
+}
+
+.submit-action-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 620px;
+  line-height: 1.45;
+}
+
+.hint-bullet {
+  color: var(--accent-cyan);
+  font-size: 0.7rem;
+}
+
+@media (max-width: 900px) {
+  .editorial-matrix-grid,
+  .editorial-eeat-grid,
+  .production-grid {
+    grid-template-columns: 1fr;
+  }
+  .action-submit-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .btn-primary-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Options Bar & Action Button */
 .options-bar {
   display: flex;
@@ -3348,6 +3583,65 @@ body.light-theme .toggle-switch input:checked + .toggle-slider {
 
 body.light-theme .toggle-label {
   color: #334155;
+}
+
+body.light-theme .editorial-section-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.04);
+}
+
+body.light-theme .editorial-section-card:hover {
+  border-color: rgba(2, 132, 199, 0.25);
+  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
+}
+
+body.light-theme .section-card-header {
+  border-bottom-color: rgba(15, 23, 42, 0.06);
+}
+
+body.light-theme .section-card-title {
+  color: #0f172a;
+}
+
+body.light-theme .section-card-icon-box {
+  background: rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.18);
+}
+
+body.light-theme .section-badge-pill {
+  background: rgba(2, 132, 199, 0.08);
+  color: #0284c7;
+  border-color: rgba(2, 132, 199, 0.22);
+}
+
+body.light-theme .section-badge-pill.subtle {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+body.light-theme .toggle-card-label {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+body.light-theme .toggle-card-label:hover {
+  background: rgba(2, 132, 199, 0.04);
+  border-color: rgba(2, 132, 199, 0.3);
+}
+
+body.light-theme .toggle-text-wrap strong {
+  color: #0f172a;
+}
+
+body.light-theme select.control-input option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+body.light-theme .action-submit-bar {
+  border-top-color: rgba(15, 23, 42, 0.08);
 }
 
 body.light-theme .step-card {
