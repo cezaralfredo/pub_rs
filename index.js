@@ -18,6 +18,11 @@ function parseArgs() {
     model: '',
     aiImage: false,
     suggestTopics: false,
+    editorialAngle: 'equilibrado',
+    editorialDepth: 'especialista',
+    dataAnchor: '',
+    targetAudienceOverride: '',
+    conversionGoal: 'autoridade',
     help: false
   };
 
@@ -50,6 +55,21 @@ function parseArgs() {
       options.aiImage = true;
     } else if (arg === '--suggest-topics' || arg === '--ideate') {
       options.suggestTopics = true;
+    } else if ((arg === '--editorial-angle' || arg === '--angle') && args[i + 1]) {
+      options.editorialAngle = args[i + 1];
+      i++;
+    } else if ((arg === '--editorial-depth' || arg === '--depth') && args[i + 1]) {
+      options.editorialDepth = args[i + 1];
+      i++;
+    } else if ((arg === '--data-anchor' || arg === '--anchor') && args[i + 1]) {
+      options.dataAnchor = args[i + 1];
+      i++;
+    } else if ((arg === '--target-audience' || arg === '--audience') && args[i + 1]) {
+      options.targetAudienceOverride = args[i + 1];
+      i++;
+    } else if ((arg === '--conversion-goal' || arg === '--goal') && args[i + 1]) {
+      options.conversionGoal = args[i + 1];
+      i++;
     } else if (arg.startsWith('http://') || arg.startsWith('https://')) {
       options.url = arg;
     }
@@ -69,6 +89,11 @@ async function main() {
     model,
     aiImage,
     suggestTopics,
+    editorialAngle,
+    editorialDepth,
+    dataAnchor,
+    targetAudienceOverride,
+    conversionGoal,
     help
   } = parseArgs();
 
@@ -124,15 +149,33 @@ Uso:
   node index.js --client <ID> --suggest-topics
 
 Opções:
-  --topic <TEXTO>     Tema ou interesse da marca para criar post autoral do zero
-  --archetype <TIPO>  Arquétipo de post: dica (padrão), opiniao, mito, case
-  --style <ESTILO>    Estilo visual IA: dark-cinematic, minimalist-3d, corporate-photo, tech-vector
-  --client <ID>       ID do cliente (padrão: anaue-design)
-  --provider, -p      Provedor de LLM (gemini, openai, anthropic, groq, deepseek, openrouter, ollama)
-  --model, -m         Modelo específico (ex: gpt-4o-mini, gemini-2.5-flash, claude-3-5-sonnet-20241022)
-  --ai-image          Força a geração de arte via IA (DALL-E 3 / Imagen 3)
-  --suggest-topics    Sugere pautas inteligentes com base nos pilares cadastrados do cliente
-  --help, -h          Exibe esta mensagem de ajuda
+  --topic <TEXTO>             Tema ou interesse da marca para criar post autoral do zero
+  --archetype <TIPO>          Arquétipo editorial:
+                              - dica (Dica Prática / Passo a Passo)
+                              - opiniao (Opinião de Especialista / Tendência)
+                              - mito (Quebra de Mito / Paradigma)
+                              - case (Estudo de Caso / Problema-Solução & ROI)
+                              - visao_executiva (C-Level Briefing / Decisões de Conselho)
+                              - deep_dive (Framework Técnico Especialista)
+                              - contraintuitivo (Tese de Ruptura / Contrarian)
+                              - mercado_brasil (Tendência Global com Impacto no Brasil)
+  --editorial-angle <ANGULO>  Viés / Ângulo analítico:
+                              - equilibrado (padrão)
+                              - foco_brasil (regulação e mercado brasileiro)
+                              - pragmatico_roi (eficiência de capital e redução de custos)
+                              - futurismo_visao (sinais fracos e horizonte 1 a 3 anos)
+                              - provocativo_debate (provocação intelectual nos comentários)
+  --editorial-depth <PROF>    Nível de profundidade: c_level, especialista (padrão), didatico, investigativo
+  --data-anchor <TEXTO>       Dados ou estatísticas âncora E-E-A-T (ex: "Gartner 2025: 65% de adoção...")
+  --target-audience <TEXTO>   Público-alvo específico desta edição (sobrescreve o perfil padrão da marca)
+  --conversion-goal <META>    Objetivo de conversão: autoridade (padrão), salvamentos, comentarios, compartilhamentos
+  --style <ESTILO>            Estilo visual IA: dark-cinematic, minimalist-3d, corporate-photo, tech-vector
+  --client <ID>               ID do cliente (padrão: anaue-design)
+  --provider, -p              Provedor de LLM (gemini, openai, anthropic, groq, deepseek, openrouter, ollama)
+  --model, -m                 Modelo específico (ex: gpt-4o-mini, gemini-2.5-flash, claude-3-5-sonnet-20241022)
+  --ai-image                  Força a geração de arte via IA (DALL-E 3 / Imagen 3 / Pollinations)
+  --suggest-topics            Sugere pautas inteligentes com base nos pilares cadastrados do cliente
+  --help, -h                  Exibe esta mensagem de ajuda
 
 Provedores de IA ativos no ambiente:
   ${detectedStr}
@@ -173,6 +216,11 @@ ${availableClients}
     provider,
     model,
     aiImage: isTopicMode ? true : aiImage,
+    editorialAngle,
+    editorialDepth,
+    dataAnchor,
+    targetAudienceOverride,
+    conversionGoal,
     onProgress: (p) => {
       if (p.step === 1 && (p.status === 'scraping' || p.status === 'synthesizing')) console.log(`\n⏳ [1/4] ${p.message}`);
       if (p.step === 1 && (p.status === 'scraping_done' || p.status === 'synthesizing_done')) console.log(`   ✓ Título: "${p.data.title}"`);

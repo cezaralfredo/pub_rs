@@ -70,8 +70,19 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rate Limiter simples em memória
+// Rate Limiter simples em memória com limpeza automática periódica contra Memory Leak
 const rateLimitMap = new Map();
+const rateLimitCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  const windowMs = 5 * 60 * 1000;
+  for (const [ip, stats] of rateLimitMap.entries()) {
+    if (now - stats.firstRequest > windowMs) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+if (rateLimitCleanupTimer.unref) rateLimitCleanupTimer.unref();
+
 function rateLimiter(req, res, next) {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
   const now = Date.now();
@@ -1408,7 +1419,23 @@ app.post('/api/generate', requireAuth, rateLimiter, async (req, res) => {
       return res.status(403).json({ error: quotaCheck.error, code: 'QUOTA_EXCEEDED' });
     }
 
-    const { mode = 'url', url, topic, archetype, visualStyle, clientId, provider, model, aiImage } = req.body;
+    const {
+      mode = 'url',
+      url,
+      topic,
+      archetype,
+      visualStyle,
+      clientId,
+      provider,
+      model,
+      aiImage,
+      imageProvider,
+      editorialAngle,
+      editorialDepth,
+      dataAnchor,
+      targetAudienceOverride,
+      conversionGoal
+    } = req.body;
     const isTopicMode = mode === 'topic' || (Boolean(topic) && !url);
 
     if (!isTopicMode && !url) {
@@ -1427,7 +1454,13 @@ app.post('/api/generate', requireAuth, rateLimiter, async (req, res) => {
       clientId: clientId || 'anaue-design',
       provider,
       model,
-      aiImage: Boolean(aiImage)
+      aiImage: Boolean(aiImage),
+      imageProvider,
+      editorialAngle,
+      editorialDepth,
+      dataAnchor,
+      targetAudienceOverride,
+      conversionGoal
     });
 
     // Incrementa o uso mensal do plano do usuário
@@ -1457,7 +1490,23 @@ app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
     return res.status(403).json({ error: quotaCheck.error, code: 'QUOTA_EXCEEDED' });
   }
 
-  const { mode = 'url', url, topic, archetype, visualStyle, clientId, provider, model, aiImage, imageProvider } = req.query;
+  const {
+    mode = 'url',
+    url,
+    topic,
+    archetype,
+    visualStyle,
+    clientId,
+    provider,
+    model,
+    aiImage,
+    imageProvider,
+    editorialAngle,
+    editorialDepth,
+    dataAnchor,
+    targetAudienceOverride,
+    conversionGoal
+  } = req.query;
   const isTopicMode = mode === 'topic' || (Boolean(topic) && !url);
 
   if (!isTopicMode && !url) {
@@ -1467,22 +1516,30 @@ app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
     return res.status(400).json({ error: 'O tema/tópico é obrigatório para o modo por interesses.' });
   }
 
-  // Configuração SSE
+  // Configuração SSE com proteção contra desconexão prematura
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive'
   });
 
+  let clientDisconnected = false;
+  req.on('close', () => {
+    clientDisconnected = true;
+  });
+
   const sendEvent = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (clientDisconnected || res.writableEnded) return;
+    try {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch {}
   };
 
   try {
     sendEvent('progress', {
       step: 0,
       status: 'started',
-      message: isTopicMode ? 'Iniciando criação a partir de interesses...' : 'Iniciando automação por URL...'
+      message: isTopicMode ? 'Iniciando criação especializada a partir de interesses...' : 'Iniciando automação por URL...'
     });
 
     const result = await runPipeline({
@@ -1496,6 +1553,11 @@ app.get('/api/generate/stream', requireAuth, rateLimiter, async (req, res) => {
       model,
       aiImage: aiImage === 'true' || aiImage === true,
       imageProvider: imageProvider || 'pollinations',
+      editorialAngle,
+      editorialDepth,
+      dataAnchor,
+      targetAudienceOverride,
+      conversionGoal,
       onProgress: (progress) => {
         sendEvent('progress', progress);
       }

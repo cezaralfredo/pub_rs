@@ -11,6 +11,27 @@ const { dispatchToClientChannels } = require('./publisher');
 
 const QUEUE_FILE = path.join(__dirname, '..', 'output', 'dispatch_queue.json');
 
+// Gravação atômica segura para evitar corrupção em caso de encerramento inesperado
+function atomicWriteJson(filePath, data) {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const tempPath = `${filePath}.${Date.now()}.${Math.random().toString(36).slice(2, 7)}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
+  try {
+    fs.renameSync(tempPath, filePath);
+  } catch {
+    try {
+      fs.copyFileSync(tempPath, filePath);
+      fs.unlinkSync(tempPath);
+    } catch {
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+      try { fs.unlinkSync(tempPath); } catch {}
+    }
+  }
+}
+
 // Garante que o arquivo da fila existe
 function ensureQueueFile() {
   const dir = path.dirname(QUEUE_FILE);
@@ -18,7 +39,7 @@ function ensureQueueFile() {
     fs.mkdirSync(dir, { recursive: true });
   }
   if (!fs.existsSync(QUEUE_FILE)) {
-    fs.writeFileSync(QUEUE_FILE, JSON.stringify([], null, 2), 'utf8');
+    atomicWriteJson(QUEUE_FILE, []);
   }
 }
 
@@ -33,10 +54,21 @@ function loadQueue() {
   }
 }
 
-// Salva fila
+// Salva fila de forma atômica
 function saveQueue(queue) {
-  ensureQueueFile();
-  fs.writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), 'utf8');
+  atomicWriteJson(QUEUE_FILE, queue);
+}
+
+// Atualiza um job na fila recarregando os dados mais recentes do disco para evitar condições de corrida
+function updateJobInQueue(jobId, updaterFn) {
+  const queue = loadQueue();
+  const index = queue.findIndex(j => j.id === jobId);
+  if (index !== -1) {
+    updaterFn(queue[index]);
+    saveQueue(queue);
+    return queue[index];
+  }
+  return null;
 }
 
 /**
@@ -154,8 +186,7 @@ async function processQueue() {
 
     for (const job of dueJobs) {
       console.log(`\n⏳ [BACKGROUND QUEUE] Processando job ${job.id} (Pacote: ${job.packageId})...`);
-      job.status = 'processing';
-      saveQueue(queue);
+      updateJobInQueue(job.id, j => { j.status = 'processing'; });
 
       try {
         const outputBase = path.join(__dirname, '..', 'output');
@@ -194,29 +225,31 @@ async function processQueue() {
           targetChannels: job.targetChannels
         });
 
-        job.status = 'published';
-        job.executedAt = new Date().toISOString();
-        job.results = dispatchResult;
-        job.error = null;
+        updateJobInQueue(job.id, j => {
+          j.status = 'published';
+          j.executedAt = new Date().toISOString();
+          j.results = dispatchResult;
+          j.error = null;
+        });
         console.log(`✅ [BACKGROUND QUEUE] Job ${job.id} publicado com sucesso!`);
       } catch (err) {
         console.error(`❌ [BACKGROUND QUEUE ERRO] Job ${job.id}:`, err.message);
-        job.retries = (job.retries || 0) + 1;
-        job.error = err.message;
+        updateJobInQueue(job.id, j => {
+          j.retries = (j.retries || 0) + 1;
+          j.error = err.message;
 
-        if (job.retries >= (job.maxRetries || 3)) {
-          job.status = 'failed';
-          job.executedAt = new Date().toISOString();
-        } else {
-          // Re-agenda com backoff exponencial (1min, 2min, 4min)
-          const backoffMinutes = Math.pow(2, job.retries);
-          job.status = 'scheduled';
-          job.scheduledFor = new Date(Date.now() + backoffMinutes * 60000).toISOString();
-          console.log(`🔄 [BACKGROUND QUEUE] Job ${job.id} reagendado para daqui a ${backoffMinutes} minuto(s).`);
-        }
+          if (j.retries >= (j.maxRetries || 3)) {
+            j.status = 'failed';
+            j.executedAt = new Date().toISOString();
+          } else {
+            // Re-agenda com backoff exponencial (1min, 2min, 4min)
+            const backoffMinutes = Math.pow(2, j.retries);
+            j.status = 'scheduled';
+            j.scheduledFor = new Date(Date.now() + backoffMinutes * 60000).toISOString();
+            console.log(`🔄 [BACKGROUND QUEUE] Job ${job.id} reagendado para daqui a ${backoffMinutes} minuto(s).`);
+          }
+        });
       }
-
-      saveQueue(queue);
     }
   } catch (err) {
     console.error('[BACKGROUND QUEUE FATAL]:', err.message);

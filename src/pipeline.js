@@ -50,6 +50,11 @@ async function runPipeline({
   model,
   aiImage = false,
   imageProvider = 'pollinations',
+  editorialAngle = 'equilibrado',
+  editorialDepth = 'especialista',
+  dataAnchor = '',
+  targetAudienceOverride = '',
+  conversionGoal = 'autoridade',
   onProgress = () => {}
 }) {
   const clientConfig = loadClientConfig(clientId);
@@ -59,7 +64,7 @@ async function runPipeline({
     step: 0,
     status: 'starting',
     message: isTopicMode
-      ? `Iniciando criação autoral para o cliente "${clientConfig.name || clientConfig.brandName}"...`
+      ? `Iniciando criação autoral especializada para o cliente "${clientConfig.name || clientConfig.brandName}"...`
       : `Iniciando automação omnichannel para o cliente "${clientConfig.name || clientConfig.brandName}"...`
   });
 
@@ -75,7 +80,7 @@ async function runPipeline({
     onProgress({
       step: 1,
       status: 'synthesizing',
-      message: `Sintetizando conteúdo estratégico para o tema: "${topic}"...`
+      message: `Sintetizando conteúdo estratégico para o tema: "${topic}" (${archetype.toUpperCase()}, ${editorialDepth.toUpperCase()})...`
     });
 
     article = await synthesizeTopicContent({
@@ -83,6 +88,11 @@ async function runPipeline({
       archetype,
       client: clientConfig,
       visualStyle,
+      editorialAngle,
+      editorialDepth,
+      dataAnchor,
+      targetAudienceOverride,
+      conversionGoal,
       options: { provider, model }
     });
 

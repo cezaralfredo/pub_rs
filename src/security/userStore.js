@@ -110,11 +110,23 @@ function readUsers() {
 }
 
 /**
- * Escreve a lista de usuários no arquivo.
+ * Escreve a lista de usuários no arquivo de forma atômica.
  */
 function writeUsers(users) {
   initUserStore();
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  const tempPath = `${USERS_FILE}.${Date.now()}.${Math.random().toString(36).slice(2, 7)}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify(users, null, 2), 'utf8');
+  try {
+    fs.renameSync(tempPath, USERS_FILE);
+  } catch {
+    try {
+      fs.copyFileSync(tempPath, USERS_FILE);
+      fs.unlinkSync(tempPath);
+    } catch {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+      try { fs.unlinkSync(tempPath); } catch {}
+    }
+  }
 }
 
 /**

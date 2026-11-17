@@ -6,7 +6,6 @@ function buildCopywriterPrompt(article, client) {
   const brandName = client.name || client.brandName || 'Marca';
   const brandHandle = client.brandHandle || '';
   const tone = client.tone || 'Profissional, autoritário, estratégico e dinâmico';
-  const audience = client.targetAudience || 'Profissionais, gestores e tomadores de decisão';
   const hashtags = Array.isArray(client.defaultHashtags) ? client.defaultHashtags : [];
   const cta = client.callToAction || 'Qual a sua visão sobre esse tema? Deixe nos comentários:';
   const commentTpl = client.commentTemplate || '👉 Acesse o conteúdo completo e todos os dados aqui: {URL}';
@@ -14,10 +13,23 @@ function buildCopywriterPrompt(article, client) {
 
   const isTopic = Boolean(article.isTopicMode);
   const archetype = article.archetype || 'dica';
+  const editorialAngle = article.editorialAngle || 'equilibrado';
+  const editorialDepth = article.editorialDepth || 'especialista';
+  const dataAnchor = (article.dataAnchor || '').trim();
+  const audience = article.targetAudienceOverride || client.targetAudience || 'Profissionais, gestores e tomadores de decisão';
+  const conversionGoal = article.conversionGoal || 'autoridade';
 
   const contextDescription = isTopic
-    ? `um TEMA ESTRATÉGICO AUTORAL (${article.title}) alinhado aos pilares de interesse da marca (Arquétipo: "${archetype}")`
+    ? `um TEMA ESTRATÉGICO AUTORAL ("${article.title}") alinhado aos pilares de interesse da marca (Arquétipo: "${archetype}", Viés: "${editorialAngle}", Profundidade: "${editorialDepth}", Foco: "${conversionGoal}")`
     : `um artigo publicado na web ("${article.title}")`;
+
+  const editorialDirectives = isTopic ? `
+DIRETRIZES DE ESPECIALIZAÇÃO EDITORIAL:
+- Profundidade: ${editorialDepth.toUpperCase()} (evite superficialidade; use termos técnicos exatos, frameworks e métricas sólidas).
+- Viés / Ângulo: ${editorialAngle.toUpperCase()} (oriente os argumentos para refletir este prisma analítico).
+- Objetivo de Conversão: ${conversionGoal.toUpperCase()} (direcione os CTAs e ganchos para este objetivo).
+${dataAnchor ? `- DADOS / ÂNCORA E-E-A-T OBRIGATÓRIA: "${dataAnchor}". Cite e ancore os argumentos nesta evidência concreta!` : ''}
+` : '';
 
   const negativeDirective = negativeKeywords.length > 0
     ? `PALAVRAS E EXPRESSÕES ESTRITAMENTE PROIBIDAS (NÃO utilize de forma alguma): ${JSON.stringify(negativeKeywords)}`
@@ -93,6 +105,8 @@ ${linkDirective}
 6. Carrossel Estruturado (LinkedIn Document / Instagram Slides 4:5): Estruture os slides em sequência lógica (Capa + 3 a 4 Insights Práticos + CTA final).
 
 ${linkUtmSection}
+
+${editorialDirectives}
 
 ${negativeDirective}
 

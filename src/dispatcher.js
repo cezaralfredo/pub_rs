@@ -59,14 +59,28 @@ ${copies.facebook.firstComment || ''}
 * **Pasta dos Slides:** \`images/carousel/\`
 ` : '';
 
+  const articleBaseLine = article.isTopicMode
+    ? `**Tema Autoral:** ${article.title} *(Modo Interesses / Tema Livre)*`
+    : `**Artigo Base:** [${article.title}](${article.canonicalUrl || article.url})`;
+
+  const editorialSection = article.isTopicMode ? `
+**Matriz Editorial Especialista:**
+* **Arquétipo:** \`${article.archetype || 'dica'}\`
+* **Profundidade:** \`${article.editorialDepth || 'especialista'}\`
+* **Viés / Ângulo:** \`${article.editorialAngle || 'equilibrado'}\`
+* **Público da Edição:** \`${article.targetAudienceOverride || client.targetAudience || 'Geral'}\`
+* **Objetivo de Conversão:** \`${article.conversionGoal || 'autoridade'}\`
+${article.dataAnchor ? `* **Âncora de Autoridade E-E-A-T:** *"${article.dataAnchor}"*` : ''}
+` : '';
+
   const reportMd = 
 `# 📦 Pacote de Distribuição Multicanal · pub_rs
 
-**Artigo Base:** [${article.title}](${article.canonicalUrl || article.url})  
+${articleBaseLine}  
 **Cliente:** ${client.name || client.brandName} (${client.id || 'default'})  
 **Motor de Redação:** ${generatorName}  
 **Data de Geração:** ${new Date().toLocaleString('pt-BR')}  
-
+${editorialSection}
 ---
 
 ## 🖼️ Mídias Processadas por Rede

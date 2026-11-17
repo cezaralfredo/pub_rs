@@ -107,6 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
     inputTopic: document.getElementById('input-topic'),
     formArchetypeSelect: document.getElementById('form-archetype-select'),
     formVisualStyleSelect: document.getElementById('form-visual-style-select'),
+    formEditorialAngleSelect: document.getElementById('form-editorial-angle-select'),
+    formEditorialDepthSelect: document.getElementById('form-editorial-depth-select'),
+    formConversionGoalSelect: document.getElementById('form-conversion-goal-select'),
+    formDataAnchorInput: document.getElementById('form-data-anchor-input'),
+    formTargetAudienceInput: document.getElementById('form-target-audience-input'),
 
     // Controles Compartilhados
     formClientSelect: document.getElementById('form-client-select'),
@@ -139,6 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
     resJevChannel: document.getElementById('res-jev-channel'),
     resJevViral: document.getElementById('res-jev-viral'),
     resJevArchetype: document.getElementById('res-jev-archetype'),
+    resEditorialStrip: document.getElementById('res-editorial-strip'),
+    resEditorialArch: document.getElementById('res-editorial-arch'),
+    resEditorialAngle: document.getElementById('res-editorial-angle'),
+    resEditorialDepth: document.getElementById('res-editorial-depth'),
+    resEditorialGoal: document.getElementById('res-editorial-goal'),
     btnPublishChannels: document.getElementById('btn-publish-channels'),
     btnDownloadJson: document.getElementById('btn-download-json'),
     btnCopyAll: document.getElementById('btn-copy-all'),
@@ -1348,14 +1358,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const archetypeLabels = {
-        dica: 'Dica Prática',
-        opiniao: 'Opinião de Especialista',
-        mito: 'Quebra de Mito',
-        case: 'Estudo de Caso'
+        dica: '💡 Dica Prática',
+        opiniao: '🎯 Opinião / Tendência',
+        mito: '💥 Quebra de Mito',
+        case: '📈 Estudo de Caso & ROI',
+        visao_executiva: '🏛️ Visão C-Level',
+        deep_dive: '🔬 Deep Dive Técnico',
+        contraintuitivo: '⚡ Tese de Ruptura',
+        mercado_brasil: '🇧🇷 Impacto Brasil'
       };
 
       elements.suggestionsGrid.innerHTML = ideas.map(idea => `
-        <div class="suggestion-card" data-topic="${escapeHtml(idea.topic || idea.title)}" data-archetype="${idea.archetype || 'dica'}">
+        <div class="suggestion-card" data-topic="${escapeHtml(idea.topic || idea.title)}" data-archetype="${idea.archetype || 'dica'}" data-angle="${idea.editorialAngle || ''}">
           <div class="suggestion-card-header">
             <span class="suggestion-badge">${archetypeLabels[idea.archetype] || idea.archetype?.toUpperCase() || 'PAUTA'}</span>
             <small style="color: var(--text-muted); font-size: 0.72rem;">${escapeHtml(idea.pillar || '')}</small>
@@ -1369,12 +1383,16 @@ document.addEventListener('DOMContentLoaded', () => {
         card.addEventListener('click', () => {
           const topic = card.getAttribute('data-topic');
           const arch = card.getAttribute('data-archetype');
+          const angle = card.getAttribute('data-angle');
           elements.inputTopic.value = topic;
           if (elements.formArchetypeSelect && arch) {
             elements.formArchetypeSelect.value = arch;
           }
+          if (elements.formEditorialAngleSelect && angle) {
+            elements.formEditorialAngleSelect.value = angle;
+          }
           elements.inputTopic.focus();
-          showToast(`Ideia carregada! Clique em "Gerar" para criar o pacote.`, 'success');
+          showToast(`Pauta especialista carregada! Clique em "Gerar" para criar o pacote.`, 'success');
         });
       });
 
@@ -1405,6 +1423,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const topic = elements.inputTopic?.value?.trim() || '';
     const archetype = elements.formArchetypeSelect?.value || 'dica';
     const visualStyle = elements.formVisualStyleSelect?.value || 'dark-cinematic';
+    const editorialAngle = elements.formEditorialAngleSelect?.value || 'equilibrado';
+    const editorialDepth = elements.formEditorialDepthSelect?.value || 'especialista';
+    const conversionGoal = elements.formConversionGoalSelect?.value || 'autoridade';
+    const dataAnchor = elements.formDataAnchorInput?.value?.trim() || '';
+    const targetAudienceOverride = elements.formTargetAudienceInput?.value?.trim() || '';
     const clientId = elements.formClientSelect.value;
     const provider = elements.formProviderSelect.value;
     const model = elements.formModelInput.value.trim();
@@ -1439,7 +1462,12 @@ document.addEventListener('DOMContentLoaded', () => {
       provider,
       model,
       aiImage,
-      imageProvider
+      imageProvider,
+      editorialAngle,
+      editorialDepth,
+      conversionGoal,
+      dataAnchor,
+      targetAudienceOverride
     });
     if (token) {
       queryParams.append('token', token);
@@ -1576,6 +1604,31 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (elements.resJevContainer) {
       elements.resJevContainer.classList.add('hidden');
+    }
+
+    // 0.6 Badges da Matriz Editorial Especialista (Modo Interesses/Tema Livre)
+    if (elements.resEditorialStrip) {
+      if (data.article?.isTopicMode) {
+        elements.resEditorialStrip.classList.remove('hidden');
+        if (elements.resEditorialArch) {
+          const arch = data.article.archetype || 'dica';
+          elements.resEditorialArch.textContent = `💡 Arquétipo: ${arch.toUpperCase()}`;
+        }
+        if (elements.resEditorialAngle) {
+          const angle = data.article.editorialAngle || 'equilibrado';
+          elements.resEditorialAngle.textContent = `⚖️ Viés: ${angle.toUpperCase()}`;
+        }
+        if (elements.resEditorialDepth) {
+          const depth = data.article.editorialDepth || 'especialista';
+          elements.resEditorialDepth.textContent = `🧠 Profundidade: ${depth.toUpperCase()}`;
+        }
+        if (elements.resEditorialGoal) {
+          const goal = data.article.conversionGoal || 'autoridade';
+          elements.resEditorialGoal.textContent = `⭐ Objetivo: ${goal.toUpperCase()}`;
+        }
+      } else {
+        elements.resEditorialStrip.classList.add('hidden');
+      }
     }
 
     // Reset A/B Hook pill selection to 'original'

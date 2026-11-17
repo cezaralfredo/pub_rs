@@ -258,16 +258,20 @@
               ></textarea>
             </div>
 
-            <!-- Seletores de Arquétipo e Estilo Visual -->
+            <!-- Seletores de Arquétipo, Estilo Visual e Matriz Editorial -->
             <div class="topic-meta-row">
               <div class="control-group">
-                <label for="form-archetype-select" class="control-label">Arquétipo do Post</label>
+                <label for="form-archetype-select" class="control-label">Arquétipo Editorial</label>
                 <div class="custom-select-wrap">
                   <select id="form-archetype-select" class="control-input">
-                    <option value="dica">💡 Dica Prática / Como Fazer</option>
-                    <option value="opiniao">🎯 Opinião de Especialista / Tendência</option>
+                    <option value="dica">💡 Dica Prática / Como Fazer (Passo a Passo)</option>
+                    <option value="opiniao">🎯 Opinião de Especialista / Tendência de Mercado</option>
                     <option value="mito">💥 Quebra de Mito / Paradigma</option>
-                    <option value="case">📈 Estudo de Caso / Problema-Solução</option>
+                    <option value="case">📈 Estudo de Caso / Problema-Solução & ROI</option>
+                    <option value="visao_executiva">🏛️ Visão Executiva / C-Level Briefing (Estratégia & Macro)</option>
+                    <option value="deep_dive">🔬 Deep Dive Técnico / Framework Especialista</option>
+                    <option value="contraintuitivo">⚡ Tese de Ruptura / Contrarian Thinking</option>
+                    <option value="mercado_brasil">🇧🇷 Tendência Global com Impacto no Mercado Brasileiro</option>
                   </select>
                 </div>
               </div>
@@ -282,6 +286,75 @@
                     <option value="tech-vector">📐 Vetor Tech Isométrico</option>
                   </select>
                 </div>
+              </div>
+            </div>
+
+            <!-- Matriz Editorial Especialista: Viés, Profundidade e Conversão -->
+            <div class="topic-meta-row" style="margin-top: 10px;">
+              <div class="control-group">
+                <label for="form-editorial-angle-select" class="control-label">Viés / Ângulo Editorial</label>
+                <div class="custom-select-wrap">
+                  <select id="form-editorial-angle-select" class="control-input">
+                    <option value="equilibrado" selected>⚖️ Equilibrado & Analítico</option>
+                    <option value="foco_brasil">🇧🇷 Foco no Mercado & Realidade Brasileira</option>
+                    <option value="pragmatico_roi">💰 Pragmático & Eficiência de Capital (Foco em ROI)</option>
+                    <option value="futurismo_visao">🚀 Futurismo & Sinais Fracos (Horizonte 1-3 Anos)</option>
+                    <option value="provocativo_debate">🔥 Provocação Intelectual & Debate Aberto</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label for="form-editorial-depth-select" class="control-label">Profundidade Editorial</label>
+                <div class="custom-select-wrap">
+                  <select id="form-editorial-depth-select" class="control-input">
+                    <option value="especialista" selected>🧠 Especialista / Técnico Avançado (Métricas & Prática)</option>
+                    <option value="c_level">👔 Executivo / C-Level (Alto Impacto & Decisão)</option>
+                    <option value="didatico">📚 Educativo / Didático de Alta Clareza</option>
+                    <option value="investigativo">🔍 Jornalístico / Investigativo & Fatos de Mercado</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label for="form-conversion-goal-select" class="control-label">Objetivo de Conversão</label>
+                <div class="custom-select-wrap">
+                  <select id="form-conversion-goal-select" class="control-input">
+                    <option value="autoridade" selected>⭐ Thought Leadership (Autoridade Incontestável)</option>
+                    <option value="salvamentos">🔖 Material de Consulta (Foco em Salvamentos)</option>
+                    <option value="comentarios">💬 Debate Aberto (Foco em Comentários)</option>
+                    <option value="compartilhamentos">🔁 Tese Compartilhável (Foco em Difusão em Rede)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Campos Avançados de Autoridade (E-E-A-T & Audiência Específica) -->
+            <div class="topic-meta-row" style="margin-top: 10px;">
+              <div class="control-group" style="flex: 1.5;">
+                <label for="form-data-anchor-input" class="control-label">
+                  Dados, Fontes ou Estatísticas Âncora (E-E-A-T)
+                  <span style="font-size: 11px; opacity: 0.7; font-weight: 400; text-transform: none; margin-left: 6px;">(Opcional - ampara a autoridade da matéria)</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="form-data-anchor-input" 
+                  class="control-input" 
+                  placeholder="Ex: Relatório Gartner 2025: 65% de adoção; Pesquisa McKinsey Q3; Queda de 35% no CAC..."
+                >
+              </div>
+
+              <div class="control-group" style="flex: 1;">
+                <label for="form-target-audience-input" class="control-label">
+                  Público-Alvo Específico da Edição
+                  <span style="font-size: 11px; opacity: 0.7; font-weight: 400; text-transform: none; margin-left: 6px;">(Opcional - sobrescreve o padrão)</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="form-target-audience-input" 
+                  class="control-input" 
+                  placeholder="Ex: Diretores de TI (CTOs), Gestores de Vendas B2B..."
+                >
               </div>
             </div>
 
@@ -451,6 +524,17 @@
             <span id="res-jev-channel" class="jev-badge jev-badge-channel" title="Roteamento prioritário recomendado">📢 Canal: --</span>
             <span id="res-jev-viral" class="jev-badge jev-badge-viral" title="Potencial de engajamento e compartilhamento">🔥 Viral: --</span>
             <span id="res-jev-archetype" class="jev-badge jev-badge-archetype" title="Arquétipo editorial recomendado">📐 Arquétipo: --</span>
+          </div>
+
+          <!-- Editorial Matrix Badges (Topic Mode) -->
+          <div id="res-editorial-strip" class="jev-decision-strip hidden" style="margin-top: 6px;">
+            <span class="jev-label" style="font-size: 0.72rem; font-weight: 700; color: #a855f7; letter-spacing: 0.05em; text-transform: uppercase;">
+              ✍️ Matriz Editorial:
+            </span>
+            <span id="res-editorial-arch" class="jev-badge" style="border-color: rgba(168, 85, 247, 0.4); color: #e9d5ff;" title="Arquétipo Editorial">💡 Arquétipo</span>
+            <span id="res-editorial-angle" class="jev-badge" style="border-color: rgba(56, 189, 248, 0.4); color: #bae6fd;" title="Viés / Ângulo Editorial">⚖️ Viés</span>
+            <span id="res-editorial-depth" class="jev-badge" style="border-color: rgba(52, 211, 153, 0.4); color: #a7f3d0;" title="Nível de Profundidade">🧠 Profundidade</span>
+            <span id="res-editorial-goal" class="jev-badge" style="border-color: rgba(245, 158, 11, 0.4); color: #fde68a;" title="Objetivo de Conversão">⭐ Conversão</span>
           </div>
         </div>
         <div class="article-actions">

@@ -6,8 +6,8 @@ const sharp = require('sharp');
  * Escapa caracteres para renderização segura em SVG.
  */
 function escapeXml(unsafe) {
-  if (!unsafe) return '';
-  return unsafe
+  if (unsafe === undefined || unsafe === null) return '';
+  return String(unsafe)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

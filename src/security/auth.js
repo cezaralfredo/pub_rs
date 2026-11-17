@@ -97,6 +97,18 @@ function requireAdmin(req, res, next) {
  */
 const loginAttemptsMap = new Map();
 
+// Limpeza automática periódica para evitar vazamento de memória (Memory Leak)
+const loginCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  for (const [ip, record] of loginAttemptsMap.entries()) {
+    if (now - record.firstAttempt > windowMs) {
+      loginAttemptsMap.delete(ip);
+    }
+  }
+}, 10 * 60 * 1000);
+if (loginCleanupTimer.unref) loginCleanupTimer.unref();
+
 function loginRateLimiter(req, res, next) {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
   const now = Date.now();

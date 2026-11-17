@@ -7,8 +7,8 @@ const { generateAiImageIfPossible } = require('./imageGen');
  * Escapa caracteres especiais para SVG seguro.
  */
 function escapeXml(unsafe) {
-  if (!unsafe) return '';
-  return unsafe
+  if (unsafe === undefined || unsafe === null) return '';
+  return String(unsafe)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
