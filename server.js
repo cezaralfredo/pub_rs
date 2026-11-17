@@ -4,7 +4,7 @@ const path = require('path');
 const express = require('express');
 const { runPipeline, loadClientConfig } = require('./src/pipeline');
 const { detectAvailableProviders, testLlmConnection } = require('./src/llm');
-const { suggestTopicIdeas, ARCHETYPES } = require('./src/topicSynthesizer');
+const { suggestTopicIdeas, ARCHETYPES, EDITORIAL_ANGLES, EDITORIAL_DEPTHS, CONVERSION_GOALS } = require('./src/topicSynthesizer');
 const { STYLE_DESCRIPTIONS } = require('./src/imageGen');
 const { validatePublicUrl, sanitizeIdentifier, safePathResolve } = require('./src/security/validator');
 const { maskClientSecrets, mergeClientSecrets } = require('./src/security/masker');
@@ -203,10 +203,13 @@ app.get('/api/status', (req, res) => {
 
   res.json({
     name: 'pub_rs Studio',
-    version: '3.0.0',
+    version: '3.1.0',
     providers: detectAvailableProviders(),
     clients,
     archetypes: ARCHETYPES,
+    editorialAngles: EDITORIAL_ANGLES,
+    editorialDepths: EDITORIAL_DEPTHS,
+    conversionGoals: CONVERSION_GOALS,
     visualStyles: STYLE_DESCRIPTIONS,
     hasImageGen: true,
     imageProviders: ['Pollinations AI (Flux)', Boolean(process.env.OPENAI_API_KEY) && 'OpenAI (DALL-E 3)', Boolean(process.env.GEMINI_API_KEY) && 'Google (Imagen 3)'].filter(Boolean)
