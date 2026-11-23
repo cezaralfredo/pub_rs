@@ -773,19 +773,241 @@ async function publishToMeta(config, copies, article) {
 }
 
 /**
+ * Persiste atomicamente o Access Token renovado do Google Business Profile no JSON do cliente.
+ */
+function persistRefreshedGoogleToken(clientConfigId, accessToken, tokenExpiresAt) {
+  if (!clientConfigId || !accessToken) return;
+  try {
+    const safeId = String(clientConfigId).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!safeId) return;
+    const filePath = path.join(__dirname, '..', 'config', 'clients', `${safeId}.json`);
+    if (!fs.existsSync(filePath)) return;
+
+    const clientData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (!clientData.channels) clientData.channels = {};
+    if (!clientData.channels.googlebusiness) clientData.channels.googlebusiness = {};
+    clientData.channels.googlebusiness.accessToken = accessToken;
+    if (tokenExpiresAt) {
+      clientData.channels.googlebusiness.tokenExpiresAt = tokenExpiresAt;
+    }
+
+    const tmpPath = `${filePath}.tmp.${Date.now()}`;
+    fs.writeFileSync(tmpPath, JSON.stringify(clientData, null, 2), 'utf8');
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    console.warn(`⚠️ [GBP] Não foi possível persistir o token renovado para ${clientConfigId}:`, err.message);
+  }
+}
+
+/**
+ * Formata erros da Google Business Profile API com diagnósticos claros (429 Cota Zero, 403, 401).
+ */
+function formatGoogleBusinessApiError(status, data) {
+  const apiMsg = data?.error?.message || data?.error_description || '';
+  if (status === 429) {
+    return `Erro 429 (Cota Zero / Resource Exhausted): Seu projeto no Google Cloud ainda não tem cota liberada para a Google Business Profile API. Solicite a aprovação de "Basic API Access" no formulário oficial do Google.${apiMsg ? ` Detalhe: ${apiMsg}` : ''}`;
+  }
+  if (status === 403) {
+    return `Erro 403 (Permissão Negada): Verifique se (1) o escopo https://www.googleapis.com/auth/business.manage foi autorizado, (2) as APIs "My Business Account Management API" e "My Business Business Information API" estão ativadas no Google Cloud, e (3) o projeto já possui aprovação de Basic API Access.${apiMsg ? ` Detalhe: ${apiMsg}` : ''}`;
+  }
+  if (status === 401) {
+    return `Erro 401 (Não Autorizado): Token da Google inválido ou expirado (tokens manuais expiram em 1 hora). Configure Client ID + Client Secret + Refresh Token ou clique em "Conectar com Google" para renovação automática.`;
+  }
+  return apiMsg || `Google Business API retornou HTTP ${status}: ${JSON.stringify(data)}`;
+}
+
+/**
+ * Resolve ou renova automaticamente o Access Token do Google Business Profile usando OAuth 2.0 Refresh Token.
+ */
+async function resolveGoogleBusinessAccessToken(config = {}, options = {}) {
+  const { forceRefresh = false, clientConfigId = null } = options;
+  const oauthClientId = (config.clientId || '').trim();
+  const oauthClientSecret = (config.clientSecret || '').trim();
+  const refreshToken = (config.refreshToken || '').trim();
+  const currentAccessToken = (config.accessToken || '').trim();
+  const tokenExpiresAt = config.tokenExpiresAt || null;
+
+  const canAutoRefresh = Boolean(oauthClientId && oauthClientSecret && refreshToken);
+  const isExpiredOrNear = tokenExpiresAt
+    ? Date.now() >= (new Date(tokenExpiresAt).getTime() - 5 * 60 * 1000)
+    : false;
+
+  if (canAutoRefresh && (forceRefresh || !currentAccessToken || isExpiredOrNear)) {
+    try {
+      const bodyParams = new URLSearchParams({
+        client_id: oauthClientId,
+        client_secret: oauthClientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      });
+
+      const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: bodyParams.toString()
+      });
+
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.access_token) {
+        const expiresInSec = Number(data.expires_in) || 3600;
+        const newExpiresAt = new Date(Date.now() + expiresInSec * 1000).toISOString();
+        config.accessToken = data.access_token;
+        config.tokenExpiresAt = newExpiresAt;
+
+        if (clientConfigId) {
+          persistRefreshedGoogleToken(clientConfigId, data.access_token, newExpiresAt);
+        }
+
+        return {
+          ok: true,
+          accessToken: data.access_token,
+          refreshed: true,
+          tokenExpiresAt: newExpiresAt
+        };
+      }
+
+      return {
+        ok: false,
+        error: `Falha ao renovar Access Token via Refresh Token (HTTP ${res.status}): ${data?.error_description || data?.error || 'Verifique Client ID, Client Secret e Refresh Token.'}`
+      };
+    } catch (err) {
+      return { ok: false, error: `Erro de rede ao renovar token do Google: ${err.message}` };
+    }
+  }
+
+  if (currentAccessToken) {
+    return { ok: true, accessToken: currentAccessToken, refreshed: false, tokenExpiresAt };
+  }
+
+  return {
+    ok: false,
+    error: 'Credenciais do Google Business Profile ausentes. Configure Client ID + Client Secret + Refresh Token (renovação automática) ou cole um Access Token.'
+  };
+}
+
+/**
+ * Descobre Account IDs e Location IDs usando os endpoints oficiais da Google Business Profile API.
+ * 1) GET https://mybusinessaccountmanagement.googleapis.com/v1/accounts
+ * 2) GET https://mybusinessbusinessinformation.googleapis.com/v1/accounts/{accountId}/locations?readMask=name,title
+ */
+async function discoverGoogleBusinessAccountsAndLocations(config = {}, options = {}) {
+  const tokenRes = await resolveGoogleBusinessAccessToken(config, options);
+  if (!tokenRes.ok) {
+    return { ok: false, error: tokenRes.error };
+  }
+
+  let activeToken = tokenRes.accessToken;
+  let wasRefreshed = tokenRes.refreshed;
+  const canAutoRefresh = Boolean(config.clientId && config.clientSecret && config.refreshToken);
+
+  async function googleGet(url) {
+    let res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${activeToken}` }
+    });
+    if (res.status === 401 && canAutoRefresh && !wasRefreshed) {
+      const retryToken = await resolveGoogleBusinessAccessToken(config, { ...options, forceRefresh: true });
+      if (retryToken.ok) {
+        activeToken = retryToken.accessToken;
+        wasRefreshed = true;
+        res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${activeToken}` }
+        });
+      }
+    }
+    const data = await res.json().catch(() => null);
+    return { res, data };
+  }
+
+  try {
+    // 1. Listar Contas (Account IDs)
+    const accCall = await googleGet('https://mybusinessaccountmanagement.googleapis.com/v1/accounts');
+    if (!accCall.res.ok) {
+      return {
+        ok: false,
+        statusCode: accCall.res.status,
+        error: formatGoogleBusinessApiError(accCall.res.status, accCall.data)
+      };
+    }
+
+    const rawAccounts = accCall.data?.accounts || [];
+    const accounts = rawAccounts.map(acc => ({
+      name: acc.name,
+      accountId: (acc.name || '').replace(/^accounts\//, ''),
+      accountName: acc.accountName || acc.name,
+      type: acc.type || 'PERSONAL'
+    }));
+
+    // 2. Listar Locais (Location IDs)
+    const configuredAccId = (config.accountId || '').trim().replace(/^accounts\//, '');
+    const accountIdsToQuery = configuredAccId
+      ? [configuredAccId]
+      : accounts.slice(0, 5).map(a => a.accountId).filter(Boolean);
+
+    const locations = [];
+    let locationsWarning = '';
+
+    for (const accId of accountIdsToQuery) {
+      const locUrl = `https://mybusinessbusinessinformation.googleapis.com/v1/accounts/${encodeURIComponent(accId)}/locations?readMask=name,title`;
+      const locCall = await googleGet(locUrl);
+      if (locCall.res.ok) {
+        const rawLocs = locCall.data?.locations || [];
+        for (const loc of rawLocs) {
+          locations.push({
+            name: loc.name,
+            locationId: (loc.name || '').replace(/^locations\//, ''),
+            accountId: accId,
+            title: loc.title || loc.name
+          });
+        }
+      } else if (!locationsWarning) {
+        locationsWarning = formatGoogleBusinessApiError(locCall.res.status, locCall.data);
+      }
+    }
+
+    const detectedAccountId = configuredAccId || accounts[0]?.accountId || '';
+    const detectedLocationId = (config.locationId || '').trim().replace(/^locations\//, '') || locations[0]?.locationId || '';
+
+    let message = `Google Perfil da Empresa conectado com sucesso!`;
+    if (wasRefreshed) {
+      message += ` (Access Token renovado automaticamente via Refresh Token).`;
+    }
+    message += ` ${accounts.length} conta(s) e ${locations.length} local(is) encontrado(s).`;
+    if (locationsWarning && locations.length === 0) {
+      message += ` Aviso ao listar locais: ${locationsWarning}`;
+    }
+
+    return {
+      ok: true,
+      refreshed: wasRefreshed,
+      accounts,
+      locations,
+      detectedAccountId,
+      detectedLocationId,
+      message
+    };
+  } catch (err) {
+    return { ok: false, error: `Erro ao consultar API do Google Business Profile: ${err.message}` };
+  }
+}
+
+/**
  * Publicação via Google Business Profile (Google Meu Negócio) API
  * Endpoint: POST https://mybusiness.googleapis.com/v4/accounts/{accountId}/locations/{locationId}/localPosts
  */
 async function publishToGoogleBusiness(config, copies, packageId, options = {}) {
-  const { accessToken, accountId, locationId } = config;
-  const { images = [], article = {}, outputDir } = options;
+  const { accountId, locationId } = config;
+  const { images = [], article = {}, outputDir, clientId: clientConfigId } = options;
 
-  if (!accessToken) {
-    return { status: 'skipped', message: 'Access Token do Google Business Profile não configurado.' };
-  }
   if (!locationId) {
     return { status: 'skipped', message: 'Location ID do Google Business Profile não configurado.' };
   }
+
+  const tokenRes = await resolveGoogleBusinessAccessToken(config, { clientConfigId });
+  if (!tokenRes.ok) {
+    return { status: 'error', error: tokenRes.error };
+  }
+  let activeToken = tokenRes.accessToken;
+  const canAutoRefresh = Boolean(config.clientId && config.clientSecret && config.refreshToken);
 
   const baseUrl = process.env.BASE_URL || 'https://social360.anauedesign.com.br';
   let postImageUrl = null;
@@ -846,14 +1068,30 @@ async function publishToGoogleBusiness(config, copies, packageId, options = {}) 
 
   try {
     const endpoint = `https://mybusiness.googleapis.com/v4/${resourcePath}/localPosts`;
-    const res = await fetch(endpoint, {
+    let res = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken.trim()}`,
+        'Authorization': `Bearer ${activeToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(postPayload)
     });
+
+    // Retry automático com refresh caso o token tenha expirado
+    if (res.status === 401 && canAutoRefresh && !tokenRes.refreshed) {
+      const refreshed = await resolveGoogleBusinessAccessToken(config, { forceRefresh: true, clientConfigId });
+      if (refreshed.ok) {
+        activeToken = refreshed.accessToken;
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${activeToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(postPayload)
+        });
+      }
+    }
 
     const data = await res.json().catch(() => null);
 
@@ -869,7 +1107,7 @@ async function publishToGoogleBusiness(config, copies, packageId, options = {}) 
     return {
       status: 'error',
       statusCode: res.status,
-      error: data?.error?.message || `Google Business API retornou HTTP ${res.status}: ${JSON.stringify(data)}`,
+      error: formatGoogleBusinessApiError(res.status, data),
       response: data
     };
   } catch (err) {
@@ -974,7 +1212,7 @@ async function publishToTikTok(config, copies, packageId, options = {}) {
 /**
  * Validação / Teste de Conexão para Canais Individuais
  */
-async function testChannelConnection(channelName, channelConfig) {
+async function testChannelConnection(channelName, channelConfig, clientConfigId = null) {
   const ch = (channelName || '').toLowerCase();
 
   switch (ch) {
@@ -1275,38 +1513,7 @@ async function testChannelConnection(channelName, channelConfig) {
     }
 
     case 'googlebusiness': {
-      const token = (channelConfig?.accessToken || '').trim();
-      const locationId = (channelConfig?.locationId || '').trim();
-      if (!token) return { ok: false, error: 'Access Token do Google Business Profile ausente.' };
-
-      try {
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json().catch(() => null);
-
-        if (res.ok && data) {
-          const userStr = data.email || data.name || 'OK';
-          let msg = `Google conectado com sucesso (${userStr})!`;
-          if (locationId) {
-            msg += ` Local configurado: ${locationId}.`;
-          } else {
-            msg += ` (Atenção: Location ID ainda não preenchido).`;
-          }
-          return { ok: true, message: msg };
-        }
-
-        if (res.status === 401) {
-          return {
-            ok: false,
-            error: 'Erro 401 (Não Autorizado): Token da Google inválido ou expirado. Gere um novo OAuth 2.0 Access Token no Google Cloud Console com o escopo https://www.googleapis.com/auth/business.manage.'
-          };
-        }
-
-        return { ok: false, error: `Google API retornou HTTP ${res.status}: ${data?.error_description || data?.error || 'Falha na validação'}` };
-      } catch (err) {
-        return { ok: false, error: err.message };
-      }
+      return await discoverGoogleBusinessAccountsAndLocations(channelConfig || {}, { clientConfigId });
     }
 
     case 'tiktok': {
@@ -1465,15 +1672,25 @@ async function dispatchToClientChannels({ client, copies, images, article, packa
 
   // 7. Google Perfil da Empresa (Google Business Profile API)
   if (isChannelAllowed('googlebusiness')) {
-    if (channels.googlebusiness?.enabled && channels.googlebusiness?.accessToken && channels.googlebusiness?.locationId) {
+    const gbpCfg = channels.googlebusiness || {};
+    const hasGbpAuth = Boolean(
+      gbpCfg.accessToken || (gbpCfg.clientId && gbpCfg.clientSecret && gbpCfg.refreshToken)
+    );
+    if (gbpCfg.enabled && hasGbpAuth && gbpCfg.locationId) {
       console.log(`🚀 [DISPATCH] Publicando no Google Perfil da Empresa...`);
-      dispatchResults.channels.googlebusiness = await publishToGoogleBusiness(channels.googlebusiness, copies, packageId, { images, article, outputDir, video });
+      dispatchResults.channels.googlebusiness = await publishToGoogleBusiness(gbpCfg, copies, packageId, {
+        images,
+        article,
+        outputDir,
+        video,
+        clientId: client.id
+      });
     } else if (targetChannels && targetChannels.includes('googlebusiness')) {
       dispatchResults.channels.googlebusiness = {
         status: 'skipped',
-        message: !channels.googlebusiness?.enabled
+        message: !gbpCfg.enabled
           ? 'Google Perfil da Empresa desativado nas configurações do cliente.'
-          : 'Access Token ou Location ID do Google ausente nas configurações do cliente.'
+          : 'Credenciais (Refresh Token / Access Token) ou Location ID do Google ausentes nas configurações do cliente.'
       };
     }
   }
@@ -1519,5 +1736,7 @@ module.exports = {
   publishToMeta,
   publishToGoogleBusiness,
   publishToTikTok,
-  testChannelConnection
+  testChannelConnection,
+  resolveGoogleBusinessAccessToken,
+  discoverGoogleBusinessAccountsAndLocations
 };

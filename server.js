@@ -1,6 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const { runPipeline, loadClientConfig } = require('./src/pipeline');
 const { detectAvailableProviders, testLlmConnection } = require('./src/llm');
@@ -8,7 +9,12 @@ const { suggestTopicIdeas, ARCHETYPES, EDITORIAL_ANGLES, EDITORIAL_DEPTHS, CONVE
 const { STYLE_DESCRIPTIONS } = require('./src/imageGen');
 const { validatePublicUrl, sanitizeIdentifier, safePathResolve } = require('./src/security/validator');
 const { maskClientSecrets, mergeClientSecrets } = require('./src/security/masker');
-const { dispatchToClientChannels, publishToWebhook, testChannelConnection } = require('./src/publisher');
+const {
+  dispatchToClientChannels,
+  publishToWebhook,
+  testChannelConnection,
+  discoverGoogleBusinessAccountsAndLocations
+} = require('./src/publisher');
 const { evaluateContentWithJev, testJevConnection } = require('./src/decision/jev');
 const {
   enqueueJob,
@@ -420,7 +426,7 @@ app.post('/api/clients/:id/test-connection', requireAuth, async (req, res) => {
 
     for (const ch of channelKeys) {
       if ((target === 'all' || target === ch) && channels[ch]?.enabled) {
-        testResults[ch] = await testChannelConnection(ch, channels[ch]);
+        testResults[ch] = await testChannelConnection(ch, channels[ch], client.id);
       }
     }
 
@@ -482,14 +488,298 @@ app.post('/api/clients/test-channel-direct', requireAuth, async (req, res) => {
               testConfig[key] = existingCh[key] || '';
             }
           }
+          if (channel === 'googlebusiness' && !testConfig.tokenExpiresAt && existingCh.tokenExpiresAt) {
+            testConfig.tokenExpiresAt = existingCh.tokenExpiresAt;
+          }
         } catch {}
       }
     }
 
-    const result = await testChannelConnection(channel, testConfig);
+    const result = await testChannelConnection(channel, testConfig, clientId || null);
     res.json(result);
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 1.4. GOOGLE BUSINESS PROFILE: OAUTH 2.0 (CONECTAR COM GOOGLE) & AUTO-DESCOBERTA
+// ---------------------------------------------------------------------------
+const googleOAuthStates = new Map();
+const GOOGLE_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+function cleanupExpiredGoogleOAuthStates() {
+  const now = Date.now();
+  for (const [key, val] of googleOAuthStates.entries()) {
+    if (now - val.createdAt > GOOGLE_OAUTH_STATE_TTL_MS) {
+      googleOAuthStates.delete(key);
+    }
+  }
+}
+
+function resolveGoogleOAuthRedirectUri(req) {
+  if (process.env.BASE_URL) {
+    return `${process.env.BASE_URL.replace(/\/+$/, '')}/api/oauth/googlebusiness/callback`;
+  }
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  return `${proto}://${host}/api/oauth/googlebusiness/callback`;
+}
+
+// Descobrir Account ID e Location ID do Google Business Profile
+app.post('/api/channels/googlebusiness/discover', requireAuth, async (req, res) => {
+  try {
+    const { clientId, config } = req.body || {};
+    let discoverConfig = { ...(config || {}) };
+    let safeId = null;
+
+    if (clientId) {
+      safeId = sanitizeIdentifier(clientId);
+      const clientsDir = path.join(__dirname, 'config', 'clients');
+      const filePath = safePathResolve(clientsDir, `${safeId}.json`);
+      if (fs.existsSync(filePath)) {
+        try {
+          const client = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          const existingCh = client.channels?.googlebusiness || {};
+          for (const key of ['clientId', 'clientSecret', 'refreshToken', 'accessToken']) {
+            const val = discoverConfig[key];
+            if (typeof val === 'string' && (val.includes('...') || val.includes('••••'))) {
+              discoverConfig[key] = existingCh[key] || '';
+            }
+          }
+          if (!discoverConfig.tokenExpiresAt && existingCh.tokenExpiresAt) {
+            discoverConfig.tokenExpiresAt = existingCh.tokenExpiresAt;
+          }
+        } catch {}
+      }
+    }
+
+    const result = await discoverGoogleBusinessAccountsAndLocations(discoverConfig, { clientConfigId: safeId });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Gerar URL de autorização OAuth 2.0 do Google (com escopo business.manage + refresh_token)
+app.post('/api/oauth/googlebusiness/auth-url', requireAuth, (req, res) => {
+  try {
+    cleanupExpiredGoogleOAuthStates();
+    const { clientId, oauthClientId, oauthClientSecret } = req.body || {};
+    const safeId = sanitizeIdentifier(clientId || 'anaue-design');
+    const clientsDir = path.join(__dirname, 'config', 'clients');
+    const filePath = safePathResolve(clientsDir, `${safeId}.json`);
+
+    let resolvedOAuthClientId = (oauthClientId || '').trim();
+    let resolvedOAuthClientSecret = (oauthClientSecret || '').trim();
+
+    if (fs.existsSync(filePath)) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const existingGbp = existing.channels?.googlebusiness || {};
+        if (!resolvedOAuthClientId) {
+          resolvedOAuthClientId = existingGbp.clientId || '';
+        }
+        if (!resolvedOAuthClientSecret || resolvedOAuthClientSecret.includes('...') || resolvedOAuthClientSecret.includes('••••')) {
+          resolvedOAuthClientSecret = existingGbp.clientSecret || '';
+        }
+      } catch {}
+    }
+
+    if (!resolvedOAuthClientId) resolvedOAuthClientId = (process.env.GOOGLE_BUSINESS_CLIENT_ID || '').trim();
+    if (!resolvedOAuthClientSecret) resolvedOAuthClientSecret = (process.env.GOOGLE_BUSINESS_CLIENT_SECRET || '').trim();
+
+    if (!resolvedOAuthClientId || !resolvedOAuthClientSecret) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Informe o Client ID e o Client Secret (OAuth 2.0 do Google Cloud Console) antes de clicar em "Conectar com Google".'
+      });
+    }
+
+    const redirectUri = resolveGoogleOAuthRedirectUri(req);
+    const state = crypto.randomBytes(24).toString('hex');
+
+    googleOAuthStates.set(state, {
+      clientId: safeId,
+      oauthClientId: resolvedOAuthClientId,
+      oauthClientSecret: resolvedOAuthClientSecret,
+      redirectUri,
+      createdAt: Date.now()
+    });
+
+    const params = new URLSearchParams({
+      client_id: resolvedOAuthClientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/business.manage',
+      access_type: 'offline',
+      prompt: 'consent',
+      include_granted_scopes: 'true',
+      state
+    });
+
+    res.json({
+      ok: true,
+      authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+      redirectUri
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Callback OAuth 2.0 do Google Business Profile
+app.get('/api/oauth/googlebusiness/callback', async (req, res) => {
+  const renderPopupResult = (payload) => {
+    const safeJson = JSON.stringify(payload).replace(/</g, '\\u003c');
+    const isOk = Boolean(payload.ok);
+    const title = isOk ? 'Google Perfil da Empresa Conectado!' : 'Falha na Conexão com Google';
+    const msg = payload.message || payload.error || '';
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>${title}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; text-align: center; }
+  .box { background: #1e293b; border: 1px solid ${isOk ? '#10b981' : '#ef4444'}; border-radius: 14px; padding: 28px 32px; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+  h2 { margin: 0 0 12px; color: ${isOk ? '#34d399' : '#f87171'}; font-size: 1.25rem; }
+  p { margin: 0 0 18px; color: #cbd5e1; line-height: 1.5; font-size: 0.92rem; }
+  button { background: #0284c7; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+</style></head>
+<body>
+  <div class="box">
+    <h2>${isOk ? '✅' : '❌'} ${title}</h2>
+    <p>${String(msg).replace(/</g, '&lt;')}</p>
+    <button onclick="window.close()">Fechar Janela</button>
+  </div>
+  <script>
+    try {
+      if (window.opener) {
+        window.opener.postMessage(${safeJson}, window.location.origin);
+      }
+    } catch (e) {}
+    ${isOk ? 'setTimeout(() => window.close(), 1800);' : ''}
+  </script>
+</body></html>`);
+  };
+
+  try {
+    cleanupExpiredGoogleOAuthStates();
+    const { code, state, error } = req.query || {};
+
+    if (error) {
+      return renderPopupResult({
+        type: 'googlebusiness-oauth-complete',
+        ok: false,
+        error: `Autorização cancelada ou recusada pelo Google: ${error}`
+      });
+    }
+
+    if (!state || !googleOAuthStates.has(state)) {
+      return renderPopupResult({
+        type: 'googlebusiness-oauth-complete',
+        ok: false,
+        error: 'Sessão OAuth inválida ou expirada (limite de 10 minutos). Tente conectar novamente.'
+      });
+    }
+
+    const stateData = googleOAuthStates.get(state);
+    googleOAuthStates.delete(state);
+
+    if (!code) {
+      return renderPopupResult({
+        type: 'googlebusiness-oauth-complete',
+        ok: false,
+        error: 'Código de autorização (code) ausente na resposta do Google.'
+      });
+    }
+
+    // Troca o authorization code por access_token + refresh_token
+    const tokenParams = new URLSearchParams({
+      code: String(code),
+      client_id: stateData.oauthClientId,
+      client_secret: stateData.oauthClientSecret,
+      redirect_uri: stateData.redirectUri,
+      grant_type: 'authorization_code'
+    });
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenParams.toString()
+    });
+    const tokenData = await tokenRes.json().catch(() => null);
+
+    if (!tokenRes.ok || !tokenData?.access_token) {
+      return renderPopupResult({
+        type: 'googlebusiness-oauth-complete',
+        ok: false,
+        error: `Falha ao trocar código por token (HTTP ${tokenRes.status}): ${tokenData?.error_description || tokenData?.error || 'Verifique o URI de redirecionamento e Client Secret no Google Cloud Console.'}`
+      });
+    }
+
+    const expiresInSec = Number(tokenData.expires_in) || 3600;
+    const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000).toISOString();
+
+    const clientsDir = path.join(__dirname, 'config', 'clients');
+    const filePath = safePathResolve(clientsDir, `${stateData.clientId}.json`);
+    if (!fs.existsSync(filePath)) {
+      return renderPopupResult({
+        type: 'googlebusiness-oauth-complete',
+        ok: false,
+        error: `Cliente "${stateData.clientId}" não encontrado para salvar os tokens.`
+      });
+    }
+
+    const clientData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    if (!clientData.channels) clientData.channels = {};
+    const existingGbp = clientData.channels.googlebusiness || {};
+
+    const updatedGbp = {
+      ...existingGbp,
+      enabled: true,
+      clientId: stateData.oauthClientId,
+      clientSecret: stateData.oauthClientSecret,
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token || existingGbp.refreshToken || '',
+      tokenExpiresAt
+    };
+
+    // Tenta auto-descobrir Account ID e Location ID imediatamente
+    let discoveryNote = '';
+    const discover = await discoverGoogleBusinessAccountsAndLocations(updatedGbp, { clientConfigId: null });
+    if (discover.ok) {
+      if (!updatedGbp.accountId && discover.detectedAccountId) {
+        updatedGbp.accountId = discover.detectedAccountId;
+      }
+      if (!updatedGbp.locationId && discover.detectedLocationId) {
+        updatedGbp.locationId = discover.detectedLocationId;
+      }
+      discoveryNote = ` ${discover.accounts.length} conta(s) e ${discover.locations.length} local(is) detectados.`;
+    } else if (discover.statusCode === 429 || discover.statusCode === 403) {
+      discoveryNote = ` Tokens salvos! Aviso da API: ${discover.error}`;
+    }
+
+    clientData.channels.googlebusiness = updatedGbp;
+    const tmpPath = `${filePath}.tmp.${Date.now()}`;
+    fs.writeFileSync(tmpPath, JSON.stringify(clientData, null, 2), 'utf8');
+    fs.renameSync(tmpPath, filePath);
+
+    return renderPopupResult({
+      type: 'googlebusiness-oauth-complete',
+      ok: true,
+      clientId: stateData.clientId,
+      hasRefreshToken: Boolean(updatedGbp.refreshToken),
+      accountId: updatedGbp.accountId || '',
+      locationId: updatedGbp.locationId || '',
+      message: `Tokens OAuth 2.0 salvos com sucesso${updatedGbp.refreshToken ? ' (renovação automática via Refresh Token ativada)' : ''}!${discoveryNote}`
+    });
+  } catch (err) {
+    return renderPopupResult({
+      type: 'googlebusiness-oauth-complete',
+      ok: false,
+      error: `Erro interno no callback OAuth: ${err.message}`
+    });
   }
 });
 

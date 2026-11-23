@@ -1270,17 +1270,38 @@
                 <div class="channel-box">
                   <div class="channel-header">
                     <span class="channel-name">🏢 Google Perfil da Empresa (Google Business Profile)</span>
-                    <label class="toggle-switch-sm">
-                      <input type="checkbox" id="ch-googlebusiness-enabled">
-                      <span class="toggle-slider"></span>
-                    </label>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-field flex-grow">
-                      <label for="ch-googlebusiness-token" class="field-label">Access Token (OAuth 2.0 Google)</label>
-                      <input type="password" id="ch-googlebusiness-token" class="field-input" placeholder="Google OAuth 2.0 Bearer Token">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span id="gbp-oauth-status-badge" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 999px; background: rgba(148, 163, 184, 0.14); color: #94a3b8; font-weight: 600;">Não conectado</span>
+                      <label class="toggle-switch-sm">
+                        <input type="checkbox" id="ch-googlebusiness-enabled">
+                        <span class="toggle-slider"></span>
+                      </label>
                     </div>
                   </div>
+
+                  <!-- Credenciais OAuth 2.0 para Renovação Automática -->
+                  <div class="form-row">
+                    <div class="form-field">
+                      <label for="ch-googlebusiness-clientid" class="field-label">Client ID (OAuth 2.0 Google Cloud)</label>
+                      <input type="text" id="ch-googlebusiness-clientid" class="field-input" placeholder="xxxxx.apps.googleusercontent.com">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-googlebusiness-clientsecret" class="field-label">Client Secret (OAuth 2.0)</label>
+                      <input type="password" id="ch-googlebusiness-clientsecret" class="field-input" placeholder="GOCSPX-...">
+                    </div>
+                  </div>
+
+                  <div class="form-row" style="margin-top: 0.5rem;">
+                    <div class="form-field">
+                      <label for="ch-googlebusiness-refreshtoken" class="field-label">Refresh Token (Renovação Automática 24/7)</label>
+                      <input type="password" id="ch-googlebusiness-refreshtoken" class="field-input" placeholder="Gerado via 'Conectar com Google' ou OAuth Playground">
+                    </div>
+                    <div class="form-field">
+                      <label for="ch-googlebusiness-token" class="field-label">Access Token (Opcional — renovado automaticamente)</label>
+                      <input type="password" id="ch-googlebusiness-token" class="field-input" placeholder="Expira em 1h se usado sem Refresh Token">
+                    </div>
+                  </div>
+
                   <div class="form-row" style="margin-top: 0.5rem;">
                     <div class="form-field">
                       <label for="ch-googlebusiness-accountid" class="field-label">Account ID</label>
@@ -1291,10 +1312,26 @@
                       <input type="text" id="ch-googlebusiness-locationid" class="field-input" placeholder="ex: 98765432101">
                     </div>
                   </div>
-                  <small class="field-hint" style="display:block; margin-top:0.4rem; color: #94a3b8; font-size: 0.76rem; line-height: 1.35;">
-                    💡 <strong>Postagens de Novidades:</strong> Publica artigos no perfil local do Google com imagem editorial, resumo analítico e botão de CTA ("Saiba mais").
-                  </small>
-                  <div class="channel-test-btn-wrap" style="margin-top: 0.65rem;">
+
+                  <!-- Seletor de locais descobertos automaticamente -->
+                  <div id="gbp-discovered-locations-wrap" class="hidden" style="margin-top: 0.6rem; padding: 10px 12px; border-radius: 8px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.28);">
+                    <label for="gbp-discovered-locations-select" class="field-label" style="color: #34d399; margin-bottom: 4px; display: block;">📍 Locais encontrados na sua conta Google (selecione para preencher):</label>
+                    <select id="gbp-discovered-locations-select" class="field-input" style="font-size: 0.84rem;"></select>
+                  </div>
+
+                  <!-- Dicas técnicas: Redirect URI, Escopo e Cota Zero -->
+                  <div style="margin-top: 0.6rem; padding: 10px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.2); font-size: 0.75rem; color: #94a3b8; line-height: 1.45;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom: 4px;">
+                      <span>🔗 <strong>URI de Redirecionamento Autorizado:</strong> <code id="gbp-redirect-uri-display" style="color:#38bdf8; word-break:break-all;">https://social360.anauedesign.com.br/api/oauth/googlebusiness/callback</code></span>
+                      <button type="button" id="btn-copy-gbp-redirect" class="btn-ghost-sm" style="padding: 2px 8px; font-size: 0.72rem;">Copiar URI</button>
+                    </div>
+                    <div>🔑 <strong>Escopo OAuth:</strong> <code>https://www.googleapis.com/auth/business.manage</code> • <strong>Auto-Refresh:</strong> Com Client ID, Client Secret e Refresh Token, o Social360 renova o Access Token automaticamente antes de expirar (1h).</div>
+                    <div style="margin-top: 3px;">⚠️ <strong>Atenção (Cota Zero):</strong> Erros <code>429</code> ou <code>403</code> indicam que o projeto no Google Cloud ainda aguarda aprovação do formulário de <em>Basic API Access</em> do Google Business Profile.</div>
+                  </div>
+
+                  <div class="channel-test-btn-wrap" style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <button type="button" id="btn-googlebusiness-oauth" class="btn-ghost-sm" style="border-color: rgba(56, 189, 248, 0.45); color: #38bdf8; font-weight: 600;">🔐 Conectar com Google (OAuth 2.0)</button>
+                    <button type="button" id="btn-googlebusiness-discover" class="btn-ghost-sm">🔍 Descobrir Account/Location ID</button>
                     <button type="button" class="btn-ghost-sm btn-test-channel" data-channel="googlebusiness">Testar Google Perfil</button>
                   </div>
                 </div>
@@ -1973,6 +2010,6 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="js/app.js?v=3.1.3"></script>
+  <script src="js/app.js?v=3.3.0"></script>
 </body>
 </html>

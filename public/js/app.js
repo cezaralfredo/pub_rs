@@ -859,6 +859,147 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Google Perfil da Empresa: Copiar Redirect URI, Conectar via OAuth 2.0 e Descobrir Contas/Locais
+    const gbpRedirectDisplay = document.getElementById('gbp-redirect-uri-display');
+    if (gbpRedirectDisplay) {
+      gbpRedirectDisplay.textContent = `${window.location.origin}/api/oauth/googlebusiness/callback`;
+    }
+
+    const btnCopyGbpRedirect = document.getElementById('btn-copy-gbp-redirect');
+    if (btnCopyGbpRedirect) {
+      btnCopyGbpRedirect.addEventListener('click', async () => {
+        const uri = `${window.location.origin}/api/oauth/googlebusiness/callback`;
+        try {
+          await navigator.clipboard.writeText(uri);
+          showToast('✓ URI de Redirecionamento copiada para a área de transferência!', 'success');
+        } catch {
+          showToast(`URI: ${uri}`, 'info');
+        }
+      });
+    }
+
+    const gbpDiscoveredSelect = document.getElementById('gbp-discovered-locations-select');
+    if (gbpDiscoveredSelect) {
+      gbpDiscoveredSelect.addEventListener('change', () => {
+        const [accId, locId] = (gbpDiscoveredSelect.value || '').split('|');
+        if (accId && document.getElementById('ch-googlebusiness-accountid')) {
+          document.getElementById('ch-googlebusiness-accountid').value = accId;
+        }
+        if (locId && document.getElementById('ch-googlebusiness-locationid')) {
+          document.getElementById('ch-googlebusiness-locationid').value = locId;
+        }
+        showToast(`✓ Account ID (${accId}) e Location ID (${locId}) preenchidos! Salve o cliente para confirmar.`, 'info');
+      });
+    }
+
+    const btnGbpOAuth = document.getElementById('btn-googlebusiness-oauth');
+    if (btnGbpOAuth) {
+      btnGbpOAuth.addEventListener('click', async () => {
+        const clientId = (document.getElementById('cl-id')?.value || '').trim();
+        const oauthClientId = (document.getElementById('ch-googlebusiness-clientid')?.value || '').trim();
+        const oauthClientSecret = (document.getElementById('ch-googlebusiness-clientsecret')?.value || '').trim();
+
+        if (!clientId) {
+          showToast('Salve o perfil do cliente primeiro antes de conectar o Google OAuth.', 'warning');
+          return;
+        }
+
+        const origText = btnGbpOAuth.textContent;
+        btnGbpOAuth.disabled = true;
+        btnGbpOAuth.textContent = 'Abrindo Google...';
+
+        try {
+          const res = await authFetch('/api/oauth/googlebusiness/auth-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, oauthClientId, oauthClientSecret })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok || !data.authUrl) {
+            showToast(`✕ ${data.error || 'Falha ao iniciar OAuth do Google.'}`, 'error');
+            return;
+          }
+
+          const w = 560, h = 680;
+          const left = Math.max(0, (window.screen.width - w) / 2);
+          const top = Math.max(0, (window.screen.height - h) / 2);
+          const popup = window.open(data.authUrl, 'gbp_oauth_popup', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes`);
+          if (!popup) {
+            showToast('Popup bloqueado pelo navegador. Permita popups para este site e tente novamente.', 'warning');
+          } else {
+            showToast('Conclua a autorização na janela do Google para ativar a renovação automática.', 'info');
+          }
+        } catch (err) {
+          showToast(`Erro ao iniciar OAuth Google: ${err.message}`, 'error');
+        } finally {
+          btnGbpOAuth.disabled = false;
+          btnGbpOAuth.textContent = origText;
+        }
+      });
+    }
+
+    window.addEventListener('message', async (event) => {
+      if (event.origin !== window.location.origin) return;
+      const payload = event.data;
+      if (!payload || payload.type !== 'googlebusiness-oauth-complete') return;
+
+      if (payload.ok) {
+        showToast(`✓ ${payload.message || 'Google Perfil da Empresa conectado!'}`, 'success');
+        await loadClients();
+        const activeId = payload.clientId || document.getElementById('cl-id')?.value?.trim();
+        if (activeId) {
+          await populateClientModal(activeId);
+        }
+      } else {
+        showToast(`✕ ${payload.error || 'Falha na autenticação OAuth do Google.'}`, 'error');
+      }
+    });
+
+    const btnGbpDiscover = document.getElementById('btn-googlebusiness-discover');
+    if (btnGbpDiscover) {
+      btnGbpDiscover.addEventListener('click', async () => {
+        const clientId = (document.getElementById('cl-id')?.value || '').trim();
+        const config = {
+          clientId: (document.getElementById('ch-googlebusiness-clientid')?.value || '').trim(),
+          clientSecret: (document.getElementById('ch-googlebusiness-clientsecret')?.value || '').trim(),
+          refreshToken: (document.getElementById('ch-googlebusiness-refreshtoken')?.value || '').trim(),
+          accessToken: (document.getElementById('ch-googlebusiness-token')?.value || '').trim(),
+          accountId: (document.getElementById('ch-googlebusiness-accountid')?.value || '').trim(),
+          locationId: (document.getElementById('ch-googlebusiness-locationid')?.value || '').trim()
+        };
+
+        const origText = btnGbpDiscover.textContent;
+        btnGbpDiscover.disabled = true;
+        btnGbpDiscover.textContent = 'Buscando...';
+
+        try {
+          const res = await authFetch('/api/channels/googlebusiness/discover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, config })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            renderGbpDiscoveredLocations(data.locations || [], data.accounts || []);
+            if (data.detectedAccountId && document.getElementById('ch-googlebusiness-accountid') && !document.getElementById('ch-googlebusiness-accountid').value.trim()) {
+              document.getElementById('ch-googlebusiness-accountid').value = data.detectedAccountId;
+            }
+            if (data.detectedLocationId && document.getElementById('ch-googlebusiness-locationid') && !document.getElementById('ch-googlebusiness-locationid').value.trim()) {
+              document.getElementById('ch-googlebusiness-locationid').value = data.detectedLocationId;
+            }
+            showToast(`✓ ${data.message}`, 'success');
+          } else {
+            showToast(`✕ ${data.error || 'Não foi possível listar contas/locais.'}`, 'error');
+          }
+        } catch (err) {
+          showToast(`Erro ao descobrir locais Google: ${err.message}`, 'error');
+        } finally {
+          btnGbpDiscover.disabled = false;
+          btnGbpDiscover.textContent = origText;
+        }
+      });
+    }
+
     if (elements.btnCloseModalClients) {
       elements.btnCloseModalClients.addEventListener('click', () => {
         switchView('studio');
@@ -970,6 +1111,9 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           googlebusiness: {
             enabled: Boolean(document.getElementById('ch-googlebusiness-enabled')?.checked),
+            clientId: (document.getElementById('ch-googlebusiness-clientid')?.value || '').trim(),
+            clientSecret: (document.getElementById('ch-googlebusiness-clientsecret')?.value || '').trim(),
+            refreshToken: (document.getElementById('ch-googlebusiness-refreshtoken')?.value || '').trim(),
             accessToken: (document.getElementById('ch-googlebusiness-token')?.value || '').trim(),
             accountId: (document.getElementById('ch-googlebusiness-accountid')?.value || '').trim(),
             locationId: (document.getElementById('ch-googlebusiness-locationid')?.value || '').trim()
@@ -2318,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         meta: Boolean(client?.channels?.meta?.enabled && (client.channels.meta.hasToken || client.channels.meta.pageAccessToken)),
         telegram: Boolean(client?.channels?.telegram?.enabled && (client.channels.telegram.hasToken || client.channels.telegram.botToken)),
         webhook: Boolean(client?.channels?.webhook?.enabled !== false && (client?.channels?.webhook?.url || client?.webhookUrl)),
-        googlebusiness: Boolean(client?.channels?.googlebusiness?.enabled && (client.channels.googlebusiness.hasToken || client.channels.googlebusiness.accessToken)),
+        googlebusiness: Boolean(client?.channels?.googlebusiness?.enabled && (client.channels.googlebusiness.hasToken || client.channels.googlebusiness.hasRefreshToken || client.channels.googlebusiness.accessToken || client.channels.googlebusiness.refreshToken)),
         tiktok: Boolean(client?.channels?.tiktok?.enabled && (client.channels.tiktok.hasToken || client.channels.tiktok.accessToken))
       };
 
@@ -2666,9 +2810,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ch-meta-pageid').value = '';
     document.getElementById('ch-meta-igid').value = '';
     if (document.getElementById('ch-googlebusiness-enabled')) document.getElementById('ch-googlebusiness-enabled').checked = false;
+    if (document.getElementById('ch-googlebusiness-clientid')) document.getElementById('ch-googlebusiness-clientid').value = '';
+    if (document.getElementById('ch-googlebusiness-clientsecret')) document.getElementById('ch-googlebusiness-clientsecret').value = '';
+    if (document.getElementById('ch-googlebusiness-refreshtoken')) document.getElementById('ch-googlebusiness-refreshtoken').value = '';
     if (document.getElementById('ch-googlebusiness-token')) document.getElementById('ch-googlebusiness-token').value = '';
     if (document.getElementById('ch-googlebusiness-accountid')) document.getElementById('ch-googlebusiness-accountid').value = '';
     if (document.getElementById('ch-googlebusiness-locationid')) document.getElementById('ch-googlebusiness-locationid').value = '';
+    const gbpLocWrap = document.getElementById('gbp-discovered-locations-wrap');
+    if (gbpLocWrap) gbpLocWrap.classList.add('hidden');
+    const gbpBadge = document.getElementById('gbp-oauth-status-badge');
+    if (gbpBadge) {
+      gbpBadge.textContent = 'Não conectado';
+      gbpBadge.style.background = 'rgba(148, 163, 184, 0.14)';
+      gbpBadge.style.color = '#94a3b8';
+    }
     if (document.getElementById('ch-tiktok-enabled')) document.getElementById('ch-tiktok-enabled').checked = false;
     if (document.getElementById('ch-tiktok-token')) document.getElementById('ch-tiktok-token').value = '';
     if (document.getElementById('ch-tiktok-openid')) document.getElementById('ch-tiktok-openid').value = '';
@@ -2757,10 +2912,34 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('ch-meta-igid').value = ch.meta?.instagramAccountId || '';
 
       if (document.getElementById('ch-googlebusiness-enabled')) {
-        document.getElementById('ch-googlebusiness-enabled').checked = Boolean(ch.googlebusiness?.enabled);
-        document.getElementById('ch-googlebusiness-token').value = ch.googlebusiness?.accessToken || '';
-        document.getElementById('ch-googlebusiness-accountid').value = ch.googlebusiness?.accountId || '';
-        document.getElementById('ch-googlebusiness-locationid').value = ch.googlebusiness?.locationId || '';
+        const gbp = ch.googlebusiness || {};
+        document.getElementById('ch-googlebusiness-enabled').checked = Boolean(gbp.enabled);
+        if (document.getElementById('ch-googlebusiness-clientid')) document.getElementById('ch-googlebusiness-clientid').value = gbp.clientId || '';
+        if (document.getElementById('ch-googlebusiness-clientsecret')) document.getElementById('ch-googlebusiness-clientsecret').value = gbp.clientSecret || '';
+        if (document.getElementById('ch-googlebusiness-refreshtoken')) document.getElementById('ch-googlebusiness-refreshtoken').value = gbp.refreshToken || '';
+        document.getElementById('ch-googlebusiness-token').value = gbp.accessToken || '';
+        document.getElementById('ch-googlebusiness-accountid').value = gbp.accountId || '';
+        document.getElementById('ch-googlebusiness-locationid').value = gbp.locationId || '';
+
+        const gbpLocWrap = document.getElementById('gbp-discovered-locations-wrap');
+        if (gbpLocWrap) gbpLocWrap.classList.add('hidden');
+
+        const gbpBadge = document.getElementById('gbp-oauth-status-badge');
+        if (gbpBadge) {
+          if (gbp.hasRefreshToken || gbp.refreshToken) {
+            gbpBadge.textContent = '✓ Auto-Refresh Ativo (24/7)';
+            gbpBadge.style.background = 'rgba(16, 185, 129, 0.16)';
+            gbpBadge.style.color = '#34d399';
+          } else if (gbp.hasToken || gbp.accessToken) {
+            gbpBadge.textContent = '⚠️ Token Manual (expira em 1h)';
+            gbpBadge.style.background = 'rgba(245, 158, 11, 0.16)';
+            gbpBadge.style.color = '#fbbf24';
+          } else {
+            gbpBadge.textContent = 'Não conectado';
+            gbpBadge.style.background = 'rgba(148, 163, 184, 0.14)';
+            gbpBadge.style.color = '#94a3b8';
+          }
+        }
       }
 
       if (document.getElementById('ch-tiktok-enabled')) {
@@ -2869,6 +3048,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function renderGbpDiscoveredLocations(locations = [], accounts = []) {
+    const wrap = document.getElementById('gbp-discovered-locations-wrap');
+    const sel = document.getElementById('gbp-discovered-locations-select');
+    if (!wrap || !sel) return;
+
+    if (!Array.isArray(locations) || locations.length === 0) {
+      wrap.classList.add('hidden');
+      return;
+    }
+
+    const accNameMap = {};
+    (accounts || []).forEach(a => { accNameMap[a.accountId] = a.accountName || a.accountId; });
+
+    sel.innerHTML = locations.map(loc => {
+      const accLabel = accNameMap[loc.accountId] ? ` [${accNameMap[loc.accountId]}]` : '';
+      return `<option value="${escapeHtml(loc.accountId)}|${escapeHtml(loc.locationId)}">${escapeHtml(loc.title)}${escapeHtml(accLabel)} — Acc: ${escapeHtml(loc.accountId)} / Loc: ${escapeHtml(loc.locationId)}</option>`;
+    }).join('');
+
+    wrap.classList.remove('hidden');
+
+    const accInput = document.getElementById('ch-googlebusiness-accountid');
+    const locInput = document.getElementById('ch-googlebusiness-locationid');
+    if (accInput && !accInput.value.trim() && locations[0]?.accountId) {
+      accInput.value = locations[0].accountId;
+    }
+    if (locInput && !locInput.value.trim() && locations[0]?.locationId) {
+      locInput.value = locations[0].locationId;
+    }
+  }
+
   async function testSingleChannelDirect(channel, triggerBtn) {
     const originalText = triggerBtn.textContent;
     triggerBtn.textContent = 'Testando...';
@@ -2902,6 +3111,9 @@ document.addEventListener('DOMContentLoaded', () => {
       config.pageAccessToken = document.getElementById('ch-meta-token').value.trim();
     }
     if (channel === 'googlebusiness') {
+      config.clientId = (document.getElementById('ch-googlebusiness-clientid')?.value || '').trim();
+      config.clientSecret = (document.getElementById('ch-googlebusiness-clientsecret')?.value || '').trim();
+      config.refreshToken = (document.getElementById('ch-googlebusiness-refreshtoken')?.value || '').trim();
       config.accessToken = (document.getElementById('ch-googlebusiness-token')?.value || '').trim();
       config.accountId = (document.getElementById('ch-googlebusiness-accountid')?.value || '').trim();
       config.locationId = (document.getElementById('ch-googlebusiness-locationid')?.value || '').trim();
@@ -2933,6 +3145,19 @@ document.addEventListener('DOMContentLoaded', () => {
           if (urnInput && !urnInput.value.trim()) {
             urnInput.value = data.detectedPersonalUrn || data.authorUrn;
             showToast(`✓ URN do perfil pessoal preenchido automaticamente: ${urnInput.value}`, 'info');
+          }
+        }
+        if (channel === 'googlebusiness') {
+          if (data.locations && data.locations.length > 0) {
+            renderGbpDiscoveredLocations(data.locations, data.accounts || []);
+          }
+          const accInput = document.getElementById('ch-googlebusiness-accountid');
+          const locInput = document.getElementById('ch-googlebusiness-locationid');
+          if (accInput && !accInput.value.trim() && data.detectedAccountId) {
+            accInput.value = data.detectedAccountId;
+          }
+          if (locInput && !locInput.value.trim() && data.detectedLocationId) {
+            locInput.value = data.detectedLocationId;
           }
         }
       } else {
