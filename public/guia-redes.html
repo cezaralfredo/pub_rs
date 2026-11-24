@@ -817,7 +817,7 @@
           <div class="card-icon">🏢</div>
           <div>
             <h2 class="card-title">Google Perfil da Empresa (Google Business Profile)</h2>
-            <p class="card-subtitle">Publicação direta de postagens de "Novidades" (What's New) com imagem, texto analítico e botão de CTA ("Saiba mais") na ficha da empresa no Google e Google Maps.</p>
+            <p class="card-subtitle">Publicação direta de postagens de "Novidades" (What's New) com imagem, texto analítico e botão de CTA ("Saiba mais") na ficha da empresa no Google e Google Maps — com renovação automática 24/7 via OAuth 2.0.</p>
           </div>
         </div>
       </div>
@@ -825,30 +825,67 @@
       <div class="fields-box">
         <div class="fields-title">Campos necessários no Social360:</div>
         <ul class="fields-list">
-          <li>Access Token (OAuth 2.0 com escopo <code>https://www.googleapis.com/auth/business.manage</code>)</li>
-          <li>Account ID (ex: <code>10987654321</code>)</li>
-          <li>Location ID (ex: <code>98765432101</code>)</li>
+          <li><strong>Client ID (OAuth 2.0)</strong> — gerado no Google Cloud Console (termina em <code>.apps.googleusercontent.com</code>)</li>
+          <li><strong>Client Secret (OAuth 2.0)</strong> — chave secreta do cliente OAuth (ex: <code>GOCSPX-...</code>)</li>
+          <li><strong>Refresh Token</strong> — preenchido automaticamente ao clicar em <strong>"🔐 Conectar com Google"</strong> (renova o Access Token automaticamente antes de expirar a cada 1h)</li>
+          <li><strong>Account ID</strong> e <strong>Location ID</strong> — preenchidos automaticamente pelo botão <strong>"🔍 Descobrir Account/Location ID"</strong></li>
         </ul>
       </div>
 
       <ol class="steps-list">
         <li>
-          <strong class="step-title">Acessar o Google Cloud Console:</strong>
-          Acesse <a href="https://console.cloud.google.com/" target="_blank" class="external-link">console.cloud.google.com</a>, crie um projeto e ative a <strong>Google Business Profile API</strong> (My Business API).
+          <strong class="step-title">Ativar as APIs obrigatórias no Google Cloud Console:</strong>
+          Acesse <a href="https://console.cloud.google.com/apis/library" target="_blank" class="external-link">console.cloud.google.com</a>, selecione (ou crie) seu projeto e ative estas 3 APIs em <em>APIs e Serviços ➔ Biblioteca</em>:
+          <ul style="margin-top: 0.45rem; margin-left: 1.2rem; line-height: 1.7;">
+            <li><strong>My Business Account Management API</strong> (necessária para listar contas / <code>Account ID</code>)</li>
+            <li><strong>My Business Business Information API</strong> (necessária para listar locais / <code>Location ID</code>)</li>
+            <li><strong>Google My Business API</strong> (necessária para publicar postagens / novidades)</li>
+          </ul>
         </li>
         <li>
-          <strong class="step-title">Criar Credenciais OAuth 2.0:</strong>
-          Em <em>APIs & Services ➔ Credentials</em>, crie uma credencial OAuth 2.0 Web Application e autorize o escopo <code>https://www.googleapis.com/auth/business.manage</code>.
+          <strong class="step-title">Configurar a Tela de Permissão OAuth (Escopo &amp; Usuários de Teste):</strong>
+          Vá em <em>APIs e Serviços ➔ Tela de permissão OAuth</em> (ou <em>Google Auth Platform</em>):
+          <ul style="margin-top: 0.45rem; margin-left: 1.2rem; line-height: 1.7;">
+            <li>Em <strong>Escopos (Scopes)</strong>, clique em <em>Adicionar ou remover escopos</em> e adicione:
+              <span class="code-snippet">https://www.googleapis.com/auth/business.manage</span>
+            </li>
+            <li>Em <strong>Usuários de teste (Test users)</strong>, clique em <em>+ ADD USERS</em> e adicione o <strong>e-mail Google</strong> que administra o Perfil da Empresa. Isso permite conectar imediatamente enquanto o app estiver em modo Teste (na tela de aviso <em>"App não verificado"</em>, basta clicar em <strong>Avançado ➔ Acessar social360.anauedesign.com.br</strong>).</li>
+          </ul>
         </li>
         <li>
-          <strong class="step-title">Obter o Account ID e Location ID:</strong>
-          Utilize o endpoint <code>accounts</code> ou a ferramenta Google OAuth Playground para listar as contas e locais associados ao perfil verificado da sua empresa.
+          <strong class="step-title">Criar Credenciais OAuth 2.0 (evitando o erro <code>400: redirect_uri_mismatch</code>):</strong>
+          Vá em <em>APIs e Serviços ➔ Credenciais ➔ + Criar credenciais ➔ ID do cliente OAuth</em> e escolha <strong>Aplicativo da Web</strong>:
+          <ul style="margin-top: 0.45rem; margin-left: 1.2rem; line-height: 1.7;">
+            <li>Em <strong>Origens JavaScript autorizadas</strong>, adicione exatamente:
+              <span class="code-snippet">https://social360.anauedesign.com.br</span>
+            </li>
+            <li>Em <strong>URIs de redirecionamento autorizadas</strong>, adicione exatamente (caractere por caractere, <strong>sem barra <code>/</code> no final</strong>):
+              <span class="code-snippet">https://social360.anauedesign.com.br/api/oauth/googlebusiness/callback</span>
+              <em>(Opcional: se quiser testar também pelo OAuth Playground, adicione uma segunda URI: <code>https://developers.google.com/oauthplayground</code>).</em>
+            </li>
+            <li>Clique em <strong>Salvar</strong>, copie o <strong>Client ID</strong> e o <strong>Client Secret</strong> e aguarde ~2 minutos para o Google propagar a URI.</li>
+          </ul>
         </li>
         <li>
-          <strong class="step-title">Testar Conexão no Social360:</strong>
-          Preencha o Access Token e o Location ID e clique em <strong>"Testar Google Perfil"</strong>.
+          <strong class="step-title">Conectar em 1 clique no Social360 (Ativar Auto-Refresh 24/7):</strong>
+          No Social360, abra <em>Clientes &amp; Redes ➔ 🏢 Google Perfil da Empresa</em>, cole o <strong>Client ID</strong> e o <strong>Client Secret</strong> e clique em <strong>Salvar Cliente</strong>.<br>
+          Em seguida, clique em <strong>"🔐 Conectar com Google (OAuth 2.0)"</strong> e autorize com sua conta Google. O Social360 salvará automaticamente o <strong>Refresh Token</strong> (exibindo o selo verde <code>✓ Auto-Refresh Ativo (24/7)</code>) para renovar o Access Token sozinho de hora em hora.
+        </li>
+        <li>
+          <strong class="step-title">Descobrir Account ID e Location ID automaticamente e Testar:</strong>
+          Clique em <strong>"🔍 Descobrir Account/Location ID"</strong>. O Social360 consultará automaticamente os endpoints oficiais (<code>mybusinessaccountmanagement.googleapis.com/v1/accounts</code> e <code>mybusinessbusinessinformation.googleapis.com/v1/accounts/{accountId}/locations?readMask=name,title</code>) e preencherá os IDs para você (ou abrirá um seletor caso haja vários locais).<br>
+          Por fim, clique em <strong>Salvar Cliente</strong> e valide com <strong>"Testar Google Perfil"</strong>.
         </li>
       </ol>
+
+      <div class="alert-warning" style="margin-bottom: 1rem;">
+        <span>⚠️</span>
+        <div>
+          <strong>Atenção à Cota Zero do Google Cloud (Erros <code>429</code> ou <code>403</code>):</strong><br>
+          Mesmo com o OAuth conectado corretamente, projetos novos no Google Cloud nascem com <strong>cota 0</strong> para a API do Google Business Profile. Se o teste retornar <code>429 (Resource Exhausted)</code> ou <code>403 (Permission Denied)</code>, solicite a liberação no formulário oficial de <strong>Basic API Access</strong> do Google Business Profile API informando o ID do seu projeto.<br>
+          <em>Nota sobre modo Teste:</em> enquanto o app permanecer em status "Teste" na Tela de permissão OAuth, o Refresh Token expira a cada 7 dias (basta clicar novamente em <strong>Conectar com Google</strong> ou publicar o app em produção no Google Cloud para renovação permanente).
+        </div>
+      </div>
 
       <div class="alert-tip">
         <span>💡</span>
